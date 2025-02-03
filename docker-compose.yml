@@ -1,0 +1,11 @@
+# Docker compose to create a test database
+services:
+  db:
+    image: postgis/postgis
+    restart: no
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: local
