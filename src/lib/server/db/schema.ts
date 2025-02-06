@@ -11,14 +11,14 @@ import {
   
   // User Authentication
   export const user = pgTable("user", {
-	id: uuid("id").defaultRandom().primaryKey(), // Use UUID for scalability
+	id: text("id").primaryKey(), // Use UUID for scalability
 	username: text("username").notNull().unique(),
 	passwordHash: text("password_hash").notNull(),
   });
   
   export const session = pgTable("session", {
-	id: uuid("id").defaultRandom().primaryKey(), // Use UUID for session ID
-	userId: uuid("user_id")
+	id: text("id").primaryKey(), // Use UUID for session ID
+	userId: text("user_id")
 	  .notNull()
 	  .references(() => user.id, { onDelete: "cascade" }), // Cascade delete sessions when a user is deleted
 	expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
