@@ -51,7 +51,7 @@
     </ul>
   </div>
   <div class="navbar-end">
-    <a href="/login" class="btn">Log In</a>
+    <a href="/account" class="btn">Account</a>
   </div>
 </div>
 {@render children()}
