@@ -12,7 +12,6 @@ import {
   // User Authentication
   export const user = pgTable("user", {
 	id: uuid("id").defaultRandom().primaryKey(), // Use UUID for scalability
-	age: integer("age"),
 	username: text("username").notNull().unique(),
 	passwordHash: text("password_hash").notNull(),
   });
