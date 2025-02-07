@@ -24,10 +24,11 @@ import {
 	expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
   });
   
-  // Rovers Table
+
   export const rovers = pgTable("rovers", {
 	id: serial("id").primaryKey(),
 	name: varchar("name", { length: 100 }).notNull(),
+	status: varchar("status", { length: 50 }).notNull().default("active"),
   });
   
   // Paths Table
