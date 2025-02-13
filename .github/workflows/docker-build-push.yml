@@ -2,7 +2,7 @@ name: Build and Push on Release
 
 on:
   release:
-    types: [created]  # Trigger when new release is created
+    types: [published]  # Trigger when a new release is published
 
 jobs:
   build-and-push:
@@ -24,8 +24,8 @@ jobs:
       - name: Build and Tag Docker Image
         run: |
           docker build -t rover-ui:$RELEASE_TAG .
-          docker tag myapp:$RELEASE_TAG ${{ secrets.DOCKER_HUB_USERNAME }}/rover-ui:$RELEASE_TAG
-          docker tag myapp:$RELEASE_TAG ${{ secrets.DOCKER_HUB_USERNAME }}/rover-ui:latest
+          docker tag rover-ui:$RELEASE_TAG ${{ secrets.DOCKER_HUB_USERNAME }}/rover-ui:$RELEASE_TAG
+          docker tag rover-ui:$RELEASE_TAG ${{ secrets.DOCKER_HUB_USERNAME }}/rover-ui:latest
 
       - name: Push Docker Image to Docker Hub
         run: |
