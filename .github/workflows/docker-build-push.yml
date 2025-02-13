@@ -23,7 +23,7 @@ jobs:
 
       - name: Build and Tag Docker Image
         run: |
-          docker build -t rover-ui:$RELEASE_TAG .
+          docker build --build-arg DATABASE_URL="postgres://root:mysecretpassword@localhost:5432/local" -t rover-ui:$RELEASE_TAG .
           docker tag rover-ui:$RELEASE_TAG ${{ secrets.DOCKER_HUB_USERNAME }}/rover-ui:$RELEASE_TAG
           docker tag rover-ui:$RELEASE_TAG ${{ secrets.DOCKER_HUB_USERNAME }}/rover-ui:latest
 
