@@ -5,7 +5,7 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgres://root:mysecretpassword@postgres:5432/local
-      - ORIGIN=http://0.0.0.0:3000
+      - ORIGIN=http://localhost:3000
     depends_on:
       - postgres
 
