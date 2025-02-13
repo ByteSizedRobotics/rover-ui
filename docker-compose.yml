@@ -1,11 +1,21 @@
-# Docker compose to create a test database
 services:
-  db:
-    image: postgis/postgis
-    restart: no
+  app:
+    image: syeadz/rover-ui:latest
     ports:
-      - 5432:5432
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://root:mysecretpassword@postgres:5432/local
+      - ORIGIN=http://0.0.0.0:3000
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgis/postgis
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: mysecretpassword
       POSTGRES_DB: local
+    volumes:
+      - ./drizzle/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"

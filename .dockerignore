@@ -25,6 +25,7 @@ README.md
 .editorconfig
 .svelte-kit
 .vscode
+drizzle
 node_modules
 build
 package

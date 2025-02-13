@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package*.json .
 RUN npm ci
 COPY . .
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
 RUN npm run build
 RUN npm prune --production
 
@@ -14,3 +16,5 @@ COPY package.json .
 EXPOSE 3000
 ENV NODE_ENV=production
 CMD [ "node", "build" ]
+
+# To build: docker build --build-arg DATABASE_URL="postgres://root:mysecretpassword@localhost:5432/local" -t syeadz/rover-ui .

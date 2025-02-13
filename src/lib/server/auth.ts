@@ -68,9 +68,17 @@ export async function invalidateSession(sessionId: string) {
 }
 
 export function setSessionTokenCookie(event: RequestEvent, token: string, expiresAt: Date) {
+	// event.cookies.set(sessionCookieName, token, {
+	// 	expires: expiresAt,
+	// 	path: '/'
+	// });
+
+	// TODO: remove this when in production, this is for testing only
 	event.cookies.set(sessionCookieName, token, {
 		expires: expiresAt,
-		path: '/'
+		path: '/',
+		secure: false,  // Allow cookie to be set even on HTTP
+		httpOnly: true,  // Keep the cookie secure from client-side JS
 	});
 }
 
