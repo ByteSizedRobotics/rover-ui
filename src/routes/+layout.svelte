@@ -5,7 +5,7 @@
 
 <div class="navbar bg-base-300">
   <div class="navbar-start">
-    <div class="dropdown">
+    <!-- <div class="dropdown">
       <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -32,10 +32,10 @@
         </li>
         <li><a>Item 3</a></li>
       </ul>
-    </div>
+    </div> -->
     <a href="/" class="btn btn-ghost text-xl">Pothole Patrol</a>
   </div>
-  <div class="navbar-center hidden lg:flex">
+  <!-- <div class="navbar-center hidden lg:flex">
     <ul class="menu menu-horizontal px-1">
       <li><a>Item 1</a></li>
       <li>
@@ -49,7 +49,7 @@
       </li>
       <li><a>Item 3</a></li>
     </ul>
-  </div>
+  </div> -->
   <div class="navbar-end">
     <a href="/account" class="btn">Account</a>
   </div>
