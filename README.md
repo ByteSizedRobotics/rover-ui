@@ -1,22 +1,15 @@
-# sv
+# Rover UI
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Web app to interact with rover. Includes a docker-compose to get a working example running quickly.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
-```
+* Login and registration
+* List of rovers
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+To start the development server. If you are developing locally, make sure to have a working database as well. You can start the postgres service in the docker-compose on its own and it should be fine. Make sure to specify the same `DATABASE_URL` variable within a .env file or as an environmental variable.
 
 ```bash
 npm run dev
@@ -25,14 +18,39 @@ npm run dev
 npm run dev -- --open
 ```
 
-## Building
+## Building the Docker image
 
-To create a production version of your app:
+To build the Docker image of the app. Note that a `DATABASE_URL` environmental variable has to be set during creation, however you must again specify the environmental variable when running it.
 
 ```bash
-npm run build
+docker build --build-arg DATABASE_URL="postgres://root:mysecretpassword@localhost:5432/local" -t bytesizedrobotics/rover-ui .
 ```
 
-You can preview the production build with `npm run preview`.
+## Running the Docker image
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+To run the Docker image. Note that the database must already have the database properly initalized with the schema. The ORIGIN environmental variable is very important as server sided calls will not fonction otherwise. It needs to point to where the web app is running. To access the page you must then go to `http://localhost:3000` specifically. The recommended approach to run the app is to use the docker-compose unless you know what you are doing.
+
+```bash
+ docker run -e DATABASE_URL="postgres://root:mysecretpassword@localhost:5432/local" -e ORIGIN=http://localhost:3000 --network rover-ui_default -p 3000:3000 syeadz/rover-ui
+```
+
+## Running the image with docker-compose (Recommended)
+
+The recommended approach is to use the docker-compose to automatically start up the app and the database. It will also set up some sample data. You will need to register as a new user in order to see it. Make sure to head to `http://localhost:3000`.
+
+```
+docker compose up
+
+# or 
+
+docker compose up -d # detached mode (won't attach to terminal)
+
+# to stop, if attached: crtl+c, if detached: `docker compose down`
+# and `docker compose down -v` to delete volume
+```
+
+## Notes
+
+* Image can be found here: https://hub.docker.com/r/bytesizedrobotics/rover-ui
+* There is an automated Github Actions workflow to build and push the image to Docker Hub whenver there is a published release
+* Schema for the database can be found at drizzle/schema.sql
