@@ -20,9 +20,9 @@
       // This callback forces Svelte to update when controller state changes
       component = component;
     }, {
-      url: "192.168.1.100", // TODO : NATHAN Update with Raspberry Pi IP
+      url: "172.20.10.6", // TODO : NATHAN Update with Raspberry Pi IP
       port: 9090,          // TODO: Verify rosbridge WebSocket port
-      commandTopic: "/rover_commands",
+      commandTopic: "/JSON",
       lidarTopic: "/scan"
     });
     

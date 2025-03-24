@@ -27,9 +27,9 @@ export class RoverController {
   private _lidarHandler: ((data: any) => void) | null = null; // TODO: NATHAN handle lidar data, just display it with viz, and display obstacle detection message from channel
   
   constructor(onStateChange: () => void, rosConfig: RosConfig = { 
-    url: "192.168.1.100",
+    url: "172.20.10.6",
     port: 9090,
-    commandTopic: "/rover_commands",
+    commandTopic: "/JSON",
     lidarTopic: "/scan"
   }) {
     this.onStateChange = onStateChange;
@@ -61,12 +61,12 @@ export class RoverController {
         this._socket = new WebSocket(wsUrl);
         
         this._socket.onopen = () => {
-          // Subscribe to the command topic
-          const commandSubscribeMsg = {
-            op: 'subscribe',
-            topic: this._rosConfig.commandTopic,
-            type: 'std_msgs/String'
-          };
+          // Subscribe to the command topic // WE NEED TO CREATE THAT TOPIC, should get created implicitly
+          // const commandSubscribeMsg = {
+          //   op: 'subscribe',
+          //   topic: this._rosConfig.commandTopic,
+          //   type: 'std_msgs/String'
+          // };
           
           // Subscribe to the lidar topic
           const lidarSubscribeMsg = {
@@ -75,7 +75,7 @@ export class RoverController {
             type: 'sensor_msgs/LaserScan'
           };
           
-          this._socket?.send(JSON.stringify(commandSubscribeMsg));
+          // this._socket?.send(JSON.stringify(commandSubscribeMsg));
           this._socket?.send(JSON.stringify(lidarSubscribeMsg));
           
           this._isConnected = true;
