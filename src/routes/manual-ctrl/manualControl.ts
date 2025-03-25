@@ -27,7 +27,7 @@ export class RoverController {
   private _lidarHandler: ((data: any) => void) | null = null; // TODO: NATHAN handle lidar data, just display it with viz, and display obstacle detection message from channel
   
   constructor(onStateChange: () => void, rosConfig: RosConfig = { 
-    url: "172.20.10.6",
+    url: "100.85.202.20",
     port: 9090,
     commandTopic: "/JSON",
     lidarTopic: "/scan"
