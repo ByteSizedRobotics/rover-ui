@@ -69,6 +69,7 @@ export class RoverController {
         this._webrtc_socket.onopen = () => {
           if (this._webrtc_socket) {
             this.addLog(`WebRTC connection established at ${this._webrtc_socket.url}`);
+            this.startWebRTC();
           }          
         };
         
@@ -86,8 +87,13 @@ export class RoverController {
             
             // Handle WebRTC signaling messages
             switch(data.type) {
-              case 'offer':
-                this.handleWebRTCOffer(data); // Handle incoming offer (video stream)
+              case 'answer': // Handle WebRTC answer
+                this.peerConnection?.setRemoteDescription(new RTCSessionDescription(data));
+                this.addLog("WebRTC answer received and applied");
+                break;
+              case 'ice-candidate': // Handle ICE candidates
+                this.peerConnection?.addIceCandidate(new RTCIceCandidate(data.candidate));
+                this.addLog("ICE candidate received and added");
                 break;
               default:
                 this.addLog(`Received unknown WebRTC message type: ${data.type}`);
@@ -165,17 +171,17 @@ export class RoverController {
   
   private peerConnection: RTCPeerConnection | null = null;
 
-  private handleWebRTCOffer(offer: any) {
-    this.addLog('Received WebRTC offer');
+  private async startWebRTC() {
+    this.addLog("Starting WebRTC connection...");
   
-    // Initialize the WebRTC peer connection
+    // Initialize WebRTC peer connection
     this.peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }]
     });
-  
-    // Set the received offer as the remote description
-    this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-  
+
+    // Ensure the WebRTC offer requests a video stream (without adding a local camera)
+    const transceiver = this.peerConnection.addTransceiver("video", { direction: "recvonly" });
+
     // Handle incoming video stream
     this.peerConnection.ontrack = (event) => {
       const videoElement = document.getElementById("roverVideo") as HTMLVideoElement;
@@ -184,6 +190,36 @@ export class RoverController {
         this.addLog("WebRTC video stream received");
       }
     };
+  
+    // Handle ICE candidates
+    this.peerConnection.onicecandidate = (event) => {
+      if (event.candidate && this._webrtc_socket) {
+        this._webrtc_socket.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
+      }
+    };
+  
+    // Create an offer and send it to the server
+    const offer = await this.peerConnection.createOffer();
+    await this.peerConnection.setLocalDescription(offer);
+  
+    if (this._webrtc_socket) {
+      this._webrtc_socket.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+      this.addLog("WebRTC offer sent to ROS 2 server");
+    }
+  
+    // Handle answer from ROS 2
+    if (this._webrtc_socket) {
+      this._webrtc_socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === "answer") {
+          this.peerConnection?.setRemoteDescription(new RTCSessionDescription(message));
+          this.addLog("WebRTC answer received and applied");
+        } else if (message.type === "ice-candidate") {
+          this.peerConnection?.addIceCandidate(new RTCIceCandidate(message.candidate));
+          this.addLog("ICE candidate received and added");
+        }
+      };
+    }
   }
   
   disconnectFromRover(): Promise<void> {

@@ -68,10 +68,12 @@
       message: "Connection failed: " + (error instanceof Error ? error.message : 'Unknown error')
     }];
     } finally { // if connection successful => means was able to connect to ROS bridge
-      connectionStatus = "Connected"; // added all these here, even tho variables should be reactive
-      statusColor = "text-green-500";
+      if (connectionStatus !== "Disconnected") {
+        connectionStatus = "Connected";
+        statusColor = "text-green-500";
+      }
       connecting = false;
-      isConnected = true;
+      // isConnected = true;
     }
   };
   
@@ -121,7 +123,7 @@
                 on:mouseup={stopMovement}
                 on:mouseleave={stopMovement}
                 disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
+                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
               >
                 ↑
               </button>
@@ -133,7 +135,7 @@
                 on:mouseup={stopMovement}
                 on:mouseleave={stopMovement}
                 disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
+                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
               >
                 ←
               </button>
@@ -141,7 +143,7 @@
               <button 
                 on:click={stopMovement}
                 disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-red-200 rounded-lg text-sm font-bold {isConnected ? 'hover:bg-red-300 active:bg-red-400' : 'opacity-50 cursor-not-allowed'}"
+                class="w-16 h-16 flex items-center justify-center bg-red-200 rounded-lg text-sm font-bold hover:bg-red-300 active:bg-red-400"
               >
                 STOP
               </button>
@@ -151,7 +153,7 @@
                 on:mouseup={stopMovement}
                 on:mouseleave={stopMovement}
                 disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
+                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
               >
                 →
               </button>
@@ -163,7 +165,7 @@
                 on:mouseup={stopMovement}
                 on:mouseleave={stopMovement}
                 disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
+                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
               >
                 ↓
               </button>
