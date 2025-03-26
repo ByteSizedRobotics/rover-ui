@@ -20,8 +20,9 @@
       // This callback forces Svelte to update when controller state changes
       component = component;
     }, {
-      url: "100.85.202.20", // TODO : NATHAN Update with Raspberry Pi IP
-      port: 9090,          // TODO: Verify rosbridge WebSocket port
+      url: "", // TODO: NATHAN change this or base it off tailscale ip
+      rosPort: 9090, // TODO: verify these ports
+      webrtcPort: 8765,
       commandTopic: "/JSON",
       lidarTopic: "/scan"
     });
@@ -66,8 +67,11 @@
       time: new Date().toLocaleTimeString(),
       message: "Connection failed: " + (error instanceof Error ? error.message : 'Unknown error')
     }];
-    } finally {
+    } finally { // if connection successful => means was able to connect to ROS bridge
+      connectionStatus = "Connected"; // added all these here, even tho variables should be reactive
+      statusColor = "text-green-500";
       connecting = false;
+      isConnected = true;
     }
   };
   
@@ -89,7 +93,7 @@
 </script>
 
 <div class="min-h-screen bg-gray-100 p-4" bind:this={component}>
-  <div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+  <div class="max-w-5xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
     <div class="p-6">
       <h1 class="text-2xl font-bold text-center mb-6">ROS Rover Control</h1>
       
@@ -106,65 +110,82 @@
         {/if}
       </div>
       
-      <!-- Control pad -->
-      <div class="mb-8">
-        <div class="flex justify-center mb-4">
-          <button 
-            on:mousedown={moveForward}
-            on:mouseup={stopMovement}
-            on:mouseleave={stopMovement}
-            disabled={!isConnected}
-            class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
-          >
-            ↑
-          </button>
+      <!-- Main content with control pad and video stream side by side -->
+      <div class="flex space-x-6">
+        <!-- Control Pad Section (Left side) -->
+        <div class="w-1/3 flex flex-col items-center">
+          <div class="mb-8">
+            <div class="flex justify-center mb-4">
+              <button 
+                on:mousedown={moveForward}
+                on:mouseup={stopMovement}
+                on:mouseleave={stopMovement}
+                disabled={!isConnected}
+                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
+              >
+                ↑
+              </button>
+            </div>
+            
+            <div class="flex justify-center items-center gap-4">
+              <button 
+                on:mousedown={moveLeft}
+                on:mouseup={stopMovement}
+                on:mouseleave={stopMovement}
+                disabled={!isConnected}
+                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
+              >
+                ←
+              </button>
+              
+              <button 
+                on:click={stopMovement}
+                disabled={!isConnected}
+                class="w-16 h-16 flex items-center justify-center bg-red-200 rounded-lg text-sm font-bold {isConnected ? 'hover:bg-red-300 active:bg-red-400' : 'opacity-50 cursor-not-allowed'}"
+              >
+                STOP
+              </button>
+              
+              <button 
+                on:mousedown={moveRight}
+                on:mouseup={stopMovement}
+                on:mouseleave={stopMovement}
+                disabled={!isConnected}
+                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
+              >
+                →
+              </button>
+            </div>
+            
+            <div class="flex justify-center mt-4">
+              <button 
+                on:mousedown={moveBackward}
+                on:mouseup={stopMovement}
+                on:mouseleave={stopMovement}
+                disabled={!isConnected}
+                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
+              >
+                ↓
+              </button>
+            </div>
+          </div>
         </div>
         
-        <div class="flex justify-center items-center gap-4">
-          <button 
-            on:mousedown={moveLeft}
-            on:mouseup={stopMovement}
-            on:mouseleave={stopMovement}
-            disabled={!isConnected}
-            class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
+        <!-- Video Stream Section (Right side) -->
+        <div class="w-2/3 bg-gray-100 rounded-lg overflow-hidden">
+          <video 
+            id="roverVideo" 
+            autoplay 
+            playsinline 
+            class="w-full h-full object-cover"
+            style="max-height: 480px;"
           >
-            ←
-          </button>
-          
-          <button 
-            on:click={stopMovement}
-            disabled={!isConnected}
-            class="w-16 h-16 flex items-center justify-center bg-red-200 rounded-lg text-sm font-bold {isConnected ? 'hover:bg-red-300 active:bg-red-400' : 'opacity-50 cursor-not-allowed'}"
-          >
-            STOP
-          </button>
-          
-          <button 
-            on:mousedown={moveRight}
-            on:mouseup={stopMovement}
-            on:mouseleave={stopMovement}
-            disabled={!isConnected}
-            class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
-          >
-            →
-          </button>
+            Your browser does not support the video tag.
+          </video>
         </div>
-        
-        <div class="flex justify-center mt-4">
-          <button 
-            on:mousedown={moveBackward}
-            on:mouseup={stopMovement}
-            on:mouseleave={stopMovement}
-            disabled={!isConnected}
-            class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl {isConnected ? 'hover:bg-gray-300 active:bg-gray-400' : 'opacity-50 cursor-not-allowed'}"
-          >
-            ↓
-          </button>
-        </div>
-      </div>
-      
-      <!-- Command log -->
-      <div>
+
+      <!-- Command log COULD ADD LATER --> 
+      <!-- <div>
         <h2 class="font-bold mb-2">Command Log:</h2>
         <div class="h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50">
           {#if logs.length === 0}
@@ -177,6 +198,7 @@
             {/each}
           {/if}
         </div>
+      </div> -->
       </div>
     </div>
   </div>

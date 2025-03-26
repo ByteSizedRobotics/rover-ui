@@ -7,9 +7,10 @@ export interface LogEntry {
 // ROS Connection config
 export interface RosConfig {
   url: string;
-  port: number;
+  rosPort: number;
   commandTopic: string;
   lidarTopic: string;
+  webrtcPort: number;
 }
 
 export class RoverController {
@@ -18,7 +19,8 @@ export class RoverController {
   private _connectionStatus: string = "Disconnected";
   private _statusColor: string = "text-red-500";
   private _logs: LogEntry[] = [];
-  private _socket: WebSocket | null = null;
+  private _webrtc_socket: WebSocket | null = null;
+  private _ros_socket: WebSocket | null = null;
   private _rosConfig: RosConfig;
   private _speed: number = 1; // Default speed setting
   
@@ -27,8 +29,9 @@ export class RoverController {
   private _lidarHandler: ((data: any) => void) | null = null; // TODO: NATHAN handle lidar data, just display it with viz, and display obstacle detection message from channel
   
   constructor(onStateChange: () => void, rosConfig: RosConfig = { 
-    url: "100.85.202.20",
-    port: 9090,
+    url: "", //TODO: NATHAN add url
+    rosPort: 9090,
+    webrtcPort: 8765,
     commandTopic: "/JSON",
     lidarTopic: "/scan"
   }) {
@@ -48,46 +51,71 @@ export class RoverController {
     this._lidarHandler = handler;
   }
   
-  // ROS Connection methods
   connectToRover(): Promise<void> {
     this._connectionStatus = "Connecting...";
     this._statusColor = "text-yellow-500";
     this.onStateChange();
     
     return new Promise((resolve, reject) => {
-      try {
-        // Create WebSocket connection to rosbridge server
-        const wsUrl = `ws://${this._rosConfig.url}:${this._rosConfig.port}`;
-        this._socket = new WebSocket(wsUrl);
+      try {        
+        // ROS WebSocket Connection
+        const wsUrlROS = `ws://${this._rosConfig.url}:${this._rosConfig.rosPort}`;
+        this._ros_socket = new WebSocket(wsUrlROS);
         
-        this._socket.onopen = () => {
-          // Subscribe to the command topic // WE NEED TO CREATE THAT TOPIC, should get created implicitly
-          // const commandSubscribeMsg = {
-          //   op: 'subscribe',
-          //   topic: this._rosConfig.commandTopic,
-          //   type: 'std_msgs/String'
-          // };
-          
-          // Subscribe to the lidar topic
+        // WebRTC WebSocket Connection
+        this._webrtc_socket = new WebSocket(`ws://${this._rosConfig.url}:${this._rosConfig.webrtcPort || 8765}`);
+        
+        // WebRTC Socket Event Handlers
+        this._webrtc_socket.onopen = () => {
+          if (this._webrtc_socket) {
+            this.addLog(`WebRTC connection established at ${this._webrtc_socket.url}`);
+          }          
+        };
+        
+        this._webrtc_socket.onerror = (error) => {
+          this.addLog(`WebRTC connection error: ${error.type}`);
+        };
+        
+        this._webrtc_socket.onclose = () => {
+          this.addLog('WebRTC connection closed');
+        };
+        
+        this._webrtc_socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            // Handle WebRTC signaling messages
+            switch(data.type) {
+              case 'offer':
+                this.handleWebRTCOffer(data); // Handle incoming offer (video stream)
+                break;
+              default:
+                this.addLog(`Received unknown WebRTC message type: ${data.type}`);
+            }
+          } catch (e) {
+            this.addLog(`Error parsing WebRTC message: ${e}`);
+          }
+        };
+        
+        // ROS Socket Event Handlers (existing code remains the same)
+        this._ros_socket.onopen = () => {
           const lidarSubscribeMsg = {
             op: 'subscribe',
             topic: this._rosConfig.lidarTopic,
             type: 'sensor_msgs/LaserScan'
           };
           
-          // this._socket?.send(JSON.stringify(commandSubscribeMsg));
-          this._socket?.send(JSON.stringify(lidarSubscribeMsg));
+          this._ros_socket?.send(JSON.stringify(lidarSubscribeMsg));
           
           this._isConnected = true;
           this._connectionStatus = "Connected";
           this._statusColor = "text-green-500";
-          this.addLog(`Connected to ROS at ${wsUrl}`);
-          this.addLog(`Subscribed to lidar topic: ${this._rosConfig.lidarTopic}`);
+          this.addLog(`Connected to ROS at ${wsUrlROS}`);
           this.onStateChange();
           resolve();
         };
         
-        this._socket.onerror = (error) => {
+        this._ros_socket.onerror = (error) => {
           this._isConnected = false;
           this._connectionStatus = "Connection failed";
           this._statusColor = "text-red-500";
@@ -96,7 +124,7 @@ export class RoverController {
           reject(error);
         };
         
-        this._socket.onclose = () => {
+        this._ros_socket.onclose = () => {
           this._isConnected = false;
           this._connectionStatus = "Disconnected";
           this._statusColor = "text-red-500";
@@ -104,8 +132,7 @@ export class RoverController {
           this.onStateChange();
         };
         
-        // Process incoming messages
-        this._socket.onmessage = (event) => {
+        this._ros_socket.onmessage = (event) => { //TODO: NATHAN handle lidar data, just display it with viz, and display obstacle detection message from channel
           try {
             const data = JSON.parse(event.data);
             
@@ -136,13 +163,36 @@ export class RoverController {
     });
   }
   
+  private peerConnection: RTCPeerConnection | null = null;
+
+  private handleWebRTCOffer(offer: any) {
+    this.addLog('Received WebRTC offer');
+  
+    // Initialize the WebRTC peer connection
+    this.peerConnection = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+  
+    // Set the received offer as the remote description
+    this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+  
+    // Handle incoming video stream
+    this.peerConnection.ontrack = (event) => {
+      const videoElement = document.getElementById("roverVideo") as HTMLVideoElement;
+      if (videoElement) {
+        videoElement.srcObject = event.streams[0];
+        this.addLog("WebRTC video stream received");
+      }
+    };
+  }
+  
   disconnectFromRover(): Promise<void> {
     this._connectionStatus = "Disconnecting...";
     this._statusColor = "text-yellow-500";
     this.onStateChange();
     
     return new Promise((resolve) => {
-      if (this._socket && this._socket.readyState === WebSocket.OPEN) {
+      if (this._ros_socket && this._ros_socket.readyState === WebSocket.OPEN) {
         // Unsubscribe from topics
         const commandUnsubscribeMsg = {
           op: 'unsubscribe',
@@ -154,15 +204,15 @@ export class RoverController {
           topic: this._rosConfig.lidarTopic
         };
         
-        this._socket.send(JSON.stringify(commandUnsubscribeMsg));
-        this._socket.send(JSON.stringify(lidarUnsubscribeMsg));
-        this._socket.close();
+        this._ros_socket.send(JSON.stringify(commandUnsubscribeMsg));
+        this._ros_socket.send(JSON.stringify(lidarUnsubscribeMsg));
+        this._ros_socket.close();
       }
       
       this._isConnected = false;
       this._connectionStatus = "Disconnected";
       this._statusColor = "text-red-500";
-      this._socket = null;
+      this._ros_socket = null;
       this.addLog("Disconnected from ROS");
       this.onStateChange();
       resolve();
@@ -171,7 +221,7 @@ export class RoverController {
   
   // Send command to ROS
   private publishCommand(command: string): void {
-    if (!this._isConnected || !this._socket) {
+    if (!this._isConnected || !this._ros_socket) {
       this.addLog("Cannot send command: Not connected to ROS");
       return;
     }
@@ -186,7 +236,7 @@ export class RoverController {
         }
       };
       
-      this._socket.send(JSON.stringify(rosMessage));
+      this._ros_socket.send(JSON.stringify(rosMessage));
       this.addLog(`Command sent: ${command}`);
     } catch (error) {
       this.addLog(`Error sending command: ${error}`);
