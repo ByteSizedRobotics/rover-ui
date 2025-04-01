@@ -12,6 +12,8 @@
   $: connectionStatus = controller?.connectionStatus || "Disconnected";
   $: statusColor = controller?.statusColor || "text-red-500";
   $: logs = controller?.logs || [];
+  $: obstacleDetected = controller?.obstacleDetected || false;
+  $: obstacleDistance = controller?.obstacleDistance || 0;
   
   // Initialize the controller when component mounts
   onMount(() => {
@@ -19,12 +21,10 @@
     controller = new RoverController(() => {
       // This callback forces Svelte to update when controller state changes
       component = component;
-    }, {
-      url: "", // TODO: NATHAN change this or base it off tailscale ip
-      rosPort: 9090, // TODO: verify these ports
-      webrtcPort: 8765,
-      commandTopic: "/JSON",
-      lidarTopic: "/scan"
+      
+      // Force update of reactive variables when controller state changes
+      obstacleDetected = controller.obstacleDetected;
+      obstacleDistance = controller.obstacleDistance || 0;
     });
     
     // Add keyboard event listeners for both arrow keys and WASD
@@ -57,6 +57,8 @@
     statusColor = "text-yellow-500";
     try {
       await controller.connectToRover();
+      // Initialize lidar visualization once connected
+      controller.initLidarVisualization("lidarCanvas");
     } catch (error) {
       console.error("Failed to connect to ROS:", error);
       connectionStatus = "Disconnected";
@@ -64,9 +66,9 @@
 
       // Optionally add to logs
       logs = [...controller.logs, {
-      time: new Date().toLocaleTimeString(),
-      message: "Connection failed: " + (error instanceof Error ? error.message : 'Unknown error')
-    }];
+        time: new Date().toLocaleTimeString(),
+        message: "Connection failed: " + (error instanceof Error ? error.message : 'Unknown error')
+      }];
     } finally { // if connection successful => means was able to connect to ROS bridge
       if (connectionStatus !== "Disconnected") {
         connectionStatus = "Connected";
@@ -112,95 +114,135 @@
         {/if}
       </div>
       
-      <!-- Main content with control pad and video stream side by side -->
-      <div class="flex space-x-6">
-        <!-- Control Pad Section (Left side) -->
-        <div class="w-1/3 flex flex-col items-center">
-          <div class="mb-8">
-            <div class="flex justify-center mb-4">
-              <button 
-                on:mousedown={moveForward}
-                on:mouseup={stopMovement}
-                on:mouseleave={stopMovement}
-                disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
-              >
-                ↑
-              </button>
-            </div>
-            
-            <div class="flex justify-center items-center gap-4">
-              <button 
-                on:mousedown={moveLeft}
-                on:mouseup={stopMovement}
-                on:mouseleave={stopMovement}
-                disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
-              >
-                ←
-              </button>
+      <!-- Main content with control pad, video stream, and lidar visualization -->
+      <div class="flex flex-col space-y-6">
+        <!-- Control Pad and Video Section -->
+        <div class="flex space-x-6">
+          <!-- Control Pad Section (Left side) -->
+          <div class="w-1/3 flex flex-col items-center">
+            <div class="mb-8">
+              <div class="flex justify-center mb-4">
+                <button 
+                  on:mousedown={moveForward}
+                  on:mouseup={stopMovement}
+                  on:mouseleave={stopMovement}
+                  disabled={!isConnected}
+                  class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
+                >
+                  ↑
+                </button>
+              </div>
               
-              <button 
-                on:click={stopMovement}
-                disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-red-200 rounded-lg text-sm font-bold hover:bg-red-300 active:bg-red-400"
-              >
-                STOP
-              </button>
+              <div class="flex justify-center items-center gap-4">
+                <button 
+                  on:mousedown={moveLeft}
+                  on:mouseup={stopMovement}
+                  on:mouseleave={stopMovement}
+                  disabled={!isConnected}
+                  class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
+                >
+                  ←
+                </button>
+                
+                <button 
+                  on:click={stopMovement}
+                  disabled={!isConnected}
+                  class="w-16 h-16 flex items-center justify-center bg-red-200 rounded-lg text-sm font-bold hover:bg-red-300 active:bg-red-400"
+                >
+                  STOP
+                </button>
+                
+                <button 
+                  on:mousedown={moveRight}
+                  on:mouseup={stopMovement}
+                  on:mouseleave={stopMovement}
+                  disabled={!isConnected}
+                  class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
+                >
+                  →
+                </button>
+              </div>
               
-              <button 
-                on:mousedown={moveRight}
-                on:mouseup={stopMovement}
-                on:mouseleave={stopMovement}
-                disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
-              >
-                →
-              </button>
+              <div class="flex justify-center mt-4">
+                <button 
+                  on:mousedown={moveBackward}
+                  on:mouseup={stopMovement}
+                  on:mouseleave={stopMovement}
+                  disabled={!isConnected}
+                  class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
+                >
+                  ↓
+                </button>
+              </div>
             </div>
-            
-            <div class="flex justify-center mt-4">
-              <button 
-                on:mousedown={moveBackward}
-                on:mouseup={stopMovement}
-                on:mouseleave={stopMovement}
-                disabled={!isConnected}
-                class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
-              >
-                ↓
-              </button>
-            </div>
+          </div>
+          
+          <!-- Video Stream Section (Right side) -->
+          <div class="w-2/3 bg-gray-100 rounded-lg overflow-hidden">
+            <video 
+              id="roverVideo" 
+              autoplay 
+              playsinline 
+              class="w-full h-full object-cover"
+              style="max-height: 360px;"
+            >
+              Your browser does not support the video tag.
+            </video>
           </div>
         </div>
         
-        <!-- Video Stream Section (Right side) -->
-        <div class="w-2/3 bg-gray-100 rounded-lg overflow-hidden">
-          <video 
-            id="roverVideo" 
-            autoplay 
-            playsinline 
-            class="w-full h-full object-cover"
-            style="max-height: 480px;"
-          >
-            Your browser does not support the video tag.
-          </video>
-        </div>
-
-      <!-- Command log COULD ADD LATER --> 
-      <!-- <div>
-        <h2 class="font-bold mb-2">Command Log:</h2>
-        <div class="h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50">
-          {#if logs.length === 0}
-            <p class="text-gray-500 italic">No commands sent yet.</p>
-          {:else}
-            {#each logs as log}
-              <div class="mb-1 text-sm">
-                <span class="text-gray-500">[{log.time}]</span> {log.message}
+        <!-- Lidar Visualization and Obstacle Detection Information -->
+        <div class="flex space-x-6">
+          <!-- Obstacle Detection Information (Left side) -->
+          <div class="w-1/3 bg-gray-100 rounded-lg p-4">
+            <h2 class="text-xl font-semibold mb-4">Obstacle Detection</h2>
+            <div class="flex flex-col space-y-4">
+              <div class="flex items-center">
+                <span class="font-medium mr-2">Status:</span>
+                <span class={obstacleDetected ? "text-red-500 font-bold" : "text-green-500 font-bold"}>
+                  {obstacleDetected ? "Obstacle Detected!" : "Clear Path"}
+                </span>
               </div>
-            {/each}
-          {/if}
+              <div class="flex items-center">
+                <span class="font-medium mr-2">Distance:</span>
+                <span class={obstacleDetected ? "text-red-500 font-bold" : "text-gray-500"}>
+                  {obstacleDistance}
+                </span>
+              </div>
+            </div>
+            
+            <!-- Command Log -->
+            <div class="mt-6">
+              <h3 class="font-bold mb-2">Command Log:</h3>
+              <div class="h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50">
+                {#if logs.length === 0}
+                  <p class="text-gray-500 italic">No commands sent yet.</p>
+                {:else}
+                  {#each logs as log}
+                    <div class="mb-1 text-sm">
+                      <span class="text-gray-500">[{log.time}]</span> {log.message}
+                    </div>
+                  {/each}
+                {/if}
+              </div>
+            </div>
+          </div>
+          
+          <!-- Lidar Visualization (Right side) -->
+          <div class="w-2/3 bg-gray-100 rounded-lg overflow-hidden">
+            <div class="p-2 bg-gray-200">
+              <h2 class="text-xl font-semibold">Lidar Point Cloud</h2>
+            </div>
+            <div class="w-full h-64 relative">
+              <canvas 
+                id="lidarCanvas" 
+                class="w-full h-full"
+              >
+                Your browser does not support the canvas element.
+              </canvas>
+            </div>
+          </div>
         </div>
-      </div> -->
       </div>
     </div>
   </div>

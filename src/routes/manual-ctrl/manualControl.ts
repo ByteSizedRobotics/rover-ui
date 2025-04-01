@@ -11,6 +11,21 @@ export interface RosConfig {
   commandTopic: string;
   lidarTopic: string;
   webrtcPort: number;
+  obstacleDetectedTopic: string;
+  obstacleDistanceTopic: string;
+}
+
+// Lidar data interface
+export interface LidarData {
+  angle_min: number;
+  angle_max: number;
+  angle_increment: number;
+  time_increment: number;
+  scan_time: number;
+  range_min: number;
+  range_max: number;
+  ranges: number[];
+  intensities?: number[];
 }
 
 export class RoverController {
@@ -24,16 +39,25 @@ export class RoverController {
   private _rosConfig: RosConfig;
   private _speed: number = 1; // Default speed setting
   
+  // Lidar visualization properties
+  private _lidarCanvas: HTMLCanvasElement | null = null;
+  private _lidarContext: CanvasRenderingContext2D | null = null;
+  private _lidarData: LidarData | null = null;
+  private _obstacleDetected: boolean = false;
+  private _obstacleDistance: number = 0;
+  
   // Callback function for state updates
   private onStateChange: () => void;
-  private _lidarHandler: ((data: any) => void) | null = null; // TODO: NATHAN handle lidar data, just display it with viz, and display obstacle detection message from channel
+  private _lidarHandler: ((data: any) => void) | null = null;
   
   constructor(onStateChange: () => void, rosConfig: RosConfig = { 
-    url: "", //TODO: NATHAN add url
+    url: "192.168.1.230", //TODO:  add url
     rosPort: 9090,
     webrtcPort: 8765,
     commandTopic: "/JSON",
-    lidarTopic: "/scan"
+    lidarTopic: "/scan",
+    obstacleDetectedTopic: "/obstacle_detected",
+    obstacleDistanceTopic: "/obstacle_distance"
   }) {
     this.onStateChange = onStateChange;
     this._rosConfig = rosConfig;
@@ -45,6 +69,142 @@ export class RoverController {
   get connectionStatus(): string { return this._connectionStatus; }
   get statusColor(): string { return this._statusColor; }
   get logs(): LogEntry[] { return this._logs; }
+  get obstacleDetected(): boolean { return this._obstacleDetected; }
+  get obstacleDistance(): number { return this._obstacleDistance; }
+  
+  // Initialize lidar visualization
+  initLidarVisualization(canvasId: string): void {
+    this._lidarCanvas = document.getElementById(canvasId) as HTMLCanvasElement;
+    if (this._lidarCanvas) {
+      this._lidarContext = this._lidarCanvas.getContext('2d');
+      
+      // Set default lidar handler to visualize data
+      this._lidarHandler = (data: LidarData) => {
+        this._lidarData = data;
+        this.visualizeLidarData();
+      };
+      
+      // Set initial canvas dimensions
+      this.resizeLidarCanvas();
+      
+      // Handle window resize
+      window.addEventListener('resize', () => this.resizeLidarCanvas());
+    } else {
+      this.addLog(`Could not find canvas with id: ${canvasId}`);
+    }
+  }
+  
+  // Resize canvas to match container size
+  private resizeLidarCanvas(): void {
+    if (!this._lidarCanvas) return;
+    
+    const container = this._lidarCanvas.parentElement;
+    if (container) {
+      this._lidarCanvas.width = container.clientWidth;
+      this._lidarCanvas.height = container.clientHeight;
+      
+      // Redraw if we have data
+      if (this._lidarData) {
+        this.visualizeLidarData();
+      }
+    }
+  }
+  
+  // Visualize lidar data on canvas
+  private visualizeLidarData(): void {
+    if (!this._lidarCanvas || !this._lidarContext || !this._lidarData) return;
+    
+    const ctx = this._lidarContext;
+    const canvas = this._lidarCanvas;
+    const lidarData = this._lidarData;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Calculate center coordinates (rover position)
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    
+    // Draw background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw rover indicator
+    ctx.fillStyle = 'rgba(50, 205, 50, 0.8)';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw distance rings
+    const maxRange = lidarData.range_max;
+    const scale = Math.min(canvas.width, canvas.height) / (2.2 * maxRange);
+    
+    ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
+    ctx.setLineDash([5, 5]);
+    
+    // Draw range rings at 1-meter intervals
+    for (let r = 1; r <= Math.ceil(maxRange); r++) {
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, r * scale, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Label the distance
+      ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
+      ctx.font = '10px Arial';
+      ctx.fillText(`${r}m`, centerX + 5, centerY - r * scale + 15);
+    }
+    
+    ctx.setLineDash([]);
+    
+    // Draw cardinal directions
+    ctx.font = '12px Arial';
+    ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
+    ctx.fillText('Forward', centerX - 25, 20);
+    ctx.fillText('Right', canvas.width - 30, centerY);
+    ctx.fillText('Back', centerX - 15, canvas.height - 10);
+    ctx.fillText('Left', 10, centerY);
+    
+    // Draw lidar points
+    const { angle_min, angle_increment, ranges } = lidarData;
+    
+    for (let i = 0; i < ranges.length; i++) {
+      const range = ranges[i];
+      
+      // Skip invalid readings
+      if (range < lidarData.range_min || range > lidarData.range_max || isNaN(range)) {
+        continue;
+      }
+      
+      // Calculate angle (adjust to make forward = top of canvas)
+      const angle = angle_min + (i * angle_increment) - Math.PI / 2;
+      
+      // Calculate point coordinates
+      const x = centerX + Math.cos(angle) * range * scale;
+      const y = centerY + Math.sin(angle) * range * scale;
+      
+      // Color based on distance (red = close, green = far)
+      const intensity = 1 - (range / maxRange);
+      const red = Math.floor(255 * intensity);
+      const green = Math.floor(255 * (1 - intensity));
+      
+      // Draw point
+      ctx.fillStyle = `rgba(${red}, ${green}, 50, 0.8)`;
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // // Draw obstacle warning if detected
+    // if (this._obstacleDetected) {
+    //   ctx.font = 'bold 16px Arial';
+    //   ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
+    //   ctx.fillText(`Obstacle Detected at ${this._obstacleDistance}`, 20, 30);
+    // } else {
+    //   ctx.font = 'bold 16px Arial';
+    //   ctx.fillStyle = 'rgba(50, 205, 50, 0.9)';
+    //   ctx.fillText('No obstacles detected', 20, 30);
+    // }
+  }
   
   // Set lidar handler for external processing
   setLidarHandler(handler: (data: any) => void): void {
@@ -103,15 +263,32 @@ export class RoverController {
           }
         };
         
-        // ROS Socket Event Handlers (existing code remains the same)
+        // ROS Socket Event Handlers
         this._ros_socket.onopen = () => {
+          // Subscribe to lidar topic
           const lidarSubscribeMsg = {
             op: 'subscribe',
             topic: this._rosConfig.lidarTopic,
             type: 'sensor_msgs/LaserScan'
           };
           
+          // Subscribe to obstacle detection topic
+          const obstacleDetectedSubscribeMsg = {
+            op: 'subscribe',
+            topic: this._rosConfig.obstacleDetectedTopic,
+            type: 'std_msgs/Bool'
+          };
+          
+          // Subscribe to obstacle distance topic
+          const obstacleDistanceSubscribeMsg = {
+            op: 'subscribe',
+            topic: this._rosConfig.obstacleDistanceTopic,
+            type: 'std_msgs/String'
+          };
+          
           this._ros_socket?.send(JSON.stringify(lidarSubscribeMsg));
+          this._ros_socket?.send(JSON.stringify(obstacleDetectedSubscribeMsg));
+          this._ros_socket?.send(JSON.stringify(obstacleDistanceSubscribeMsg));
           
           this._isConnected = true;
           this._connectionStatus = "Connected";
@@ -138,16 +315,38 @@ export class RoverController {
           this.onStateChange();
         };
         
-        this._ros_socket.onmessage = (event) => { //TODO: NATHAN handle lidar data, just display it with viz, and display obstacle detection message from channel
+        this._ros_socket.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
             
-            // Handle lidar data with external handler if available
-            if (data.topic === this._rosConfig.lidarTopic && data.msg && this._lidarHandler) {
-              this._lidarHandler(data.msg);
-              this.addLog(`Received lidar scan with ${data.msg.ranges?.length || 0} points`);
-            } else if (data.topic === this._rosConfig.commandTopic) {
-              // Handle command responses if needed
+            // Handle different topic messages
+            if (data.topic === this._rosConfig.lidarTopic && data.msg) {
+              // Handle lidar data
+              if (this._lidarHandler) {
+                this._lidarHandler(data.msg);
+              }
+            } else if (data.topic === this._rosConfig.obstacleDetectedTopic && data.msg) {
+              // Update obstacle detection status
+              this._obstacleDetected = data.msg.data;
+              this.addLog(`Obstacle detection status: ${this._obstacleDetected ? 'Detected' : 'Clear'}`);
+              
+              // If we have lidar data, update visualization
+              if (this._lidarData) {
+                this.visualizeLidarData();
+              }
+            } else if (data.topic === this._rosConfig.obstacleDistanceTopic && data.msg) {
+              // Update obstacle distance
+              this._obstacleDistance = data.msg.data;
+              
+              if (this._obstacleDetected) {
+                this.addLog(`Obstacle detected at ${this._obstacleDistance.toFixed(2)} meters`);
+              }
+              
+              // If we have lidar data, update visualization
+              if (this._lidarData) {
+                this.visualizeLidarData();
+              }
+            } else if (data.topic === this._rosConfig.commandTopic) { // shouldn't reach this bc only sending commands to rover...
               this.addLog(`Received command response`);
             }
             
@@ -240,8 +439,20 @@ export class RoverController {
           topic: this._rosConfig.lidarTopic
         };
         
+        const obstacleDetectedUnsubscribeMsg = {
+          op: 'unsubscribe',
+          topic: this._rosConfig.obstacleDetectedTopic
+        };
+        
+        const obstacleDistanceUnsubscribeMsg = {
+          op: 'unsubscribe',
+          topic: this._rosConfig.obstacleDistanceTopic
+        };
+        
         this._ros_socket.send(JSON.stringify(commandUnsubscribeMsg));
         this._ros_socket.send(JSON.stringify(lidarUnsubscribeMsg));
+        this._ros_socket.send(JSON.stringify(obstacleDetectedUnsubscribeMsg));
+        this._ros_socket.send(JSON.stringify(obstacleDistanceUnsubscribeMsg));
         this._ros_socket.close();
       }
       
