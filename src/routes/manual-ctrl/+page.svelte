@@ -13,7 +13,7 @@
   $: statusColor = controller?.statusColor || "text-red-500";
   $: logs = controller?.logs || [];
   $: obstacleDetected = controller?.obstacleDetected || false;
-  $: obstacleDistance = controller?.obstacleDistance || 0;
+  $: obstacleDistance = controller?.obstacleDistance || 0; // Ensure obstacleDistance is treated as a number
   
   // Initialize the controller when component mounts
   onMount(() => {
@@ -22,9 +22,10 @@
       // This callback forces Svelte to update when controller state changes
       component = component;
       
-      // Force update of reactive variables when controller state changes
+      // TODO: YOU NEED TO PUT THE VARS in here to Force update of reactive variables when controller state changes
       obstacleDetected = controller.obstacleDetected;
-      obstacleDistance = controller.obstacleDistance || 0;
+      obstacleDistance = controller.obstacleDistance;
+      logs = controller.logs;
     });
     
     // Add keyboard event listeners for both arrow keys and WASD
@@ -195,7 +196,7 @@
         <div class="flex space-x-6">
           <!-- Obstacle Detection Information (Left side) -->
           <div class="w-1/3 bg-gray-100 rounded-lg p-4">
-            <h2 class="text-xl font-semibold mb-4">Obstacle Detection</h2>
+            <h2 class="text-xl font-semibold mb-4">Obstacles Forward Corridor</h2>
             <div class="flex flex-col space-y-4">
               <div class="flex items-center">
                 <span class="font-medium mr-2">Status:</span>
@@ -205,9 +206,15 @@
               </div>
               <div class="flex items-center">
                 <span class="font-medium mr-2">Distance:</span>
-                <span class={obstacleDetected ? "text-red-500 font-bold" : "text-gray-500"}>
-                  {obstacleDistance}
+                {#if obstacleDetected}
+                <span class="text-red-500 font-bold">
+                  {obstacleDistance.toFixed(2)} meters
                 </span>
+                {:else}
+                <span class="text-gray-500 italic">
+                  No obstacles detected
+                </span>
+                {/if}
               </div>
             </div>
             

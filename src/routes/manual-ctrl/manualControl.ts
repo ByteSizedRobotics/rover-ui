@@ -51,7 +51,7 @@ export class RoverController {
   private _lidarHandler: ((data: any) => void) | null = null;
   
   constructor(onStateChange: () => void, rosConfig: RosConfig = { 
-    url: "192.168.1.230", //TODO:  add url
+    url: "", //TODO: add ip address of network connection here
     rosPort: 9090,
     webrtcPort: 8765,
     commandTopic: "/JSON",
@@ -136,7 +136,9 @@ export class RoverController {
     ctx.fill();
     
     // Draw distance rings
-    const maxRange = lidarData.range_max;
+    // const maxRange = lidarData.range_max;
+    const maxRange = 2.0; // TODO: TEMPORARY HARDCODED VALUE FOR BETTER VISUALIZATION
+    // this.addLog(`LiDAR max range is: ${maxRange}`);
     const scale = Math.min(canvas.width, canvas.height) / (2.2 * maxRange);
     
     ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
@@ -283,7 +285,7 @@ export class RoverController {
           const obstacleDistanceSubscribeMsg = {
             op: 'subscribe',
             topic: this._rosConfig.obstacleDistanceTopic,
-            type: 'std_msgs/String'
+            type: 'std_msgs/Float32'
           };
           
           this._ros_socket?.send(JSON.stringify(lidarSubscribeMsg));
@@ -328,7 +330,7 @@ export class RoverController {
             } else if (data.topic === this._rosConfig.obstacleDetectedTopic && data.msg) {
               // Update obstacle detection status
               this._obstacleDetected = data.msg.data;
-              this.addLog(`Obstacle detection status: ${this._obstacleDetected ? 'Detected' : 'Clear'}`);
+              // this.addLog(`Obstacle detection status: ${this._obstacleDetected ? 'Detected' : 'Clear'}`);
               
               // If we have lidar data, update visualization
               if (this._lidarData) {
@@ -339,7 +341,7 @@ export class RoverController {
               this._obstacleDistance = data.msg.data;
               
               if (this._obstacleDetected) {
-                this.addLog(`Obstacle detected at ${this._obstacleDistance.toFixed(2)} meters`);
+                // this.addLog(`Obstacle detected at ${this._obstacleDistance.toFixed(2)} meters`);
               }
               
               // If we have lidar data, update visualization
@@ -347,7 +349,7 @@ export class RoverController {
                 this.visualizeLidarData();
               }
             } else if (data.topic === this._rosConfig.commandTopic) { // shouldn't reach this bc only sending commands to rover...
-              this.addLog(`Received command response`);
+              // this.addLog(`Received command response`);
             }
             
             this.onStateChange();
