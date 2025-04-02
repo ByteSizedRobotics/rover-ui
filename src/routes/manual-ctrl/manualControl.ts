@@ -52,7 +52,7 @@ export class RoverController {
   private _lidarHandler: ((data: any) => void) | null = null;
   
   constructor(onStateChange: () => void, rosConfig: RosConfig = { 
-    url: "", //TODO: add ip address of network connection here
+    url: "172.20.10.6", //TODO: add ip address of network connection here
     rosPort: 9090,
     webrtcPort: 8765,
     commandTopic: "/JSON",

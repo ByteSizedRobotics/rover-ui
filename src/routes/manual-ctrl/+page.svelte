@@ -22,10 +22,13 @@
       // This callback forces Svelte to update when controller state changes
       component = component;
       
-      // TODO: YOU NEED TO PUT THE VARS in here to Force update of reactive variables when controller state changes
+      // Force update of reactive variables when controller state changes
       obstacleDetected = controller.obstacleDetected;
       obstacleDistance = controller.obstacleDistance;
       logs = controller.logs;
+      isConnected = controller.isConnected;
+      connectionStatus = controller.connectionStatus;
+      statusColor = controller.statusColor;
     });
     
     // Add keyboard event listeners for both arrow keys and WASD
@@ -49,11 +52,34 @@
   // Helper functions to delegate to controller
   const handleKeyDown = (event: KeyboardEvent) => controller.handleKeyDown(event);
   const handleKeyUp = (event: KeyboardEvent) => controller.handleKeyUp(event);
-  const handleUIBtnPress = (direction: string) => {
-    controller.handleButtonPress(direction);
+  
+  // Updated UI button handlers - directly call movement functions
+  const handleDirectionPress = (direction: string) => {
+    if (!controller || !isConnected) return;
+    
+    switch (direction) {
+      case "forward":
+        controller.moveForward();
+        break;
+      case "backward":
+        controller.moveBackward();
+        break;
+      case "left":
+        controller.moveLeft();
+        break;
+      case "right":
+        controller.moveRight();
+        break;
+      case "stop":
+        controller.stopMovement();
+        break;
+    }
   };
-  const handleUIBtnRelease = () => {
-    controller.handleButtonRelease();
+  
+  const handleDirectionRelease = () => {
+    if (controller && isConnected) {
+      controller.stopMovement();
+    }
   };
 
   const connectToRover = async () => {
@@ -82,7 +108,6 @@
         statusColor = "text-green-500";
       }
       connecting = false;
-      // isConnected = true;
     }
   };
   
@@ -93,14 +118,6 @@
       console.error("Failed to disconnect from ROS:", error);
     }
   };
-  
-  // Movement functions
-  const moveForward = () => controller.moveForward();
-  const moveBackward = () => controller.moveBackward();
-  const moveLeft = () => controller.moveLeft();
-  const moveRight = () => controller.moveRight();
-  const stopMovement = () => controller.stopMovement();
-  
 </script>
 
 <div class="min-h-screen bg-gray-100 p-4" bind:this={component}>
@@ -130,9 +147,11 @@
             <div class="mb-8">
               <div class="flex justify-center mb-4">
                 <button 
-                  on:mousedown={() => handleUIBtnPress("forward")}
-                  on:mouseup={handleUIBtnRelease}
-                  on:mouseleave={handleUIBtnRelease}
+                  on:mousedown={() => handleDirectionPress("forward")}
+                  on:mouseup={handleDirectionRelease}
+                  on:mouseleave={handleDirectionRelease}
+                  on:touchstart={() => handleDirectionPress("forward")}
+                  on:touchend={handleDirectionRelease}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
                 >
@@ -142,9 +161,11 @@
               
               <div class="flex justify-center items-center gap-4">
                 <button 
-                  on:mousedown={() => handleUIBtnPress("left")}
-                  on:mouseup={handleUIBtnRelease}
-                  on:mouseleave={handleUIBtnRelease}
+                  on:mousedown={() => handleDirectionPress("left")}
+                  on:mouseup={handleDirectionRelease}
+                  on:mouseleave={handleDirectionRelease}
+                  on:touchstart={() => handleDirectionPress("left")}
+                  on:touchend={handleDirectionRelease}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
                 >
@@ -152,7 +173,8 @@
                 </button>
                 
                 <button 
-                  on:mousedown={() => handleUIBtnPress("stop")}
+                  on:mousedown={() => handleDirectionPress("stop")}
+                  on:touchstart={() => handleDirectionPress("stop")}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-red-200 rounded-lg text-sm font-bold hover:bg-red-300 active:bg-red-400"
                 >
@@ -160,9 +182,11 @@
                 </button>
                 
                 <button 
-                  on:mousedown={() => handleUIBtnPress("right")}
-                  on:mouseup={handleUIBtnRelease}
-                  on:mouseleave={handleUIBtnRelease}
+                  on:mousedown={() => handleDirectionPress("right")}
+                  on:mouseup={handleDirectionRelease}
+                  on:mouseleave={handleDirectionRelease}
+                  on:touchstart={() => handleDirectionPress("right")}
+                  on:touchend={handleDirectionRelease}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
                 >
@@ -172,9 +196,11 @@
               
               <div class="flex justify-center mt-4">
                 <button 
-                  on:mousedown={() => handleUIBtnPress("backward")}
-                  on:mouseup={handleUIBtnRelease}
-                  on:mouseleave={handleUIBtnRelease}
+                  on:mousedown={() => handleDirectionPress("backward")}
+                  on:mouseup={handleDirectionRelease}
+                  on:mouseleave={handleDirectionRelease}
+                  on:touchstart={() => handleDirectionPress("backward")}
+                  on:touchend={handleDirectionRelease}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
                 >
