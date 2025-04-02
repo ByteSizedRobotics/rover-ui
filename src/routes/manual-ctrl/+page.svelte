@@ -49,7 +49,13 @@
   // Helper functions to delegate to controller
   const handleKeyDown = (event: KeyboardEvent) => controller.handleKeyDown(event);
   const handleKeyUp = (event: KeyboardEvent) => controller.handleKeyUp(event);
-  
+  const handleUIBtnPress = (direction: string) => {
+    controller.handleButtonPress(direction);
+  };
+  const handleUIBtnRelease = () => {
+    controller.handleButtonRelease();
+  };
+
   const connectToRover = async () => {
     connecting = true;
 
@@ -124,9 +130,9 @@
             <div class="mb-8">
               <div class="flex justify-center mb-4">
                 <button 
-                  on:mousedown={moveForward}
-                  on:mouseup={stopMovement}
-                  on:mouseleave={stopMovement}
+                  on:mousedown={() => handleUIBtnPress("forward")}
+                  on:mouseup={handleUIBtnRelease}
+                  on:mouseleave={handleUIBtnRelease}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
                 >
@@ -136,9 +142,9 @@
               
               <div class="flex justify-center items-center gap-4">
                 <button 
-                  on:mousedown={moveLeft}
-                  on:mouseup={stopMovement}
-                  on:mouseleave={stopMovement}
+                  on:mousedown={() => handleUIBtnPress("left")}
+                  on:mouseup={handleUIBtnRelease}
+                  on:mouseleave={handleUIBtnRelease}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
                 >
@@ -146,7 +152,7 @@
                 </button>
                 
                 <button 
-                  on:click={stopMovement}
+                  on:mousedown={() => handleUIBtnPress("stop")}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-red-200 rounded-lg text-sm font-bold hover:bg-red-300 active:bg-red-400"
                 >
@@ -154,9 +160,9 @@
                 </button>
                 
                 <button 
-                  on:mousedown={moveRight}
-                  on:mouseup={stopMovement}
-                  on:mouseleave={stopMovement}
+                  on:mousedown={() => handleUIBtnPress("right")}
+                  on:mouseup={handleUIBtnRelease}
+                  on:mouseleave={handleUIBtnRelease}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
                 >
@@ -166,9 +172,9 @@
               
               <div class="flex justify-center mt-4">
                 <button 
-                  on:mousedown={moveBackward}
-                  on:mouseup={stopMovement}
-                  on:mouseleave={stopMovement}
+                  on:mousedown={() => handleUIBtnPress("backward")}
+                  on:mouseup={handleUIBtnRelease}
+                  on:mouseleave={handleUIBtnRelease}
                   disabled={!isConnected}
                   class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-lg text-2xl hover:bg-gray-300 active:bg-gray-400"
                 >

@@ -13,6 +13,7 @@ export interface RosConfig {
   webrtcPort: number;
   obstacleDetectedTopic: string;
   obstacleDistanceTopic: string;
+  gpsTopic: string;
 }
 
 // Lidar data interface
@@ -57,7 +58,8 @@ export class RoverController {
     commandTopic: "/JSON",
     lidarTopic: "/scan",
     obstacleDetectedTopic: "/obstacle_detected",
-    obstacleDistanceTopic: "/obstacle_distance"
+    obstacleDistanceTopic: "/obstacle_distance",
+    gpsTopic: "/fix" // gps topic name
   }) {
     this.onStateChange = onStateChange;
     this._rosConfig = rosConfig;
@@ -137,7 +139,7 @@ export class RoverController {
     
     // Draw distance rings
     // const maxRange = lidarData.range_max;
-    const maxRange = 2.0; // TODO: TEMPORARY HARDCODED VALUE FOR BETTER VISUALIZATION
+    const maxRange = 0.5; // TODO: TEMPORARY HARDCODED VALUE FOR BETTER VISUALIZATION
     // this.addLog(`LiDAR max range is: ${maxRange}`);
     const scale = Math.min(canvas.width, canvas.height) / (2.2 * maxRange);
     
@@ -178,7 +180,7 @@ export class RoverController {
       }
       
       // Calculate angle (adjust to make forward = top of canvas)
-      const angle = angle_min + (i * angle_increment) - Math.PI / 2;
+      const angle = angle_min + (i * angle_increment) - Math.PI / 2 + Math.PI;
       
       // Calculate point coordinates
       const x = centerX + Math.cos(angle) * range * scale;
@@ -287,6 +289,13 @@ export class RoverController {
             topic: this._rosConfig.obstacleDistanceTopic,
             type: 'std_msgs/Float32'
           };
+
+          // TODO: Subscribe to GPS data topic
+          // const gpsSubscribeMsg = {
+          //   op: 'subscribe',
+          //   topic: this._rosConfig.obstacleDistanceTopic,
+          //   type: 'std_msgs/String'
+          // };
           
           this._ros_socket?.send(JSON.stringify(lidarSubscribeMsg));
           this._ros_socket?.send(JSON.stringify(obstacleDetectedSubscribeMsg));
@@ -577,5 +586,30 @@ export class RoverController {
     if (["w", "a", "s", "d", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
       this.stopMovement();
     }
+  }
+
+  // New methods to handle UI button presses
+  handleButtonPress(direction: string): void {
+    switch (direction) {
+      case "forward":
+        this.moveForward();
+        break;
+      case "backward":
+        this.moveBackward();
+        break;
+      case "left":
+        this.moveLeft();
+        break;
+      case "right":
+        this.moveRight();
+        break;
+      default:
+        this.stopMovement();
+        break;
+    }
+  }
+
+  handleButtonRelease(): void {
+    this.stopMovement();
   }
 }
