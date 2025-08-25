@@ -10,9 +10,9 @@
 		<div class="card w-full bg-base-300 shadow-xl">
 		  <figure>
 			{#if rover.status === "active"}
-			  <img src="./rover.png" alt={rover.name} class="w-full object-cover" />
+			  <img src="./LiveMetrics.png" alt={rover.name} class="w-full object-cover" />
 			{:else}
-			<img src="./rover.png" alt={rover.name} class="w-full object-cover brightness-0" />
+			<img src="./PathPlan.png" alt={rover.name} class="w-full object-cover" />
 			{/if}
 		  </figure>
 		  <div class="card-body">
@@ -23,10 +23,13 @@
 			  <p class="badge badge-primary bg-error">{rover.status}</p>
 			{/if}
 			<div class="card-actions justify-end">
-				<a href="/map" class="btn btn-primary">Route</a>
-			</div>
-			<div class="card-actions justify-end">
-			  <a href="/rover/{rover.id}" class="btn btn-primary">Dashboard</a>
+				{#if rover.status === "active"}
+					<!-- Active rovers: only Dashboard -->
+					<a href={`/rover/${rover.id}`} class="btn btn-primary">Live Metrics</a>
+				{:else}
+					<!-- Inactive rovers: only Route -->
+					<a href="/map" class="btn btn-primary">Path Planner</a>
+				{/if}
 			</div>
 		  </div>
 		</div>
