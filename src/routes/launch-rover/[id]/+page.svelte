@@ -177,6 +177,9 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    max-height: 320px;
+    min-height: 320px;
+    overflow: auto;
   }
 
   .waypoints-section {
@@ -332,11 +335,11 @@
     padding: 16px;
     border-radius: 12px;
     background: #ffffff;
-    max-height: 240px;
     overflow: auto;
-    max-width: 420px;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     flex: 1;
+    max-height: 320px;
+    min-height: 320px;
   }
 
   .wp-count {
