@@ -11,6 +11,7 @@
   let showStartSuggestions = false;
   let showEndSuggestions = false;
   let routeSelected = false;
+  let lastRoutes: any[] = [];
 
   // Type definitions for Nominatim results
   interface NominatimAddress {
@@ -81,6 +82,12 @@
       routeWhileDragging: true
     }).addTo(map);
 
+    // store routes when found so we can extract full geometry later
+    routingControl.on('routesfound', (e: any) => {
+      lastRoutes = e.routes || [];
+      console.log('routesfound event, saved lastRoutes', lastRoutes);
+    });
+
     console.log("Map, geocoder, and routing control initialized.");
   });
 
@@ -123,9 +130,55 @@
   }
 
   function launchRover(): void {
-    // Placeholder: trigger rover launch. Replace with real API call when available.
-    console.log('Launch Rover clicked.');
-    alert('Launch command sent to rover (placeholder).');
+    if (!lastRoutes || lastRoutes.length === 0) {
+      alert('No route available. Please set a route first.');
+      return;
+    }
+
+    // Extract an array of LatLng waypoints from the first route's coordinates
+    const route = lastRoutes[0];
+    let waypoints: { lat: number; lng: number }[] = [];
+
+    // Some routers provide coordinates as route.coordinates (array of [lng, lat])
+    if (route.coordinates && Array.isArray(route.coordinates)) {
+      waypoints = route.coordinates.map((c: any) => ({ lat: c.lat, lng: c.lng }));
+    } else if (route.geometry && route.geometry.coordinates) {
+      // GeoJSON style
+      waypoints = route.geometry.coordinates.map((c: any) => ({ lat: c[1], lng: c[0] }));
+    } else if (route.instructions || route.routes) {
+      // Fallback: try to extract from legs -> steps -> latLng
+      try {
+        for (const leg of route.instructions || []) {
+          if (leg.coordinates) {
+            for (const c of leg.coordinates) waypoints.push({ lat: c.lat || c[1], lng: c.lng || c[0] });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not parse route coordinates from route object', err);
+      }
+    }
+
+    if (waypoints.length === 0) {
+      alert('Could not extract GPS waypoints from the planned route.');
+      return;
+    }
+
+    // Ask for rover id to route to the launch page
+    const roverId = window.prompt('Enter rover id to launch (will navigate to /launch-rover/{id}):');
+    if (!roverId) return;
+
+    // Save waypoints to sessionStorage under a key the next page can read
+    const key = `launch_waypoints_${roverId}`;
+    try {
+      sessionStorage.setItem(key, JSON.stringify(waypoints));
+    } catch (err) {
+      console.error('Unable to save waypoints to sessionStorage', err);
+      alert('Unable to save waypoints locally.');
+      return;
+    }
+
+    // Navigate to the launch page for that rover id
+    window.location.href = `/launch-rover/${encodeURIComponent(roverId)}`;
   }
 
   async function geocodeAddress(address: string): Promise<GeoLocation> {
