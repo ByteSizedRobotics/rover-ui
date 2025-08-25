@@ -10,6 +10,7 @@
   let endSuggestions: NominatimResult[] = [];
   let showStartSuggestions = false;
   let showEndSuggestions = false;
+  let routeSelected = false;
 
   // Type definitions for Nominatim results
   interface NominatimAddress {
@@ -89,6 +90,7 @@
       return;
     }
 
+
     console.log(`Geocoding start: ${startAddress}`);
     console.log(`Geocoding end: ${endAddress}`);
 
@@ -96,7 +98,7 @@
       const startCoords = await geocodeAddress(startAddress);
       const endCoords = await geocodeAddress(endAddress);
 
-      if (startCoords && endCoords) {
+  if (startCoords && endCoords) {
         console.log("Geocoding successful!", { startCoords, endCoords });
 
         // Update route waypoints
@@ -108,6 +110,9 @@
         // Center map on the start location
         map.setView(startCoords, 13);
 
+  // Mark that a route has been selected so UI can show Launch button
+  routeSelected = true;
+
         // Check if route is actually drawn
         console.log("Waypoints set:", routingControl.getWaypoints());
       }
@@ -115,6 +120,12 @@
       alert("Error finding locations. Please check your addresses.");
       console.error(error);
     }
+  }
+
+  function launchRover(): void {
+    // Placeholder: trigger rover launch. Replace with real API call when available.
+    console.log('Launch Rover clicked.');
+    alert('Launch command sent to rover (placeholder).');
   }
 
   async function geocodeAddress(address: string): Promise<GeoLocation> {
@@ -210,7 +221,7 @@
     if (startInputTimeout) clearTimeout(startInputTimeout);
     
     // Set a new timeout to delay the API call
-    startInputTimeout = setTimeout(async () => {
+  startInputTimeout = setTimeout(async () => {
       if (startAddress.length > 2) {
         try {
           console.log("Fetching suggestions for:", startAddress);
@@ -312,9 +323,6 @@
     padding: 8px;
     cursor: pointer;
   }
-  .suggestion-item:hover {
-    background: #f0f0f0;
-  }
   #map {
     height: 900px;
   }
@@ -324,6 +332,8 @@
     gap: 10px;
     margin-bottom: 10px;
   }
+
+  
 
   input {
     padding: 8px;
@@ -343,6 +353,22 @@
 
   button:hover {
     background: #0056b3;
+  }
+
+  /* Launch button (red) */
+  .launch {
+    background: #dc2626; /* red-600 */
+  }
+  .launch:hover {
+    background: #b91c1c; /* red-700 */
+  }
+
+  /* Fixed back button in bottom-left */
+  .bottom-left {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 1002;
   }
 </style>
 
@@ -402,6 +428,14 @@
     {/if}
   </div>
   <button on:click={setRoute}>Set Route</button>
+  {#if routeSelected}
+    <button class="launch" on:click={launchRover}>Launch Rover</button>
+  {/if}
 </div>
 
 <div id="map"></div>
+
+<!-- Fixed back button bottom-left -->
+<div class="bottom-left">
+  <button on:click={() => history.back()}>Back</button>
+</div>
