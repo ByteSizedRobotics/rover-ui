@@ -27,8 +27,8 @@
 					<!-- Active rovers: only Dashboard -->
 					<a href={`/rover/${rover.id}`} class="btn btn-primary">Live Metrics</a>
 				{:else}
-					<!-- Inactive rovers: only Route -->
-					<a href="/map" class="btn btn-primary">Path Planner</a>
+					<!-- Inactive rovers: only Route (open map for this rover) -->
+					<a href={`/map/${rover.id}`} class="btn btn-primary">Path Planner</a>
 				{/if}
 			</div>
 		  </div>
