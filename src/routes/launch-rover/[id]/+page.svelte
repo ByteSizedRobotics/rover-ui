@@ -1,6 +1,9 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { get } from 'svelte/store';
+  import { onMount, onDestroy } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { NavigationController, type Waypoint, type NavigationStatus } from './navigationController';
 
   const params = get(page).params;
   const roverId = params.id;
@@ -9,6 +12,18 @@
   let startAddr = '';
   let endAddr = '';
   let status = '';
+  
+  // ROS2 Navigation Controller
+  let navigationController: NavigationController;
+  let navigationStatus: NavigationStatus = {
+    isConnected: false,
+    isNavigating: false,
+    currentWaypoint: 0,
+    totalWaypoints: 0,
+    status: 'Ready to connect'
+  };
+  let connecting = false;
+  let logs: Array<{time: string, message: string, type: 'info' | 'success' | 'error'}> = [];
 
   // Read waypoints from sessionStorage
   const key = `launch_waypoints_${roverId}`;
@@ -28,20 +43,148 @@
     }
   }
 
+  onMount(() => {
+    // Initialize navigation controller
+    navigationController = new NavigationController(() => {
+      // Update navigation status when controller state changes
+      navigationStatus = {
+        isConnected: navigationController.isConnected,
+        isNavigating: navigationController.isNavigating,
+        currentWaypoint: navigationController.currentWaypoint,
+        totalWaypoints: navigationController.totalWaypoints,
+        status: navigationController.status,
+        error: navigationController.error
+      };
+    });
+
+    // Don't auto-connect - wait for user to click launch
+  });
+
+  onDestroy(() => {
+    if (navigationController?.isConnected) {
+      navigationController.disconnect();
+    }
+  });
+
+  async function connectToROS() {
+    if (!navigationController) return;
+    
+    connecting = true;
+    
+    try {
+      await navigationController.connectToROS();
+      // Don't add log here - let the controller state change handle it
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      // Don't add log here either - the error will be handled by the calling function
+      throw error;
+    } finally {
+      connecting = false;
+    }
+  }
+
   async function confirmLaunch() {
     status = 'Launching...';
+    addLog('Starting launch sequence...', 'info');
+    
     try {
+      // First, connect to ROS2 if not already connected
+      if (!navigationController?.isConnected) {
+        addLog('Connecting to ROS2 navigation system...', 'info');
+        connecting = true;
+        
+        try {
+          await navigationController.connectToROS();
+          addLog('Successfully connected to ROS2 navigation system', 'success');
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          addLog(`Failed to connect to ROS2: ${errorMsg}`, 'error');
+          status = 'Launch failed - Could not connect to ROS2';
+          connecting = false;
+          return;
+        }
+        connecting = false;
+      }
+
+      // Send to the existing API endpoint
       const res = await fetch(`/api/launch/${encodeURIComponent(roverId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ waypoints })
       });
+      
+      if (!res.ok) {
+        throw new Error(`API request failed with status ${res.status}`);
+      }
+      
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Expected JSON response, got: ${text.substring(0, 100)}...`);
+      }
+      
       const j = await res.json();
-      status = j.message || 'Launched.';
+      
+      // Now send waypoints to ROS2 navigation system (connection is established)
+      if (navigationController?.isConnected && waypoints.length > 0) {
+        addLog(`Sending ${waypoints.length} waypoints to ROS2 navigation system...`, 'info');
+        await navigationController.sendWaypoints(waypoints as Waypoint[]);
+        addLog('Waypoints successfully sent to rover navigation system', 'success');
+        status = 'Navigation started - Rover is heading to destination';
+        
+        // Store success notification for the rover page
+        sessionStorage.setItem(`rover_launch_success_${roverId}`, JSON.stringify({
+          message: `Launch successful! Rover ${roverId} is now navigating along its planned path with ${waypoints.length} waypoints.`,
+          timestamp: Date.now(),
+          waypointCount: waypoints.length
+        }));
+        
+        // Add log about redirect
+        addLog('Redirecting to rover control panel...', 'success');
+        
+        // Redirect to rover page after a short delay to show the success message
+        setTimeout(() => {
+          goto(`/rover/${encodeURIComponent(roverId)}`);
+        }, 2000);
+        
+      } else if (waypoints.length === 0) {
+        addLog('No waypoints to send to navigation system', 'error');
+        status = 'Launch failed - No waypoints available';
+      } else {
+        addLog('Failed to send waypoints - ROS2 connection lost', 'error');
+        status = 'Launch failed - ROS2 connection issue';
+      }
     } catch (err) {
       console.error(err);
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      addLog(`Launch failed: ${errorMsg}`, 'error');
       status = 'Launch failed.';
     }
+  }
+
+  async function stopNavigation() {
+    if (!navigationController?.isConnected) {
+      addLog('Cannot stop navigation: Not connected to ROS2', 'error');
+      return;
+    }
+    
+    try {
+      addLog('Stopping navigation...', 'info');
+      await navigationController.stopNavigation();
+      addLog('Navigation stopped successfully', 'success');
+      status = 'Navigation stopped';
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`Failed to stop navigation: ${errorMsg}`, 'error');
+    }
+  }
+
+  function addLog(message: string, type: 'info' | 'success' | 'error' = 'info') {
+    logs = [...logs, {
+      time: new Date().toLocaleTimeString(),
+      message,
+      type
+    }];
   }
 </script>
 
@@ -86,19 +229,35 @@
     </section>
 
     <section class="launch-section">
-      <button class="confirm" on:click={confirmLaunch}>
-        <span class="btn-text">Confirm Launch</span>
+      <button class="confirm" on:click={confirmLaunch} disabled={connecting}>
+        <span class="btn-text">
+          {#if connecting}
+            Connecting & Launching...
+          {:else if navigationStatus.isNavigating}
+            Navigation In Progress
+          {:else}
+            Confirm Launch
+          {/if}
+        </span>
       </button>
     </section>
 
     <section class="log-section">
       <h2 class="section-title">Launch Log</h2>
       <div class="log-container">
-        {#if status}
-          <div class="log-entry {status.includes('failed') ? 'error' : status.includes('Launching') ? 'info' : 'success'}">
-            <span class="timestamp">{new Date().toLocaleTimeString()}</span>
-            <span class="log-message">{status}</span>
-          </div>
+        {#if logs.length > 0}
+          {#each logs as log}
+            <div class="log-entry {log.type}">
+              <span class="timestamp">{log.time}</span>
+              <span class="log-message">{log.message}</span>
+            </div>
+          {/each}
+          {#if status}
+            <div class="log-entry {status.includes('failed') ? 'error' : status.includes('Launching') ? 'info' : 'success'}">
+              <span class="timestamp">{new Date().toLocaleTimeString()}</span>
+              <span class="log-message">{status}</span>
+            </div>
+          {/if}
         {:else}
           <p class="no-logs">No launch activity yet. Click "Confirm Launch" to begin.</p>
         {/if}
@@ -416,6 +575,19 @@
 
   .confirm:active {
     transform: translateY(0);
+  }
+
+  .confirm:disabled {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 6px rgba(156, 163, 175, 0.3);
+  }
+
+  .confirm:disabled:hover {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+    transform: none;
+    box-shadow: 0 2px 6px rgba(156, 163, 175, 0.3);
   }
 
   .btn-text {

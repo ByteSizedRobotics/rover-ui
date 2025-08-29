@@ -425,6 +425,24 @@
     bottom: 16px;
     z-index: 1002;
   }
+
+  .back-button {
+    display: inline-block;
+    padding: 8px 12px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  .back-button:hover {
+    background: #0056b3;
+    color: white;
+  }
 </style>
 
 <div class="controls">
@@ -492,7 +510,7 @@
 
 <!-- Fixed back button bottom-left -->
 <div class="bottom-left">
-  <button on:click={() => history.back()}>Back</button>
+  <a href="/" class="back-button">← Home</a>
 </div>
 ```
 

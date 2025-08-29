@@ -1,3 +1,5 @@
+import { ROS2_CONFIG, getROSWebSocketURL, getWebRTCWebSocketURL } from '../../lib/ros2Config';
+
 // Types
 export interface LogEntry {
   time: string;
@@ -51,18 +53,19 @@ export class RoverController {
   private onStateChange: () => void;
   private _lidarHandler: ((data: any) => void) | null = null;
   
-  constructor(onStateChange: () => void, rosConfig: RosConfig = { 
-    url: "172.20.10.6", //TODO: add ip address of network connection here
-    rosPort: 9090,
-    webrtcPort: 8765,
-    commandTopic: "/JSON",
-    lidarTopic: "/scan",
-    obstacleDetectedTopic: "/obstacle_detected",
-    obstacleDistanceTopic: "/obstacle_distance",
-    gpsTopic: "/fix" // gps topic name
-  }) {
+  constructor(onStateChange: () => void, rosConfig?: Partial<RosConfig>) {
     this.onStateChange = onStateChange;
-    this._rosConfig = rosConfig;
+    // Use centralized ROS2 configuration with optional overrides
+    this._rosConfig = {
+      url: rosConfig?.url || ROS2_CONFIG.RASPBERRY_PI_IP,
+      rosPort: rosConfig?.rosPort || ROS2_CONFIG.ROS_BRIDGE_PORT,
+      webrtcPort: rosConfig?.webrtcPort || ROS2_CONFIG.WEBRTC_PORT,
+      commandTopic: rosConfig?.commandTopic || ROS2_CONFIG.TOPICS.COMMAND,
+      lidarTopic: rosConfig?.lidarTopic || ROS2_CONFIG.TOPICS.LIDAR,
+      obstacleDetectedTopic: rosConfig?.obstacleDetectedTopic || ROS2_CONFIG.TOPICS.OBSTACLE_DETECTED,
+      obstacleDistanceTopic: rosConfig?.obstacleDistanceTopic || ROS2_CONFIG.TOPICS.OBSTACLE_DISTANCE,
+      gpsTopic: rosConfig?.gpsTopic || ROS2_CONFIG.TOPICS.GPS
+    };
   }
   
   // Getters
@@ -223,11 +226,12 @@ export class RoverController {
     return new Promise((resolve, reject) => {
       try {        
         // ROS WebSocket Connection
-        const wsUrlROS = `ws://${this._rosConfig.url}:${this._rosConfig.rosPort}`;
+        const wsUrlROS = getROSWebSocketURL(this._rosConfig.url, this._rosConfig.rosPort);
         this._ros_socket = new WebSocket(wsUrlROS);
         
         // WebRTC WebSocket Connection
-        this._webrtc_socket = new WebSocket(`ws://${this._rosConfig.url}:${this._rosConfig.webrtcPort || 8765}`);
+        const wsUrlWebRTC = getWebRTCWebSocketURL(this._rosConfig.url, this._rosConfig.webrtcPort);
+        this._webrtc_socket = new WebSocket(wsUrlWebRTC);
         
         // WebRTC Socket Event Handlers
         this._webrtc_socket.onopen = () => {
