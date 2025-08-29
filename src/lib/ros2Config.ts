@@ -1,21 +1,27 @@
 // ROS2 Configuration for Rover Navigation
 export const ROS2_CONFIG = {
   // Raspberry Pi connection settings
-  RASPBERRY_PI_IP: "192.168.1.230", // TODO: Update this to your Raspberry Pi's IP address, different IPs per rover should be stored in DB
+  RASPBERRY_PI_IP: "172.20.10.6", // TODO: Update this to your Raspberry Pi's IP address, different IPs per rover should be stored in DB
   ROS_BRIDGE_PORT: 9090,
   WEBRTC_PORT: 8765,
 
   // ROS2 Topics
   TOPICS: {
+    // Command Center Communication
+    ROVER_COMMAND: "/rover/command",        // Commands to rover (LaunchRover, ManualControl, Stop)
+    ROVER_SWDATA: "/rover/swdata",          // Software data (waypoints, navigation params)
+    ROVER_HEARTBEAT: "/rover/heartbeat",    // Heartbeat from software to rover
+    ROVER_STATE: "/rover/state",            // Rover state updates (idle, manual_control, autonomous)
+    
     // Navigation topics
-    WAYPOINTS: "/waypoints",
+    WAYPOINTS: "/rover/waypoints",          // Internal rover waypoints topic
     NAVIGATION_STATUS: "/navigation_status", 
     GOAL: "/move_base_simple/goal",
     PATH: "/navigation_path",
     STOP_NAVIGATION: "/navigation_stop",
     
     // Existing topics from manual control
-    COMMAND: "/JSON",
+    COMMAND: "/JSON",                       // Legacy command topic for manual control
     LIDAR: "/scan",
     OBSTACLE_DETECTED: "/obstacle_detected",
     OBSTACLE_DISTANCE: "/obstacle_distance", 

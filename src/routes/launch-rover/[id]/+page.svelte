@@ -4,6 +4,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { NavigationController, type Waypoint, type NavigationStatus } from './navigationController';
+  import { commandCenterManager, type CommandCenterStatus } from '../../../lib/ros2CommandCentre';
 
   const params = get(page).params;
   const roverId = params.id;
@@ -24,6 +25,15 @@
   };
   let connecting = false;
   let logs: Array<{time: string, message: string, type: 'info' | 'success' | 'error'}> = [];
+
+  // ROS2 Command Center Client
+  let commandCenterClient = commandCenterManager.getClient(roverId);
+  let commandCenterStatus: CommandCenterStatus = {
+    isConnected: false,
+    lastHeartbeat: 0,
+    connectionErrors: 0,
+    roverState: 'unknown'
+  };
 
   // Read waypoints from sessionStorage
   const key = `launch_waypoints_${roverId}`;
@@ -57,12 +67,27 @@
       };
     });
 
+    // Set up command center client callbacks
+    commandCenterClient.onStateChange((status) => {
+      commandCenterStatus = status;
+      addLog(`Rover state: ${status.roverState}`, 'info');
+    });
+
+    commandCenterClient.onRoverStateUpdate((state) => {
+      addLog(`Rover state updated: ${state.state}`, 'info');
+      // Here you would update the database with the rover state
+      updateRoverStateInDatabase(state);
+    });
+
     // Don't auto-connect - wait for user to click launch
   });
 
   onDestroy(() => {
     if (navigationController?.isConnected) {
       navigationController.disconnect();
+    }
+    if (commandCenterClient?.isConnected) {
+      commandCenterClient.disconnect();
     }
   });
 
@@ -88,71 +113,85 @@
     addLog('Starting launch sequence...', 'info');
     
     try {
-      // First, connect to ROS2 if not already connected
-      if (!navigationController?.isConnected) {
-        addLog('Connecting to ROS2 navigation system...', 'info');
+      // First, connect to ROS2 Command Center if not already connected
+      if (!commandCenterClient.isConnected) {
+        addLog('Connecting to ROS2 Command Center...', 'info');
         connecting = true;
         
         try {
-          await navigationController.connectToROS();
-          addLog('Successfully connected to ROS2 navigation system', 'success');
+          await commandCenterClient.connect();
+          addLog('Successfully connected to ROS2 Command Center', 'success');
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          addLog(`Failed to connect to ROS2: ${errorMsg}`, 'error');
-          status = 'Launch failed - Could not connect to ROS2';
+          addLog(`Failed to connect to ROS2 Command Center: ${errorMsg}`, 'error');
+          status = 'Launch failed - Could not connect to ROS2 Command Center';
           connecting = false;
           return;
         }
         connecting = false;
       }
 
-      // Send to the existing API endpoint
-      const res = await fetch(`/api/launch/${encodeURIComponent(roverId)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ waypoints })
-      });
-      
-      if (!res.ok) {
-        throw new Error(`API request failed with status ${res.status}`);
+      // Send to the existing API endpoint (for logging/database)
+      try {
+        const res = await fetch(`/api/launch/${encodeURIComponent(roverId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ waypoints })
+        });
+        
+        if (!res.ok) {
+          throw new Error(`API request failed with status ${res.status}`);
+        }
+        
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await res.text();
+          throw new Error(`Expected JSON response, got: ${text.substring(0, 100)}...`);
+        }
+        
+        const j = await res.json();
+        addLog('Launch logged to database', 'info');
+      } catch (error) {
+        // Log API error but don't fail the launch
+        addLog(`Database logging failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       }
       
-      const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await res.text();
-        throw new Error(`Expected JSON response, got: ${text.substring(0, 100)}...`);
-      }
-      
-      const j = await res.json();
-      
-      // Now send waypoints to ROS2 navigation system (connection is established)
-      if (navigationController?.isConnected && waypoints.length > 0) {
-        addLog(`Sending ${waypoints.length} waypoints to ROS2 navigation system...`, 'info');
-        await navigationController.sendWaypoints(waypoints as Waypoint[]);
-        addLog('Waypoints successfully sent to rover navigation system', 'success');
-        status = 'Navigation started - Rover is heading to destination';
+      // Now send launch command and waypoints to ROS2 Command Center
+      if (commandCenterClient.isConnected && waypoints.length > 0) {
+        addLog(`Sending launch command with ${waypoints.length} waypoints to rover...`, 'info');
         
-        // Store success notification for the rover page
-        sessionStorage.setItem(`rover_launch_success_${roverId}`, JSON.stringify({
-          message: `Launch successful! Rover ${roverId} is now navigating along its planned path with ${waypoints.length} waypoints.`,
-          timestamp: Date.now(),
-          waypointCount: waypoints.length
-        }));
-        
-        // Add log about redirect
-        addLog('Redirecting to rover control panel...', 'success');
-        
-        // Redirect to rover page after a short delay to show the success message
-        setTimeout(() => {
-          goto(`/rover/${encodeURIComponent(roverId)}`);
-        }, 2000);
+        try {
+          await commandCenterClient.launchRover(waypoints as Waypoint[]);
+          addLog('Launch command and waypoints successfully sent to rover', 'success');
+          status = 'Navigation started - Rover is heading to destination';
+          
+          // Store success notification for the rover page
+          sessionStorage.setItem(`rover_launch_success_${roverId}`, JSON.stringify({
+            message: `Launch successful! Rover ${roverId} is now navigating along its planned path with ${waypoints.length} waypoints.`,
+            timestamp: Date.now(),
+            waypointCount: waypoints.length
+          }));
+          
+          // Add log about redirect
+          addLog('Redirecting to rover control panel...', 'success');
+          
+          // Redirect to rover page after a short delay to show the success message
+          setTimeout(() => {
+            goto(`/rover/${encodeURIComponent(roverId)}`);
+          }, 2000);
+          
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          addLog(`Failed to send launch command: ${errorMsg}`, 'error');
+          status = 'Launch failed - Could not send command to rover';
+        }
         
       } else if (waypoints.length === 0) {
         addLog('No waypoints to send to navigation system', 'error');
         status = 'Launch failed - No waypoints available';
       } else {
-        addLog('Failed to send waypoints - ROS2 connection lost', 'error');
-        status = 'Launch failed - ROS2 connection issue';
+        addLog('Failed to send waypoints - ROS2 Command Center connection lost', 'error');
+        status = 'Launch failed - ROS2 Command Center connection issue';
       }
     } catch (err) {
       console.error(err);
@@ -185,6 +224,35 @@
       message,
       type
     }];
+  }
+
+  /**
+   * Update rover state in database
+   * Template function for database integration
+   */
+  async function updateRoverStateInDatabase(state: any) {
+    try {
+      // TODO: Replace with actual database update logic
+      console.log('Updating rover state in database:', state);
+      
+      const response = await fetch(`/api/rovers/${encodeURIComponent(roverId)}/state`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: state.state,
+          timestamp: state.timestamp,
+          lastUpdate: new Date().toISOString()
+        })
+      });
+      
+      if (response.ok) {
+        console.log('Rover state updated in database successfully');
+      } else {
+        console.error('Failed to update rover state in database:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error updating rover state in database:', error);
+    }
   }
 </script>
 
