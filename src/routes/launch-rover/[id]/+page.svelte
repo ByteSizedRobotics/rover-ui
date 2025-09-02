@@ -3,7 +3,6 @@
   import { get } from 'svelte/store';
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-  import { NavigationController, type Waypoint, type NavigationStatus } from './navigationController';
   import { commandCenterManager, type CommandCenterStatus } from '../../../lib/ros2CommandCentre';
 
   const params = get(page).params;
@@ -14,15 +13,6 @@
   let endAddr = '';
   let status = '';
   
-  // ROS2 Navigation Controller
-  let navigationController: NavigationController;
-  let navigationStatus: NavigationStatus = {
-    isConnected: false,
-    isNavigating: false,
-    currentWaypoint: 0,
-    totalWaypoints: 0,
-    status: 'Ready to connect'
-  };
   let connecting = false;
   let logs: Array<{time: string, message: string, type: 'info' | 'success' | 'error'}> = [];
 
@@ -32,7 +22,10 @@
     isConnected: false,
     lastHeartbeat: 0,
     connectionErrors: 0,
-    roverState: 'unknown'
+    roverState: 'unknown',
+    isNavigating: false,
+    currentWaypoint: 0,
+    totalWaypoints: 0
   };
 
   // Read waypoints from sessionStorage
@@ -54,23 +47,13 @@
   }
 
   onMount(() => {
-    // Initialize navigation controller
-    navigationController = new NavigationController(() => {
-      // Update navigation status when controller state changes
-      navigationStatus = {
-        isConnected: navigationController.isConnected,
-        isNavigating: navigationController.isNavigating,
-        currentWaypoint: navigationController.currentWaypoint,
-        totalWaypoints: navigationController.totalWaypoints,
-        status: navigationController.status,
-        error: navigationController.error
-      };
-    });
-
     // Set up command center client callbacks
     commandCenterClient.onStateChange((status) => {
       commandCenterStatus = status;
-      addLog(`Rover state: ${status.roverState}`, 'info');
+      addLog(`Command Center status: ${status.isConnected ? 'Connected' : 'Disconnected'}`, 'info');
+      if (status.roverState) {
+        addLog(`Rover state: ${status.roverState}`, 'info');
+      }
     });
 
     commandCenterClient.onRoverStateUpdate((state) => {
@@ -83,30 +66,10 @@
   });
 
   onDestroy(() => {
-    if (navigationController?.isConnected) {
-      navigationController.disconnect();
-    }
     if (commandCenterClient?.isConnected) {
       commandCenterClient.disconnect();
     }
   });
-
-  async function connectToROS() {
-    if (!navigationController) return;
-    
-    connecting = true;
-    
-    try {
-      await navigationController.connectToROS();
-      // Don't add log here - let the controller state change handle it
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      // Don't add log here either - the error will be handled by the calling function
-      throw error;
-    } finally {
-      connecting = false;
-    }
-  }
 
   async function confirmLaunch() {
     status = 'Launching...';
@@ -161,7 +124,7 @@
         addLog(`Sending launch command with ${waypoints.length} waypoints to rover...`, 'info');
         
         try {
-          await commandCenterClient.launchRover(waypoints as Waypoint[]);
+          await commandCenterClient.launchRover(waypoints);
           addLog('Launch command and waypoints successfully sent to rover', 'success');
           status = 'Navigation started - Rover is heading to destination';
           
@@ -202,14 +165,14 @@
   }
 
   async function stopNavigation() {
-    if (!navigationController?.isConnected) {
-      addLog('Cannot stop navigation: Not connected to ROS2', 'error');
+    if (!commandCenterClient?.isConnected) {
+      addLog('Cannot stop navigation: Not connected to ROS2 Command Center', 'error');
       return;
     }
     
     try {
       addLog('Stopping navigation...', 'info');
-      await navigationController.stopNavigation();
+      await commandCenterClient.stopRover();
       addLog('Navigation stopped successfully', 'success');
       status = 'Navigation stopped';
     } catch (error) {
@@ -301,7 +264,7 @@
         <span class="btn-text">
           {#if connecting}
             Connecting & Launching...
-          {:else if navigationStatus.isNavigating}
+          {:else if commandCenterStatus.isNavigating}
             Navigation In Progress
           {:else}
             Confirm Launch

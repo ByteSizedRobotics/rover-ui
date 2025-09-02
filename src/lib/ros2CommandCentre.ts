@@ -30,6 +30,9 @@ export interface CommandCenterStatus {
   lastHeartbeat: number;
   connectionErrors: number;
   roverState: string;
+  isNavigating?: boolean;
+  currentWaypoint?: number;
+  totalWaypoints?: number;
 }
 
 export class ROS2CommandCentreClient {
@@ -40,6 +43,9 @@ export class ROS2CommandCentreClient {
   private _lastHeartbeat: number = 0;
   private _connectionErrors: number = 0;
   private _roverState: string = 'unknown';
+  private _isNavigating: boolean = false;
+  private _currentWaypoint: number = 0;
+  private _totalWaypoints: number = 0;
   private _onStateChange: ((status: CommandCenterStatus) => void) | null = null;
   private _onRoverStateUpdate: ((state: RoverState) => void) | null = null;
 
@@ -50,12 +56,18 @@ export class ROS2CommandCentreClient {
   // Getters
   get isConnected(): boolean { return this._isConnected; }
   get roverState(): string { return this._roverState; }
+  get isNavigating(): boolean { return this._isNavigating; }
+  get currentWaypoint(): number { return this._currentWaypoint; }
+  get totalWaypoints(): number { return this._totalWaypoints; }
   get status(): CommandCenterStatus {
     return {
       isConnected: this._isConnected,
       lastHeartbeat: this._lastHeartbeat,
       connectionErrors: this._connectionErrors,
-      roverState: this._roverState
+      roverState: this._roverState,
+      isNavigating: this._isNavigating,
+      currentWaypoint: this._currentWaypoint,
+      totalWaypoints: this._totalWaypoints
     };
   }
 
@@ -182,6 +194,12 @@ export class ROS2CommandCentreClient {
    * Launch the rover with waypoints
    */
   async launchRover(waypoints: Array<{lat: number, lng: number}>): Promise<void> {
+    // Set navigation state
+    this._totalWaypoints = waypoints.length;
+    this._currentWaypoint = 0;
+    this._isNavigating = true;
+    this.notifyStateChange();
+
     // First send the LaunchRover command
     await this.sendCommand({
       type: 'LaunchRover',
@@ -227,6 +245,12 @@ export class ROS2CommandCentreClient {
         emergency: false
       }
     });
+
+    // Update navigation state
+    this._isNavigating = false;
+    this._currentWaypoint = 0;
+    this._totalWaypoints = 0;
+    this.notifyStateChange();
   }
 
   /**
