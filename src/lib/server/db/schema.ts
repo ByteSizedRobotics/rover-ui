@@ -29,6 +29,7 @@ import {
 	id: serial("id").primaryKey().notNull(),
 	name: varchar("name", { length: 100 }).notNull(),
 	status: varchar("status", { length: 50 }).notNull().default("active"),
+	ipAddress: varchar("ip_address", { length: 45 }).notNull(), // Supports IPv4 and IPv6
   });
   
   // Paths Table

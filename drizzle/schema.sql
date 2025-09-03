@@ -48,12 +48,9 @@ CREATE INDEX idx_paths_route ON "paths" USING GIST (route);
 CREATE INDEX idx_potholes_location ON "potholes" USING GIST (location);
 
 -- Insert sample rovers
-INSERT INTO "rovers" (id, name, status) VALUES
-    (1, 'Curiosity', 'active'),
-    (2, 'Perseverance', 'inactive'),
-    (3, 'Spirit', 'active'),
-    (4, 'Opportunity', 'active');
-
+INSERT INTO "rovers" (id, name, status, ip_address) VALUES
+    (1, 'Main Rover', 'active', '100.85.202.20'),
+    (2, 'Standby Rover', 'inactive', '100.85.202.21');
 -- Insert sample paths with LINESTRING (series of points representing a path)
 INSERT INTO "paths" (id, rover_id, route, timestamp) VALUES
     (1, 1, ST_GeomFromText('LINESTRING(-73.9857 40.7484, -73.9853 40.7486, -73.9850 40.7490)', 4326), NOW()),
