@@ -1,7 +1,7 @@
 // ROS2 Configuration for Rover Navigation
 export const ROS2_CONFIG = {
   // Raspberry Pi connection settings
-  RASPBERRY_PI_IP: "172.20.10.6", // TODO: Update this to your Raspberry Pi's IP address, different IPs per rover should be stored in DB
+  RASPBERRY_PI_IP: "100.85.202.20", // Tailscale IP address of the Raspberry Pi
   ROS_BRIDGE_PORT: 9090,
   WEBRTC_PORT: 8765,
 
