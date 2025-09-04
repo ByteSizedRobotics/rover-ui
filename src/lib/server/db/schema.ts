@@ -49,6 +49,8 @@ import {
 	id: serial("id").primaryKey().notNull(),
 	pathId: integer("path_id").notNull().references(() => paths.id, { onDelete: "cascade" }),
 	location: geometry("location", { type: "point", srid: 4326 }).notNull(), // PostGIS Point
+	depth: integer("depth"),
+	area: integer("area"),
 	severity: integer("severity").notNull(),
 	imageUrl: text("image_url").notNull(),
   }, (table) => [

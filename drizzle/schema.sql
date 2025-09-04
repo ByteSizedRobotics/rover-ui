@@ -23,6 +23,8 @@ CREATE TABLE "potholes" (
     "id" serial PRIMARY KEY NOT NULL,
     "path_id" integer NOT NULL,
     "location" geometry(POINT, 4326) NOT NULL, -- Still a POINT since potholes are single locations
+    "depth" integer,
+    "area" integer,
     "severity" integer NOT NULL,
     "image_url" text NOT NULL,
     CONSTRAINT "potholes_path_id_paths_id_fk" FOREIGN KEY ("path_id") REFERENCES "paths"("id") ON DELETE CASCADE
