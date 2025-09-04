@@ -9,7 +9,6 @@ import {
 	geometry,
 	index,
   } from "drizzle-orm/pg-core";
-  import { sql } from "drizzle-orm";
   
   // User Authentication
   export const user = pgTable("user", {

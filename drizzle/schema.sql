@@ -59,7 +59,7 @@ INSERT INTO "paths" (id, rover_id, route, timestamp) VALUES
     (2, 2, ST_GeomFromText('LINESTRING(-118.2437 34.0522, -118.2440 34.0515, -118.2443 34.0510)', 4326), NOW());
 
 -- Insert sample potholes with POINT (single location)
-INSERT INTO "potholes" (id, path_id, location, severity, image_url) VALUES
-    (1, 1, ST_GeomFromText('POINT(-73.9855 40.7485)', 4326), 3, 'https://example.com/pothole1.jpg'),
-    (2, 1, ST_GeomFromText('POINT(-73.9854 40.7486)', 4326), 5, 'https://example.com/pothole2.jpg'),
-    (3, 2, ST_GeomFromText('POINT(-118.2438 34.0520)', 4326), 2, 'https://example.com/pothole3.jpg');
+-- INSERT INTO "potholes" (id, path_id, location, severity, image_url) VALUES
+    -- (1, 1, ST_GeomFromText('POINT(-73.9855 40.7485)', 4326), 3, 'https://example.com/pothole1.jpg'),
+    -- (2, 1, ST_GeomFromText('POINT(-73.9854 40.7486)', 4326), 5, 'https://example.com/pothole2.jpg'),
+    -- (3, 2, ST_GeomFromText('POINT(-118.2438 34.0520)', 4326), 2, 'https://example.com/pothole3.jpg');
