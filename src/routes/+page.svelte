@@ -25,7 +25,7 @@
 			<div class="card-actions justify-end">
 				{#if rover.status === "active"}
 					<!-- Active rovers: only Dashboard -->
-					<a href={`/rover/${rover.id}`} class="btn btn-primary">Live Metrics</a>
+					<a href={`/rovers/${rover.id}`} class="btn btn-primary">Live Metrics</a>
 				{:else}
 					<!-- Inactive rovers: only Route (open map for this rover) -->
 					<a href={`/map/${rover.id}`} class="btn btn-primary">Path Planner</a>

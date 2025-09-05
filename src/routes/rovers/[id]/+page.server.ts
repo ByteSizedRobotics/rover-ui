@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ params }) => {
     if (id) {
         const rover = await db.select({
             name: rovers.name,
-          }).from(rovers).where(eq(rovers.id, id));
+          }).from(rovers).where(eq(rovers.id, Number(id)));
         
         if (rover.length > 0) {
             return { name: rover[0].name };
