@@ -35,21 +35,13 @@
     </div> -->
     <a href="/" class="btn btn-ghost text-xl">Pothole Patrol</a>
   </div>
-  <!-- <div class="navbar-center hidden lg:flex">
-    <ul class="menu menu-horizontal px-1">
-      <li><a>Item 1</a></li>
-      <li>
-        <details>
-          <summary>Parent</summary>
-          <ul class="p-2">
-            <li><a>Submenu 1</a></li>
-            <li><a>Submenu 2</a></li>
-          </ul>
-        </details>
-      </li>
-      <li><a>Item 3</a></li>
+  <div class="navbar-center hidden lg:flex">
+    <ul class="menu menu-horizontal px-1 flex gap-4">
+      <li><a href="/rovers" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Rovers</a></li>
+      <li><a href="/paths" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">Paths</a></li>
+      <li><a href="/potholes" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition">Potholes</a></li>
     </ul>
-  </div> -->
+  </div>
   <div class="navbar-end">
     <a href="/account" class="btn">Account</a>
   </div>
