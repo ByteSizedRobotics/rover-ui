@@ -1,39 +1,28 @@
 <script lang="ts">
-	import type { PageServerData } from "./$types";
-	let { data }: { data: PageServerData } = $props();
-  </script>
-  
-  <div class="container mx-auto p-4">
-	<h1 class="text-2xl font-bold mb-4">Available rovers</h1>
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-	  {#each data.roversData as rover}
-		<div class="card w-full bg-base-300 shadow-xl">
-		  <figure>
-			{#if rover.status === "active"}
-			  <img src="./LiveMetrics.png" alt={rover.name} class="w-full object-cover" />
-			{:else}
-			<img src="./PathPlan.png" alt={rover.name} class="w-full object-cover" />
-			{/if}
-		  </figure>
-		  <div class="card-body">
-			<h2 class="card-title">{rover.name}</h2>
-			{#if rover.status === "active"}
-			  <p class="badge badge-primary bg-success">{rover.status}</p>
-			{:else}
-			  <p class="badge badge-primary bg-error">{rover.status}</p>
-			{/if}
-			<div class="card-actions justify-end">
-				{#if rover.status === "active"}
-					<!-- Active rovers: only Dashboard -->
-					<a href={`/rovers/${rover.id}`} class="btn btn-primary">Live Metrics</a>
-				{:else}
-					<!-- Inactive rovers: only Route (open map for this rover) -->
-					<a href={`/map/${rover.id}`} class="btn btn-primary">Path Planner</a>
-				{/if}
-			</div>
-		  </div>
-		</div>
-	  {/each}
-	</div>
-  </div>
-  
+import { goto } from '$app/navigation';
+
+function goTo(page: string) {
+    goto(`/${page}`);
+}
+</script>
+
+<main class="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+    <h1 class="text-3xl font-bold mb-8 text-gray-800">Welcome to Rover UI</h1>
+    <div class="flex flex-col gap-8 w-full max-w-xl">
+        <button type="button" class="bg-white border rounded-xl shadow p-8 flex flex-col items-center cursor-pointer hover:shadow-lg transition focus:outline-none" on:click={() => goTo('rovers')} aria-label="Go to Rovers">
+            <img src="/rover.png" alt="Rovers" class="w-16 h-16 mb-4" />
+            <h2 class="text-xl font-semibold mb-2">Rovers</h2>
+            <p class="text-gray-500 text-center">View and manage all rovers in the system.</p>
+        </button>
+        <button type="button" class="bg-white border rounded-xl shadow p-8 flex flex-col items-center cursor-pointer hover:shadow-lg transition focus:outline-none" on:click={() => goTo('paths')} aria-label="Go to Paths">
+            <img src="/PathPlan.png" alt="Paths" class="w-16 h-16 mb-4" />
+            <h2 class="text-xl font-semibold mb-2">Paths</h2>
+            <p class="text-gray-500 text-center">Explore and edit rover paths and routes.</p>
+        </button>
+        <button type="button" class="bg-white border rounded-xl shadow p-8 flex flex-col items-center cursor-pointer hover:shadow-lg transition focus:outline-none" on:click={() => goTo('potholes')} aria-label="Go to Potholes">
+            <img src="/LiveMetrics.png" alt="Potholes" class="w-16 h-16 mb-4" />
+            <h2 class="text-xl font-semibold mb-2">Potholes</h2>
+            <p class="text-gray-500 text-center">Review and inspect detected potholes.</p>
+        </button>
+    </div>
+</main>
