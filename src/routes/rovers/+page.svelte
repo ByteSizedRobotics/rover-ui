@@ -12,7 +12,7 @@
 			{#if rover.status === "active"}
 			  <img src="./LiveMetrics.png" alt={rover.name} class="w-full object-cover" />
 			{:else}
-			<img src="./PathHistory.png" alt={rover.name} class="w-full object-cover" />
+			<img src="./PathPlan.png" alt={rover.name} class="w-full object-cover" />
 			{/if}
 		  </figure>
 		  <div class="card-body">
