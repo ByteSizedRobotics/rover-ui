@@ -41,8 +41,8 @@ CREATE TABLE "detections" (
     "id" serial PRIMARY KEY NOT NULL,
     "image_id" integer NOT NULL,
     "bbox" jsonb NOT NULL, -- Store as JSON array [x_min, y_min, x_max, y_max]
-    "confidence" integer NOT NULL,
-    "area_score" integer,
+    "confidence" double precision NOT NULL,
+        "area_score" integer,
     "depth_score" integer,
     "false_positive" integer DEFAULT 0,
     CONSTRAINT "detections_image_id_images_id_fk" FOREIGN KEY ("image_id") REFERENCES "images"("id") ON DELETE CASCADE

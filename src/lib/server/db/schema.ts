@@ -8,6 +8,7 @@ import {
   index,
   jsonb,
   geometry,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 
 // -------------------
@@ -89,7 +90,12 @@ export const detections = pgTable("detections", {
     .notNull()
     .references(() => images.id, { onDelete: "cascade" }),
   bbox: jsonb("bbox").notNull(), // store [x_min, y_min, x_max, y_max] as JSON array
-  confidence: integer("confidence").notNull(),
+  confidence: 
+    // Use 'doublePrecision' for float values in drizzle-orm/pg-core
+    // If you want single precision, use 'real'
+    // Here, doublePrecision is more common for scores
+    // import { doublePrecision } from "drizzle-orm/pg-core" at the top if not already
+    doublePrecision("confidence").notNull(),
   areaScore: integer("area_score"),
   depthScore: integer("depth_score"),
   falsePositive: integer("false_positive").default(0), // or boolean if preferred
