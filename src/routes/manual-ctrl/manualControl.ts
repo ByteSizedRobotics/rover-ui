@@ -401,6 +401,7 @@ export class RoverController {
       const videoElement = document.getElementById("roverVideo") as HTMLVideoElement;
       if (videoElement) {
         videoElement.srcObject = event.streams[0];
+        videoElement.play(); // Ensure playback starts
         this.addLog("WebRTC video stream received");
       }
     };

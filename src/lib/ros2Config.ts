@@ -8,17 +8,11 @@ export const ROS2_CONFIG = {
   // ROS2 Topics
   TOPICS: {
     // Command Center Communication
-    ROVER_COMMAND: "/rover/command",        // Commands to rover (LaunchRover, ManualControl, Stop)
-    ROVER_SWDATA: "/rover/swdata",          // Software data (waypoints, navigation params)
-    ROVER_HEARTBEAT: "/rover/heartbeat",    // Heartbeat from software to rover
-    ROVER_STATE: "/rover/state",            // Rover state updates (idle, manual_control, autonomous)
-    
-    // Navigation topics
-    WAYPOINTS: "/rover/waypoints",          // Internal rover waypoints topic
-    NAVIGATION_STATUS: "/navigation_status", 
-    GOAL: "/move_base_simple/goal",
-    PATH: "/navigation_path",
-    STOP_NAVIGATION: "/navigation_stop",
+    ROVER_COMMAND: "/command",        // Commands to rover (LaunchRover, ManualControl, Stop)
+    ROVER_SWDATA: "/gps_waypoints",          // Software data (waypoints, navigation params)
+    ROVER_HEARTBEAT: "/heartbeat",    // Heartbeat from software to rover
+    ROVER_STATE: "/rover_state",            // Rover state updates (idle, manual_control, autonomous)
+    ROVER_LOCATION: "/rover_location",          // Internal rover location topic
     
     // Existing topics from manual control
     COMMAND: "/JSON",                       // Legacy command topic for manual control
