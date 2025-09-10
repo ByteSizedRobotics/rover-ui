@@ -1,6 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { db } from "$lib/server/db";
-import { potholes } from "$lib/server/db/schema";
+import { images } from "$lib/server/db/schema";
 import { sql } from "drizzle-orm";
 import fs from 'fs';
 import path from 'path';
@@ -31,32 +31,32 @@ export const POST: RequestHandler = async ({ request }) => {
         // Insert into database
         const relativeImagePath = path.join('uploads', file.name);
         const result = await db
-            .insert(potholes)
+            .insert(images)
             .values({
             pathId,
+            imageUrl: relativeImagePath,
+            timestamp: new Date(),
             location: sql`ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)`,
-            severity,
-            imageUrl: relativeImagePath
             })
             .returning();
 
         return new Response(JSON.stringify(result[0]), { status: 201, headers: { "Content-Type": "application/json" } });
     } catch (err) {
-        console.error("Error inserting pothole:", err);
+        console.error("Error inserting image:", err);
         return new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500 });
     }
 };
 
 export const GET: RequestHandler = async () => {
     try {
-        // Fetch all potholes from the database
-        const allPotholes = await db.select().from(potholes);
-        return new Response(JSON.stringify(allPotholes), {
+        // Fetch all images from the database
+        const allImages = await db.select().from(images);
+        return new Response(JSON.stringify(allImages), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (err) {
-        console.error('Error fetching potholes:', err);
+        console.error('Error fetching images:', err);
         return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
     }
 };
