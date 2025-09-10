@@ -82,12 +82,12 @@ INSERT INTO "paths" (id, rover_id, route, timestamp) VALUES
     (2, 2, ST_GeomFromText('LINESTRING(-118.2437 34.0522, -118.2440 34.0515, -118.2443 34.0510)', 4326), NOW());
 
 -- Example: Insert sample images
-INSERT INTO "images" (id, path_id, image_url, location) VALUES
-    (1, 1, '/path/to/image1.jpg', ST_GeomFromText('POINT(-73.9855 40.7485)', 4326)),
-    (2, 1, '/path/to/image2.jpg', ST_GeomFromText('POINT(-73.9854 40.7486)', 4326));
+-- INSERT INTO "images" (id, path_id, image_url, location) VALUES
+--     (1, 1, '/path/to/image1.jpg', ST_GeomFromText('POINT(-73.9855 40.7485)', 4326)),
+--     (2, 1, '/path/to/image2.jpg', ST_GeomFromText('POINT(-73.9854 40.7486)', 4326));
 
 -- Example: Insert sample detections
-INSERT INTO "detections" (image_id, bbox, confidence, area_score, depth_score, false_positive) VALUES
-    (1, '[10, 20, 50, 80]', 95, 120, 5, 0),
-    (1, '[30, 40, 60, 90]', 88, 100, 3, 0),
-    (2, '[15, 25, 55, 85]', 92, 110, 4, 1);
+-- INSERT INTO "detections" (image_id, bbox, confidence, area_score, depth_score, false_positive) VALUES
+--     (1, '[10, 20, 50, 80]', 95, 120, 5, 0),
+--     (1, '[30, 40, 60, 90]', 88, 100, 3, 0),
+--     (2, '[15, 25, 55, 85]', 92, 110, 4, 1);

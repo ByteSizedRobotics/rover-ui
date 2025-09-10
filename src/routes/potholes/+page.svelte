@@ -1,12 +1,13 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
 
-export let data: { potholes: Pothole[] };
+export let data: { images: Image[] };
 
-interface Pothole {
+interface Image {
     id: number;
     pathId: number;
-    severity: number;
+    location: [number, number];
+    timestamp: Date;
     imageUrl: string;
 }
 
@@ -17,11 +18,11 @@ function viewDetails(id: number) {
 
 <main class="p-8">
     <h1 class="text-2xl font-bold mb-4">Potholes</h1>
-    {#if !data.potholes || data.potholes.length === 0}
+    {#if !data.images || data.images.length === 0}
         <p>No potholes found.</p>
     {:else}
         <ul class="space-y-4">
-            {#each data.potholes as pothole}
+            {#each data.images as pothole}
                 <li>
                     <button
                         type="button"
@@ -31,8 +32,9 @@ function viewDetails(id: number) {
                         <img src={pothole.imageUrl} alt={`Pothole ${pothole.id}`} class="w-16 h-16 object-cover rounded" />
                         <div>
                             <div><strong>ID:</strong> {pothole.id}</div>
-                            <div><strong>Severity:</strong> {pothole.severity}</div>
                             <div><strong>Path ID:</strong> {pothole.pathId}</div>
+                            <div><strong>Location:</strong> [{pothole.location[0]}, {pothole.location[1]}]</div>
+                            <div><strong>Timestamp:</strong> {pothole.timestamp ? pothole.timestamp.toString() : 'N/A'}</div>
                         </div>
                     </button>
                 </li>

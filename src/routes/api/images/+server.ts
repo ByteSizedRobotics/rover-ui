@@ -9,13 +9,9 @@ export const POST: RequestHandler = async ({ request }) => {
     try {
         const formData = await request.formData();
 
-        const pathId = parseInt(formData.get('pathId') as string);
-        const latitude = parseFloat(formData.get('latitude') as string);
-        const longitude = parseFloat(formData.get('longitude') as string);
-        const severity = parseInt(formData.get('severity') as string);
         const file = formData.get('image') as File;
 
-        if (!pathId || !latitude || !longitude || !severity || !file) {
+        if (!file) {
             return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
         }
 
@@ -30,6 +26,11 @@ export const POST: RequestHandler = async ({ request }) => {
 
         // Insert into database
         const relativeImagePath = path.join('uploads', file.name);
+
+        // TODO: retrieve fields like pathId, latitude, longitude from rover
+        var pathId = 1;
+        var latitude = 0;
+        var longitude = 0;
         const result = await db
             .insert(images)
             .values({
@@ -40,7 +41,7 @@ export const POST: RequestHandler = async ({ request }) => {
             })
             .returning();
 
-        return new Response(JSON.stringify(result[0]), { status: 201, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ image_id: result[0].id }), { status: 201, headers: { "Content-Type": "application/json" } });
     } catch (err) {
         console.error("Error inserting image:", err);
         return new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500 });
