@@ -96,8 +96,8 @@ export const detections = pgTable("detections", {
     // Here, doublePrecision is more common for scores
     // import { doublePrecision } from "drizzle-orm/pg-core" at the top if not already
     doublePrecision("confidence").notNull(),
-  areaScore: integer("area_score"),
-  depthScore: integer("depth_score"),
+  areaScore: doublePrecision("area_score"),
+  depthScore: doublePrecision("depth_score"),
   falsePositive: integer("false_positive").default(0), // or boolean if preferred
 });
 
