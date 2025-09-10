@@ -10,7 +10,7 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
     }
     const body = await request.json();
     // Only allow updating specific fields
-    const allowedFields = ['areaScore', 'depthScore'];
+    const allowedFields = ['areaScore', 'depthScore', 'falsePositive'];
     const updates: Record<string, any> = {};
     for (const key of allowedFields) {
         if (key in body) updates[key] = body[key];
