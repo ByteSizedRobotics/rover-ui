@@ -310,9 +310,9 @@
 		</div>
 
 		<!-- Bottom Row - Live Data, Data Table, Navigation -->
-		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-			<!-- 2d Lidar Section -->
-			<div class="card bg-base-100 shadow-xl">
+		<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+			<!-- Live Metrics widened -->
+			<div class="card bg-base-100 shadow-xl lg:col-span-4">
 				<div class="card-body">
 					<h2 class="card-title text-xl mb-4">Live Metrics</h2>
 					<div class="grid grid-cols-1 gap-2 mb-4">
@@ -337,8 +337,8 @@
 				</div>
 			</div>
 			
-			<!-- Data Table Section -->
-			<div class="card bg-base-100 shadow-xl">
+			<!-- Data Table narrowed -->
+			<div class="card bg-base-100 shadow-xl lg:col-span-6">
 				<div class="card-body">
 					<h2 class="card-title text-xl mb-4">Data Table</h2>
 					<div class="overflow-x-auto">
@@ -366,20 +366,11 @@
 				</div>
 			</div>
 			
-			<!-- Navigation Controls -->
-			<div class="card bg-base-100 shadow-xl">
-				<div class="card-body">
-					<h2 class="card-title text-xl mb-4">Navigation</h2>
-					<p class="text-sm text-gray-600 mb-4">To controls page:</p>
-					<div class="space-y-3">
-						<a href="/manual-ctrl" class="btn btn-primary w-full">Manual Control</a>
-						<button 
-							class="btn btn-error w-full"
-							onclick={emergencyStop}
-						>
-							E-Stop
-						</button>
-					</div>
+			<!-- Navigation widened -->
+			<div class="card bg-base-100 shadow-xl lg:col-span-2 flex">
+				<div class="card-body p-4 flex flex-col gap-4 justify-center">
+					<a href="/manual-ctrl" class="btn btn-primary w-full">Manual Control</a>
+					<button class="btn btn-error w-full" onclick={emergencyStop}>E-Stop</button>
 				</div>
 			</div>
 		</div>
