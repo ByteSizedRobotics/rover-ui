@@ -4,7 +4,7 @@
 	import { get } from 'svelte/store';
 	import type { PageServerData } from "./$types";
 	import { browser } from '$app/environment';
-	import { ROS2_CONFIG, getROSWebSocketURL } from '$lib/ros2Config';
+	import { createAndConnectMiniLidar, LidarMiniController } from './lidarController';
 
 	let { data }: { data: PageServerData } = $props();
 	
@@ -39,11 +39,9 @@
 	let map: any;
 	let L: any;
 
-	// ROS lidar variables
-	let rosSocket: WebSocket | null = null;
-	let lidarData: any = null; // sensor_msgs/LaserScan
-	let lidarCanvas: HTMLCanvasElement | null = null;
-	let lidarCtx: CanvasRenderingContext2D | null = null;
+	// Remove direct lidar websocket variables, replace with controller
+	let lidarController: LidarMiniController | null = null;
+	let lidarCanvasEl: HTMLCanvasElement | null = null;
 
 	onMount(async () => {
 		// Import Leaflet CSS
@@ -90,21 +88,17 @@
 			// A short delay can help ensure the container is rendered and sized
 			setTimeout(initializeMap, 50);
 		}
-
-		// Initialize ROS lidar WebSocket
+		// Create and connect lidar controller (no inline websocket logic remains)
 		if (browser) {
-			initRosLidar();
+			setTimeout(() => {
+				lidarController = createAndConnectMiniLidar({ canvas: 'lidarMiniCanvas' });
+			}, 80);
 		}
 	});
 
 	onDestroy(() => {
-		// Cleanup ROS lidar WebSocket on destroy
-		if (rosSocket && rosSocket.readyState === WebSocket.OPEN) {
-			try {
-				rosSocket.send(JSON.stringify({ op: 'unsubscribe', topic: ROS2_CONFIG.TOPICS.LIDAR }));
-			} catch {}
-			rosSocket.close();
-		}
+		lidarController?.disconnect();
+		lidarController = null;
 	});
 	
 	async function initializeMap() {
@@ -136,79 +130,6 @@
 			setTimeout(() => { map.invalidateSize(); }, 100);
 		} catch (error) {
 			console.error('Error initializing map:', error);
-		}
-	}
-
-	function initRosLidar() {
-		try {
-			const url = getROSWebSocketURL(ROS2_CONFIG.RASPBERRY_PI_IP, ROS2_CONFIG.ROS_BRIDGE_PORT);
-			rosSocket = new WebSocket(url);
-
-			rosSocket.onopen = () => {
-				rosSocket?.send(JSON.stringify({
-					op: 'subscribe',
-					topic: ROS2_CONFIG.TOPICS.LIDAR,
-					type: 'sensor_msgs/LaserScan'
-				}));
-				// Prepare canvas after socket established (DOM already mounted)
-				setTimeout(setupLidarCanvas, 50);
-			};
-
-			rosSocket.onmessage = (evt) => {
-				try {
-					const data = JSON.parse(evt.data);
-					if (data.topic === ROS2_CONFIG.TOPICS.LIDAR && data.msg) {
-						lidarData = data.msg;
-						drawMiniLidar();
-					}
-				} catch (e) {
-					console.error('Lidar parse error', e);
-				}
-			};
-		} catch (e) {
-			console.error('Failed to init ROS lidar socket', e);
-		}
-	}
-
-	function setupLidarCanvas() {
-		lidarCanvas = document.getElementById('lidarMiniCanvas') as HTMLCanvasElement | null;
-		if (!lidarCanvas) return;
-		lidarCtx = lidarCanvas.getContext('2d');
-		if (!lidarCtx) return;
-		drawMiniLidar();
-	}
-
-	function drawMiniLidar() {
-		if (!lidarCanvas || !lidarCtx || !lidarData) return;
-		const ctx = lidarCtx;
-		const w = lidarCanvas.width;
-		const h = lidarCanvas.height;
-		ctx.clearRect(0, 0, w, h);
-		// background
-		ctx.fillStyle = '#f3f4f6';
-		ctx.fillRect(0, 0, w, h);
-		const cx = w / 2; const cy = h / 2;
-		// rover center
-		ctx.fillStyle = '#3b82f6';
-		ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
-		const { angle_min, angle_increment, ranges, range_min, range_max } = lidarData;
-		const maxRange = Math.min(range_max, 2.0); // cap for compact viz
-		const scale = (Math.min(w, h) / 2 - 6) / maxRange;
-		ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-		for (let r = 0.5; r <= maxRange; r += 0.5) {
-			ctx.beginPath(); ctx.arc(cx, cy, r * scale, 0, Math.PI * 2); ctx.stroke();
-		}
-		for (let i = 0; i < ranges.length; i += 3) { // skip some points for performance
-			const range = ranges[i];
-			if (isNaN(range) || range < range_min || range > range_max) continue;
-			const angle = angle_min + i * angle_increment; // LaserScan frame (assumed 0 forward +x) adjust to canvas: rotate -90deg
-			const adj = angle - Math.PI / 2;
-			const rr = Math.min(range, maxRange) * scale;
-			const x = cx + Math.cos(adj) * rr;
-			const y = cy + Math.sin(adj) * rr;
-			const intensity = 1 - Math.min(range / maxRange, 1);
-			ctx.fillStyle = `rgba(${Math.floor(255 * intensity)}, ${Math.floor(255 * (1 - intensity))}, 80, 0.9)`;
-			ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2); ctx.fill();
 		}
 	}
 
@@ -326,7 +247,7 @@
 					
 					<!-- Lidar Visualization -->
 					<div class="flex justify-center">
-						<canvas id="lidarMiniCanvas" width="120" height="120" class="w-32 h-32"></canvas>
+						<canvas id="lidarMiniCanvas" width="120" height="120" class="w-32 h-32" bind:this={lidarCanvasEl}></canvas>
 					</div>
 				</div>
 			</div>
