@@ -32,7 +32,7 @@
 		{ id: 3, value: 15, status: 'C' }
 	]);
 	let roverPosition = $state({ x: 50, y: 40 }); // Percentage position on map
-	let roverGpsPosition = $state({ lat: 45.5017, lng: -73.5673 }); // GPS coordinates (Montreal default)
+	let roverGpsPosition = $state({ lat: 45.4215, lng: -75.6972 }); // GPS coordinates (Ottawa default)
 	
 	// Leaflet map variables
 	let mapContainer: HTMLElement;
@@ -120,16 +120,12 @@
 				attribution: '© OpenStreetMap contributors'
 			}).addTo(map);
 			
-			// Add rover marker
+			// Replace rover marker with pulsing current-location style icon
 			const roverIcon = L.divIcon({
-				html: `<div style="background: #3b82f6; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">
-						 <svg style="width: 12px; height: 12px; color: white;" fill="currentColor" viewBox="0 0 24 24">
-						   <path d="M12 2L2 7v10c0 5.55 3.84 10 9 11 1.9-.4 3.7-1.4 5.2-2.8 1.5-1.4 2.6-3.1 3.3-4.9.4-1.8.5-3.6.2-5.4L22 7l-10-5z"/>
-						 </svg>
-					   </div>`,
-				className: 'rover-marker',
-				iconSize: [20, 20],
-				iconAnchor: [10, 10]
+				html: `<div class="current-location-marker"><div class="pulse"></div><div class="dot"></div></div>`,
+				className: '',
+				iconSize: [30, 30],
+				iconAnchor: [15, 15]
 			});
 			
 			L.marker([roverGpsPosition.lat, roverGpsPosition.lng], { icon: roverIcon })
@@ -137,9 +133,7 @@
 				.bindPopup('Rover Position');
 
 			// Invalidate map size after a short delay to ensure container is sized
-			setTimeout(() => {
-				map.invalidateSize();
-			}, 100);
+			setTimeout(() => { map.invalidateSize(); }, 100);
 		} catch (error) {
 			console.error('Error initializing map:', error);
 		}
@@ -457,4 +451,9 @@
 			opacity: 1;
 		}
 	}
+
+	:global(.current-location-marker) { position: relative; width:30px; height:30px; pointer-events:none; }
+	:global(.current-location-marker .dot) { position:absolute; top:50%; left:50%; width:14px; height:14px; transform:translate(-50%, -50%); background:#2563eb; border:3px solid #ffffff; border-radius:50%; box-shadow:0 0 6px rgba(37,99,235,0.6); }
+	:global(.current-location-marker .pulse) { position:absolute; top:50%; left:50%; width:14px; height:14px; transform:translate(-50%, -50%); background:rgba(37,99,235,0.35); border-radius:50%; animation:pulse-ring 2s ease-out infinite; }
+	@keyframes pulse-ring { 0% { transform:translate(-50%, -50%) scale(0.6); opacity:0.9; } 70% { transform:translate(-50%, -50%) scale(2.2); opacity:0; } 100% { transform:translate(-50%, -50%) scale(2.2); opacity:0; } }
 </style>
