@@ -12,14 +12,14 @@ export const ROS2_CONFIG = {
     ROVER_SWDATA: "/gps_waypoints",          // Software data (waypoints, navigation params)
     ROVER_HEARTBEAT: "/heartbeat",    // Heartbeat from software to rover
     ROVER_STATE: "/rover_state",            // Rover state updates (idle, manual_control, autonomous)
-    ROVER_LOCATION: "/rover_location",          // Internal rover location topic
+    // ROVER_LOCATION: "/rover_location",          // Internal rover location topic
     
     // Existing topics from manual control
     COMMAND: "/JSON",                       // Legacy command topic for manual control
     LIDAR: "/scan",
     OBSTACLE_DETECTED: "/obstacle_detected",
     OBSTACLE_DISTANCE: "/obstacle_distance", 
-    GPS: "/fix"
+    GPS: "/fix" // this is the current rover location in GPS coords
   },
 
   // Connection timeout settings

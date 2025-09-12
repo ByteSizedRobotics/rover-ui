@@ -1,5 +1,5 @@
 import { ROS2_CONFIG, getROSWebSocketURL } from '../../../lib/ros2Config';
-
+TODO: NATHAN DELETE THIS
 // Types for navigation
 export interface Waypoint {
   lat: number;
