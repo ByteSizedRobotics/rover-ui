@@ -176,10 +176,10 @@
 	<!-- Main Dashboard Grid -->
 	<div class="space-y-6 max-w-none mx-4">
 		<!-- Top Row - Camera and Map -->
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 			<!-- Live Camera Section -->
-			<div class="card bg-base-100 shadow-xl">
-				<div class="card-body">
+			<div class="card bg-base-100 shadow-xl h-full">
+				<div class="card-body h-full flex flex-col">
 					<h2 class="card-title text-xl mb-4">Live Camera</h2>
 					
 					<!-- Camera Feed Display -->
@@ -212,12 +212,12 @@
 			</div>
 
 			<!-- Map Section -->
-			<div class="card bg-base-100 shadow-xl h-fit">
-				<div class="card-body">
+			<div class="card bg-base-100 shadow-xl h-full">
+				<div class="card-body h-full flex flex-col">
 					<h2 class="card-title text-xl mb-4">MAP of where rover is</h2>
 
 					<!-- Leaflet Map Display -->
-					<div class="aspect-video rounded-lg overflow-hidden mb-4 relative">
+					<div class="aspect-video rounded-lg overflow-hidden mb-4 relative flex-grow">
 						<div bind:this={mapContainer} class="w-full h-full z-0"></div>
 					</div>
 				</div>
