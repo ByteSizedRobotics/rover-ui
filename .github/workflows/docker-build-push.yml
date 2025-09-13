@@ -2,15 +2,10 @@ name: Build and Push on Release
 
 on:
   release:
-    types: [published]
-  workflow_run:
-    workflows: ['CI']
-    types:
-      - completed
+    types: [published]  # Trigger when a new release is published
 
 jobs:
   build-and-push:
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'release' }}
     runs-on: ubuntu-latest
 
     steps:
