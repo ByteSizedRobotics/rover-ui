@@ -77,8 +77,8 @@ export function setSessionTokenCookie(event: RequestEvent, token: string, expire
 	event.cookies.set(sessionCookieName, token, {
 		expires: expiresAt,
 		path: '/',
-		secure: false,  // Allow cookie to be set even on HTTP
-		httpOnly: true,  // Keep the cookie secure from client-side JS
+		secure: false, // Allow cookie to be set even on HTTP
+		httpOnly: true // Keep the cookie secure from client-side JS
 	});
 }
 

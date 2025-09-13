@@ -1,13 +1,13 @@
 services:
-  app:
-    image: bytesizedrobotics/rover-ui:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=postgres://root:mysecretpassword@postgres:5432/local
-      - ORIGIN=http://localhost:3000
-    depends_on:
-      - postgres
+  # app:
+  #   image: bytesizedrobotics/rover-ui:latest
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=postgres://root:mysecretpassword@postgres:5432/local
+  #     - ORIGIN=http://localhost:3000
+  #   depends_on:
+  #     - postgres
 
   postgres:
     image: postgis/postgis
@@ -19,4 +19,4 @@ services:
     volumes:
       - ./drizzle/schema.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5432:5432"
+      - '5432:5432'

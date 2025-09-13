@@ -8,7 +8,7 @@ export default defineConfig({
 		url: process.env.DATABASE_URL
 	},
 
-	extensionsFilters: ["postgis"],
+	extensionsFilters: ['postgis'],
 	verbose: true,
 	strict: true,
 	dialect: 'postgresql'
