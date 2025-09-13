@@ -26,3 +26,6 @@ vite.config.ts.timestamp-*
 static/uploads
 
 .vscode
+
+# Misc
+dummy.jpg
