@@ -82,7 +82,7 @@ jobs:
           DATABASE_URL: postgres://root:mysecretpassword@localhost:5433/test
         run: npm run build
 
-      - name: Run Tests
+      - name: Run Unit Tests
         env:
           DATABASE_URL: postgres://root:mysecretpassword@localhost:5433/test
-        run: npm test
+        run: npm test:unit
