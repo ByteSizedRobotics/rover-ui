@@ -15,12 +15,12 @@ const config = {
 
 		alias: {
 			$routes: 'src/routes',
-			$root: '/',
+			$root: '/'
 		},
 
 		// TODO: fix csrf issue with POST requests
 		csrf: {
-			checkOrigin: false,
+			checkOrigin: false
 		}
 	}
 };

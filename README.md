@@ -4,8 +4,8 @@ Web app to interact with rover. Includes a docker-compose to get a working examp
 
 ## Features
 
-* Login and registration
-* List of rovers
+- Login and registration
+- List of rovers
 
 ## Developing
 
@@ -41,7 +41,7 @@ The recommended approach is to use the docker-compose to automatically start up 
 ```
 docker compose up
 
-# or 
+# or
 
 docker compose up -d # detached mode (won't attach to terminal)
 
@@ -51,6 +51,6 @@ docker compose up -d # detached mode (won't attach to terminal)
 
 ## Notes
 
-* Image can be found here: https://hub.docker.com/r/bytesizedrobotics/rover-ui
-* There is an automated Github Actions workflow to build and push the image to Docker Hub whenver there is a published release
-* Schema for the database can be found at drizzle/schema.sql
+- Image can be found here: https://hub.docker.com/r/bytesizedrobotics/rover-ui
+- There is an automated Github Actions workflow to build and push the image to Docker Hub whenver there is a published release
+- Schema for the database can be found at drizzle/schema.sql

@@ -2,22 +2,22 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
-	import type { PageServerData } from "./$types";
+	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
 	import { createAndConnectMiniLidar, LidarMiniController } from './lidarController';
 
 	let { data }: { data: PageServerData } = $props();
-	
+
 	// Notification state
 	let notification = $state<{
 		message: string;
 		waypointCount: number;
 		show: boolean;
 	} | null>(null);
-	
+
 	const params = get(page).params;
 	const roverId = params.id;
-	
+
 	// Live metrics state
 	let currentCamera = $state(1);
 	let sensorData = $state({
@@ -33,7 +33,7 @@
 	]);
 	let roverPosition = $state({ x: 50, y: 40 }); // Percentage position on map
 	let roverGpsPosition = $state({ lat: 45.4215, lng: -75.6972 }); // GPS coordinates (Ottawa default)
-	
+
 	// Leaflet map variables
 	let mapContainer: HTMLElement;
 	let map: any;
@@ -53,20 +53,20 @@
 		if (typeof window !== 'undefined' && roverId) {
 			const notificationKey = `rover_launch_success_${roverId}`;
 			const storedNotification = sessionStorage.getItem(notificationKey);
-			
+
 			if (storedNotification) {
 				try {
 					const notificationData = JSON.parse(storedNotification);
 					// Show notification if it's recent (within last 5 minutes)
 					const isRecent = Date.now() - notificationData.timestamp < 5 * 60 * 1000;
-					
+
 					if (isRecent) {
 						notification = {
 							message: notificationData.message,
 							waypointCount: notificationData.waypointCount,
 							show: true
 						};
-						
+
 						// Auto-hide notification after 10 seconds
 						setTimeout(() => {
 							if (notification) {
@@ -74,7 +74,7 @@
 							}
 						}, 10000);
 					}
-					
+
 					// Clear the notification from storage regardless
 					sessionStorage.removeItem(notificationKey);
 				} catch (error) {
@@ -100,7 +100,7 @@
 		lidarController?.disconnect();
 		lidarController = null;
 	});
-	
+
 	async function initializeMap() {
 		try {
 			// Dynamically import Leaflet
@@ -113,7 +113,7 @@
 			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 				attribution: '© OpenStreetMap contributors'
 			}).addTo(map);
-			
+
 			// Replace rover marker with pulsing current-location style icon
 			const roverIcon = L.divIcon({
 				html: `<div class="current-location-marker"><div class="pulse"></div><div class="dot"></div></div>`,
@@ -121,13 +121,15 @@
 				iconSize: [30, 30],
 				iconAnchor: [15, 15]
 			});
-			
+
 			L.marker([roverGpsPosition.lat, roverGpsPosition.lng], { icon: roverIcon })
 				.addTo(map)
 				.bindPopup('Rover Position');
 
 			// Invalidate map size after a short delay to ensure container is sized
-			setTimeout(() => { map.invalidateSize(); }, 100);
+			setTimeout(() => {
+				map.invalidateSize();
+			}, 100);
 		} catch (error) {
 			console.error('Error initializing map:', error);
 		}
@@ -138,11 +140,11 @@
 			notification.show = false;
 		}
 	}
-	
+
 	function switchCamera(cameraNumber: number) {
 		currentCamera = cameraNumber;
 	}
-	
+
 	function emergencyStop() {
 		// TODO: Implement emergency stop
 		console.log('Emergency stop triggered');
@@ -155,18 +157,34 @@
 		<div class="notification-banner">
 			<div class="notification-content">
 				<div class="notification-icon">
-					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+					<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+						></path>
 					</svg>
 				</div>
 				<div class="notification-text">
 					<h3 class="notification-title">🚀 Launch Successful!</h3>
 					<p class="notification-message">{notification.message}</p>
-					<p class="notification-details">The rover is now autonomously navigating to its destination.</p>
+					<p class="notification-details">
+						The rover is now autonomously navigating to its destination.
+					</p>
 				</div>
-				<button class="notification-close" onclick={dismissNotification} aria-label="Dismiss notification">
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+				<button
+					class="notification-close"
+					onclick={dismissNotification}
+					aria-label="Dismiss notification"
+				>
+					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						></path>
 					</svg>
 				</button>
 			</div>
@@ -174,34 +192,44 @@
 	{/if}
 
 	<!-- Main Dashboard Grid -->
-	<div class="space-y-6 max-w-none mx-4">
+	<div class="mx-4 max-w-none space-y-6">
 		<!-- Top Row - Camera and Map -->
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+		<div class="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
 			<!-- Live Camera Section -->
-			<div class="card bg-base-100 shadow-xl h-full">
-				<div class="card-body h-full flex flex-col">
-					<h2 class="card-title text-xl mb-4">Live Camera</h2>
-					
+			<div class="card h-full bg-base-100 shadow-xl">
+				<div class="card-body flex h-full flex-col">
+					<h2 class="card-title mb-4 text-xl">Live Camera</h2>
+
 					<!-- Camera Feed Display -->
-					<div class="aspect-video bg-gray-300 rounded-lg mb-4 flex items-center justify-center">
+					<div class="mb-4 flex aspect-video items-center justify-center rounded-lg bg-gray-300">
 						<div class="text-center text-gray-600">
-							<svg class="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+							<svg
+								class="mx-auto mb-2 h-16 w-16"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+								></path>
 							</svg>
 							<p>Camera {currentCamera} Feed</p>
 							<p class="text-sm">Streaming from /camera{currentCamera}/image_raw</p>
 						</div>
 					</div>
-					
+
 					<!-- Camera Switch Buttons -->
-					<div class="flex gap-2 justify-center">
-						<button 
+					<div class="flex justify-center gap-2">
+						<button
 							class="btn {currentCamera === 1 ? 'btn-primary' : 'btn-outline'}"
 							onclick={() => switchCamera(1)}
 						>
 							Camera 1
 						</button>
-						<button 
+						<button
 							class="btn {currentCamera === 2 ? 'btn-primary' : 'btn-outline'}"
 							onclick={() => switchCamera(2)}
 						>
@@ -212,25 +240,25 @@
 			</div>
 
 			<!-- Map Section -->
-			<div class="card bg-base-100 shadow-xl h-full">
-				<div class="card-body h-full flex flex-col">
-					<h2 class="card-title text-xl mb-4">Map</h2>
+			<div class="card h-full bg-base-100 shadow-xl">
+				<div class="card-body flex h-full flex-col">
+					<h2 class="card-title mb-4 text-xl">Map</h2>
 
 					<!-- Leaflet Map Display -->
-					<div class="aspect-video rounded-lg overflow-hidden mb-4 relative flex-grow">
-						<div bind:this={mapContainer} class="w-full h-full z-0"></div>
+					<div class="relative mb-4 aspect-video flex-grow overflow-hidden rounded-lg">
+						<div bind:this={mapContainer} class="z-0 h-full w-full"></div>
 					</div>
 				</div>
 			</div>
 		</div>
 
 		<!-- Bottom Row - Live Data, Data Table, Navigation -->
-		<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
 			<!-- Live Metrics widened -->
 			<div class="card bg-base-100 shadow-xl lg:col-span-4">
 				<div class="card-body">
-					<h2 class="card-title text-xl mb-4">Live Metrics</h2>
-					<div class="grid grid-cols-1 gap-2 mb-4">
+					<h2 class="card-title mb-4 text-xl">Live Metrics</h2>
+					<div class="mb-4 grid grid-cols-1 gap-2">
 						<div class="stat">
 							<div class="stat-title text-sm">IMU</div>
 							<div class="stat-value text-lg">{sensorData.imu}</div>
@@ -244,18 +272,24 @@
 							<div class="stat-value text-lg">{sensorData.battery}%</div>
 						</div>
 					</div>
-					
+
 					<!-- Lidar Visualization -->
 					<div class="flex justify-center">
-						<canvas id="lidarMiniCanvas" width="120" height="120" class="w-32 h-32" bind:this={lidarCanvasEl}></canvas>
+						<canvas
+							id="lidarMiniCanvas"
+							width="120"
+							height="120"
+							class="h-32 w-32"
+							bind:this={lidarCanvasEl}
+						></canvas>
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- Data Table narrowed -->
 			<div class="card bg-base-100 shadow-xl lg:col-span-6">
 				<div class="card-body">
-					<h2 class="card-title text-xl mb-4">Data Table</h2>
+					<h2 class="card-title mb-4 text-xl">Data Table</h2>
 					<div class="overflow-x-auto">
 						<table class="table table-zebra w-full">
 							<thead>
@@ -280,10 +314,10 @@
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- Navigation widened -->
-			<div class="card bg-base-100 shadow-xl lg:col-span-2 flex">
-				<div class="card-body p-4 flex flex-col gap-4 justify-center">
+			<div class="card flex bg-base-100 shadow-xl lg:col-span-2">
+				<div class="card-body flex flex-col justify-center gap-4 p-4">
 					<a href="/manual-ctrl" class="btn btn-primary w-full">Manual Control</a>
 					<button class="btn btn-error w-full" onclick={emergencyStop}>E-Stop</button>
 				</div>
@@ -373,8 +407,47 @@
 		}
 	}
 
-	:global(.current-location-marker) { position: relative; width:30px; height:30px; pointer-events:none; }
-	:global(.current-location-marker .dot) { position:absolute; top:50%; left:50%; width:14px; height:14px; transform:translate(-50%, -50%); background:#2563eb; border:3px solid #ffffff; border-radius:50%; box-shadow:0 0 6px rgba(37,99,235,0.6); }
-	:global(.current-location-marker .pulse) { position:absolute; top:50%; left:50%; width:14px; height:14px; transform:translate(-50%, -50%); background:rgba(37,99,235,0.35); border-radius:50%; animation:pulse-ring 2s ease-out infinite; }
-	@keyframes pulse-ring { 0% { transform:translate(-50%, -50%) scale(0.6); opacity:0.9; } 70% { transform:translate(-50%, -50%) scale(2.2); opacity:0; } 100% { transform:translate(-50%, -50%) scale(2.2); opacity:0; } }
+	:global(.current-location-marker) {
+		position: relative;
+		width: 30px;
+		height: 30px;
+		pointer-events: none;
+	}
+	:global(.current-location-marker .dot) {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 14px;
+		height: 14px;
+		transform: translate(-50%, -50%);
+		background: #2563eb;
+		border: 3px solid #ffffff;
+		border-radius: 50%;
+		box-shadow: 0 0 6px rgba(37, 99, 235, 0.6);
+	}
+	:global(.current-location-marker .pulse) {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 14px;
+		height: 14px;
+		transform: translate(-50%, -50%);
+		background: rgba(37, 99, 235, 0.35);
+		border-radius: 50%;
+		animation: pulse-ring 2s ease-out infinite;
+	}
+	@keyframes pulse-ring {
+		0% {
+			transform: translate(-50%, -50%) scale(0.6);
+			opacity: 0.9;
+		}
+		70% {
+			transform: translate(-50%, -50%) scale(2.2);
+			opacity: 0;
+		}
+		100% {
+			transform: translate(-50%, -50%) scale(2.2);
+			opacity: 0;
+		}
+	}
 </style>

@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: ["*"]
+    branches: ['*']
 
 jobs:
   lint:
@@ -74,7 +74,7 @@ jobs:
       - name: Cache build output
         uses: actions/cache@v3
         with:
-          path: build  # adjust to your build folder
+          path: build
           key: ${{ runner.os }}-build-${{ hashFiles('package-lock.json', 'src/**') }}
           restore-keys: |
             ${{ runner.os }}-build-

@@ -8,19 +8,19 @@ export let pool: pg.Pool;
 export let db: ReturnType<typeof drizzle>;
 
 if (!process.env.CI) {
-  config({ path: '.env.test', quiet: true });
+	config({ path: '.env.test', quiet: true });
 }
 
 beforeAll(async () => {
-  pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool); // ✅ assign to exported variable
-  await migrate(db, { migrationsFolder: 'drizzle/' });
+	pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+	db = drizzle(pool); // ✅ assign to exported variable
+	await migrate(db, { migrationsFolder: 'drizzle/' });
 });
 
 afterEach(async () => {
-  await pool.query('TRUNCATE detections, images RESTART IDENTITY CASCADE');
+	await pool.query('TRUNCATE detections, images RESTART IDENTITY CASCADE');
 });
 
 afterAll(async () => {
-  if (pool) await pool.end();
+	if (pool) await pool.end();
 });
