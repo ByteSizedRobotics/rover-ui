@@ -4,13 +4,14 @@ import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 
-let pool: pg.Pool;
+export let pool: pg.Pool;
+export let db: ReturnType<typeof drizzle>;
 
 config({ path: '.env.test', override: true, quiet: true });
 
 beforeAll(async () => {
   pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-  const db = drizzle(pool);
+  db = drizzle(pool); // ✅ assign to exported variable
   await migrate(db, { migrationsFolder: 'drizzle/' });
 });
 
@@ -21,5 +22,3 @@ afterEach(async () => {
 afterAll(async () => {
   if (pool) await pool.end();
 });
-
-export let db: ReturnType<typeof drizzle>;
