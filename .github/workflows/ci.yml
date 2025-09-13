@@ -85,4 +85,4 @@ jobs:
       - name: Run Unit Tests
         env:
           DATABASE_URL: postgres://root:mysecretpassword@localhost:5433/test
-        run: npm test:unit
+        run: npm run test:unit
