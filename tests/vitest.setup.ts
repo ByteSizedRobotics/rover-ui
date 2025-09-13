@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, beforeAll, beforeEach } from 'vitest';
 import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
@@ -13,11 +13,12 @@ if (!process.env.CI) {
 
 beforeAll(async () => {
 	pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-	db = drizzle(pool); // ✅ assign to exported variable
+	db = drizzle(pool);
 	await migrate(db, { migrationsFolder: 'drizzle/' });
 });
 
-afterEach(async () => {
+
+beforeEach(async () => {
 	await pool.query('TRUNCATE detections, images, rovers RESTART IDENTITY CASCADE');
 });
 
