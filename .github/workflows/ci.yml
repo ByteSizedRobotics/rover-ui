@@ -39,7 +39,7 @@ jobs:
     needs: lint
     services:
       postgres:
-        image: postgres:15
+        image: postgis/postgis:15-3.4
         env:
           POSTGRES_USER: root
           POSTGRES_PASSWORD: mysecretpassword
@@ -47,10 +47,8 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U root"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+          --health-cmd="pg_isready -U root" --health-interval=10s --health-timeout=5s --health-retries=5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
