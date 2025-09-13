@@ -18,7 +18,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-	await pool.query('TRUNCATE detections, images RESTART IDENTITY CASCADE');
+	await pool.query('TRUNCATE detections, images, rovers RESTART IDENTITY CASCADE');
 });
 
 afterAll(async () => {
