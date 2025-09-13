@@ -1,0 +1,10 @@
+services:
+  postgres-test:
+    image: postgis/postgis
+    platform: linux/amd64
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: test
+    ports:
+      - "5433:5432"
