@@ -19,7 +19,7 @@ CREATE TABLE "images" (
 CREATE TABLE "paths" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"rover_id" integer NOT NULL,
-	"route" geometry(point) NOT NULL,
+	"route" geometry(LINESTRING, 4326) NOT NULL,
 	"timestamp" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
