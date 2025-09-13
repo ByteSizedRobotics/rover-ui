@@ -7,7 +7,9 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 export let pool: pg.Pool;
 export let db: ReturnType<typeof drizzle>;
 
-config({ path: '.env.test', override: true, quiet: true });
+if (!process.env.CI) {
+  config({ path: '.env.test', quiet: true });
+}
 
 beforeAll(async () => {
   pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
