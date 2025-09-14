@@ -5,6 +5,22 @@ import { sql } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 
+
+export const GET: RequestHandler = async () => {
+	try {
+		// Fetch all images from the database
+		const allImages = await db.select().from(images);
+		return new Response(JSON.stringify(allImages), {
+			status: 200,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	} catch (err) {
+		console.error('Error fetching images:', err);
+		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
+	}
+};
+
+
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const formData = await request.formData();
@@ -47,20 +63,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 	} catch (err) {
 		console.error('Error inserting image:', err);
-		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
-	}
-};
-
-export const GET: RequestHandler = async () => {
-	try {
-		// Fetch all images from the database
-		const allImages = await db.select().from(images);
-		return new Response(JSON.stringify(allImages), {
-			status: 200,
-			headers: { 'Content-Type': 'application/json' }
-		});
-	} catch (err) {
-		console.error('Error fetching images:', err);
 		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
 	}
 };

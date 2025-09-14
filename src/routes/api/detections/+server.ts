@@ -5,11 +5,17 @@ import type { RequestHandler } from '@sveltejs/kit';
 
 
 export const GET: RequestHandler = async () => {
-	const allDetections = await db.select().from(detections).orderBy(desc(detections.id));
-	return new Response(JSON.stringify(allDetections), {
-		status: 200,
-		headers: { 'Content-Type': 'application/json' }
-	});
+	try {
+		const allDetections = await db.select().from(detections).orderBy(desc(detections.id));
+
+		return new Response(JSON.stringify(allDetections), {
+			status: 200,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	} catch (err) {
+		console.error('Error fetching detections:', err);
+		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
+	}
 }
 
 
@@ -28,19 +34,27 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 	}
 
-	const result = await db
-		.insert(detections)
-		.values({
-			imageId: image_id,
-			confidence,
-			bbox: `(${bbox.join(',')})`
-		})
-		.returning();
+	try {
+		const result = await db
+			.insert(detections)
+			.values({
+				imageId: image_id,
+				confidence,
+				bbox: `(${bbox.join(',')})`
+			})
+			.returning();
 
-	const detection_id = result[0]?.id;
+		const detection_id = result[0]?.id;
+		if (!detection_id) {
+			throw new Error('Failed to retrieve inserted detection ID');
+		}
 
-	return new Response(JSON.stringify({ detection_id }), {
-		status: 201,
-		headers: { 'Content-Type': 'application/json' }
-	});
+		return new Response(JSON.stringify({ detection_id }), {
+			status: 201,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	} catch (err) {
+		console.error('Error creating detection:', err);
+		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
+	}
 };

@@ -10,15 +10,20 @@ export const GET: RequestHandler = async ({ params }) => {
 		return new Response(JSON.stringify({ error: 'Invalid detection ID' }), { status: 400 });
 	}
 
-	const detection = await db.select().from(detections).where(eq(detections.id, id)).limit(1);
-	if (detection.length === 0) {
-		return new Response(JSON.stringify({ error: 'Detection not found' }), { status: 404 });
-	}
+	try {
+		const detection = await db.select().from(detections).where(eq(detections.id, id)).limit(1);
+		if (detection.length === 0) {
+			return new Response(JSON.stringify({ error: 'Detection not found' }), { status: 404 });
+		}
 
-	return new Response(JSON.stringify(detection[0]), {
-		status: 200,
-		headers: { 'Content-Type': 'application/json' }
-	});
+		return new Response(JSON.stringify(detection[0]), {
+			status: 200,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	} catch (err) {
+		console.error('Error fetching detection:', err);
+		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
+	}
 }
 
 
@@ -42,15 +47,20 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 		return new Response(JSON.stringify({ error: 'No valid fields to update' }), { status: 400 });
 	}
 
-	const result = await db.update(detections).set(updates).where(eq(detections.id, id)).returning();
-	if (!result[0]) {
-		return new Response(JSON.stringify({ error: 'Detection not found' }), { status: 404 });
+	try {
+		const result = await db.update(detections).set(updates).where(eq(detections.id, id)).returning();
+		if (!result[0]) {
+			return new Response(JSON.stringify({ error: 'Detection not found' }), { status: 404 });
+		}
+
+		return new Response(JSON.stringify(result[0]), {
+			status: 200,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	} catch (err) {
+		console.error('Error updating detection:', err);
+		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
 	}
-	
-	return new Response(JSON.stringify(result[0]), {
-		status: 200,
-		headers: { 'Content-Type': 'application/json' }
-	});
 };
 
 
@@ -60,10 +70,15 @@ export const DELETE: RequestHandler = async ({ params }) => {
 		return new Response(JSON.stringify({ error: 'Invalid detection ID' }), { status: 400 });
 	}
 
-	const result = await db.delete(detections).where(eq(detections.id, id)).returning();
-	if (!result[0]) {
-		return new Response(JSON.stringify({ error: 'Detection not found' }), { status: 404 });
-	}
+	try {
+		const result = await db.delete(detections).where(eq(detections.id, id)).returning();
+		if (!result[0]) {
+			return new Response(JSON.stringify({ error: 'Detection not found' }), { status: 404 });
+		}
 
-	return new Response(null, { status: 204 });
+		return new Response(null, { status: 204 });
+	} catch (err) {
+		console.error('Error deleting detection:', err);
+		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
+	}
 };
