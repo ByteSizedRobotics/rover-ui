@@ -1,93 +1,94 @@
 -- Enable PostGIS extension
 CREATE EXTENSION IF NOT EXISTS postgis;
 
--- -------------------
--- Rovers Table
--- -------------------
-CREATE TABLE "rovers" (
-    "id" serial PRIMARY KEY NOT NULL,
-    "name" varchar(100) NOT NULL,
-    "status" varchar(50) DEFAULT 'active' NOT NULL,
-    "ip_address" inet NOT NULL
-);
-
--- -------------------
--- Paths Table
--- -------------------
-CREATE TABLE "paths" (
-    "id" serial PRIMARY KEY NOT NULL,
-    "rover_id" integer NOT NULL,
-    "route" geometry(LINESTRING, 4326) NOT NULL, -- Series of connected points
-    "timestamp" timestamp with time zone DEFAULT now(),
-    CONSTRAINT "paths_rover_id_rovers_id_fk" FOREIGN KEY ("rover_id") REFERENCES "rovers"("id") ON DELETE CASCADE
-);
-
--- -------------------
--- Images Table
--- -------------------
-CREATE TABLE "images" (
-    "id" serial PRIMARY KEY NOT NULL,
-    "path_id" integer NOT NULL,
-    "image_url" text NOT NULL,
-    "timestamp" timestamp with time zone DEFAULT now(),
-    "location" geometry(POINT, 4326) NOT NULL,
-    CONSTRAINT "images_path_id_paths_id_fk" FOREIGN KEY ("path_id") REFERENCES "paths"("id") ON DELETE CASCADE
-);
-
--- -------------------
--- Detections Table
--- -------------------
 CREATE TABLE "detections" (
-    "id" serial PRIMARY KEY NOT NULL,
-    "image_id" integer NOT NULL,
-    "bbox" jsonb NOT NULL, -- Store as JSON array [x_min, y_min, x_max, y_max]
-    "confidence" double precision NOT NULL,
-    "area_score" double precision,
-    "depth_score" double precision,
-    "false_positive" integer DEFAULT 0,
-    CONSTRAINT "detections_image_id_images_id_fk" FOREIGN KEY ("image_id") REFERENCES "images"("id") ON DELETE CASCADE
+	"id" serial PRIMARY KEY NOT NULL,
+	"image_id" integer NOT NULL,
+	"bbox" jsonb NOT NULL,
+	"confidence" double precision NOT NULL,
+	"area_score" double precision,
+	"depth_score" double precision,
+	"false_positive" integer DEFAULT 0
 );
-
--- -------------------
--- User Authentication Tables
--- -------------------
-CREATE TABLE "user" (
-    "id" text PRIMARY KEY NOT NULL,
-    "username" text NOT NULL UNIQUE,
-    "password_hash" text NOT NULL
+--> statement-breakpoint
+CREATE TABLE "images" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"path_id" integer NOT NULL,
+	"image_url" text NOT NULL,
+	"timestamp" timestamp with time zone DEFAULT now(),
+	"location" geometry(point) NOT NULL
 );
-
+--> statement-breakpoint
+CREATE TABLE "paths" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"rover_id" integer NOT NULL,
+	"route" geometry(LINESTRING, 4326) NOT NULL,
+	"timestamp" timestamp with time zone DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE "rovers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"status" varchar(50) DEFAULT 'active' NOT NULL,
+	"ip_address" varchar(45) NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "session" (
-    "id" text PRIMARY KEY NOT NULL,
-    "user_id" text NOT NULL,
-    "expires_at" timestamp with time zone NOT NULL,
-    CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL
 );
+--> statement-breakpoint
+CREATE TABLE "user" (
+	"id" text PRIMARY KEY NOT NULL,
+	"username" text NOT NULL,
+	"password_hash" text NOT NULL,
+	CONSTRAINT "user_username_unique" UNIQUE("username")
+);
+--> statement-breakpoint
+ALTER TABLE "detections" ADD CONSTRAINT "detections_image_id_images_id_fk" FOREIGN KEY ("image_id") REFERENCES "public"."images"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "images" ADD CONSTRAINT "images_path_id_paths_id_fk" FOREIGN KEY ("path_id") REFERENCES "public"."paths"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "paths" ADD CONSTRAINT "paths_rover_id_rovers_id_fk" FOREIGN KEY ("rover_id") REFERENCES "public"."rovers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "idx_images_location" ON "images" USING gist ("location" gist_geometry_ops_2d);--> statement-breakpoint
+CREATE INDEX "idx_paths_route" ON "paths" USING gist ("route" gist_geometry_ops_2d);
 
--- -------------------
--- Spatial Indexes
--- -------------------
-CREATE INDEX idx_paths_route ON "paths" USING GIST (route);
-CREATE INDEX idx_images_location ON "images" USING GIST (location);
+-- === Seed Rovers ===
+INSERT INTO rovers (name, status, ip_address)
+VALUES
+  ('Curiosity', 'active', '192.168.1.10'),
+  ('Perseverance', 'active', '192.168.1.11')
+RETURNING id;
 
--- -------------------
--- Sample Data
--- -------------------
-INSERT INTO "rovers" (id, name, status, ip_address) VALUES
-    (1, 'Main Rover', 'active', '100.85.202.20'),
-    (2, 'Standby Rover', 'inactive', '100.85.202.21');
+-- === Seed Paths ===
+-- Use ST_GeomFromText for the LINESTRING (SRID 4326)
+INSERT INTO paths (rover_id, route)
+VALUES
+  (1, ST_GeomFromText('LINESTRING(-73.57 45.50, -73.58 45.51)', 4326)),
+  (2, ST_GeomFromText('LINESTRING(-73.55 45.49, -73.54 45.48)', 4326))
+RETURNING id;
 
-INSERT INTO "paths" (id, rover_id, route, timestamp) VALUES
-    (1, 1, ST_GeomFromText('LINESTRING(-73.9857 40.7484, -73.9853 40.7486, -73.9850 40.7490)', 4326), NOW()),
-    (2, 2, ST_GeomFromText('LINESTRING(-118.2437 34.0522, -118.2440 34.0515, -118.2443 34.0510)', 4326), NOW());
+-- === Seed Images ===
+-- Example point geometry (SRID 4326)
+INSERT INTO images (path_id, image_url, location)
+VALUES
+  (1, 'uploads/image1.jpg', ST_SetSRID(ST_Point(-73.57, 45.50), 4326)),
+  (2, 'uploads/image2.jpg', ST_SetSRID(ST_Point(-73.55, 45.49), 4326))
+RETURNING id;
 
--- Example: Insert sample images
--- INSERT INTO "images" (id, path_id, image_url, location) VALUES
---     (1, 1, '/path/to/image1.jpg', ST_GeomFromText('POINT(-73.9855 40.7485)', 4326)),
---     (2, 1, '/path/to/image2.jpg', ST_GeomFromText('POINT(-73.9854 40.7486)', 4326));
+-- === Seed Detections ===
+INSERT INTO detections (image_id, bbox, confidence, area_score, depth_score)
+VALUES
+(1, '[10, 20, 100, 80]', 0.92, 0.85, 0.73),
+(1, '[50, 60, 40, 30]', 0.88, 0.65, 0.70),
+(2, '[15, 25, 90, 70]', 0.95, 0.90, 0.80),
+(2, '[60, 70, 30, 25]', 0.89, 0.60, 0.66);
 
--- Example: Insert sample detections
--- INSERT INTO "detections" (image_id, bbox, confidence, area_score, depth_score, false_positive) VALUES
---     (1, '[10, 20, 50, 80]', 95, 120, 5, 0),
---     (1, '[30, 40, 60, 90]', 88, 100, 3, 0),
---     (2, '[15, 25, 55, 85]', 92, 110, 4, 1);
+-- === Seed User and Session ===
+INSERT INTO "user" (id, username, password_hash)
+VALUES
+  ('user-1', 'testuser', '$2b$10$examplehash');
+
+INSERT INTO session (id, user_id, expires_at)
+VALUES
+  ('session-1', 'user-1', now() + interval '7 days');
