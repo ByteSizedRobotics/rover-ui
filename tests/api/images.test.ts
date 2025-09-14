@@ -4,6 +4,17 @@ import fs from 'fs';
 import path from 'path';
 import { api } from '../utils/api'; // your Supertest wrapper
 import { createPathFixture } from '../fixtures/path';
+import { createImageFixture } from '../fixtures/image';
+
+
+describe('GET /api/images', () => {
+	it('returns all images', async () => {
+		const res = await api().get('/api/images');
+		expect(res.status).toBe(200);
+		expect(Array.isArray(res.body)).toBe(true);
+	});
+});
+
 
 describe('POST /api/images', () => {
 	it('uploads an image and inserts into DB', async () => {
@@ -23,5 +34,34 @@ describe('POST /api/images', () => {
 
 		expect(res.status).toBe(201);
 		expect(res.body).toHaveProperty('image_id');
+	});
+});
+
+
+describe('GET /api/images/:id', () => {
+	it('retrieves a specific image by ID', async () => {
+		const image = await createImageFixture();
+
+		const res = await api().get(`/api/images/${image.id}`);
+		expect(res.status).toBe(200);
+		expect(res.body).toHaveProperty('id', image.id);
+	});
+});
+
+
+describe('DELETE /api/images/:id', () => {
+	it('deletes a specific image by ID', async () => {
+		const image = await createImageFixture();
+		const imageId = image.id;
+
+		const res = await api().get(`/api/images/${imageId}`);
+		expect(res.status).toBe(200);
+		expect(res.body).toHaveProperty('id', imageId);
+
+		const deleteRes = await api().delete(`/api/images/${imageId}`);
+		expect(deleteRes.status).toBe(200);
+
+		const getRes = await api().get(`/api/images/${imageId}`);
+		expect(getRes.status).toBe(404);
 	});
 });

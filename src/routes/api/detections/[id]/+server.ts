@@ -76,7 +76,7 @@ export const DELETE: RequestHandler = async ({ params }) => {
 			return new Response(JSON.stringify({ error: 'Detection not found' }), { status: 404 });
 		}
 
-		return new Response(null, { status: 204 });
+		return new Response(JSON.stringify({ message: 'Detection deleted successfully' }), { status: 200 });
 	} catch (err) {
 		console.error('Error deleting detection:', err);
 		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });

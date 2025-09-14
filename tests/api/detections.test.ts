@@ -85,8 +85,12 @@ describe('DELETE /api/detections/:id', () => {
 		const detection = await createDetectionFixture();
 		const detectionId = detection.id;
 
+		const res = await api().get(`/api/detections/${detectionId}`);
+		expect(res.status).toBe(200);
+		expect(res.body).toHaveProperty('id', detectionId);
+
 		const deleteRes = await api().delete(`/api/detections/${detectionId}`);
-		expect(deleteRes.status).toBe(204);
+		expect(deleteRes.status).toBe(200);
 
 		const getRes = await api().get(`/api/detections/${detectionId}`);
 		expect(getRes.status).toBe(404);
