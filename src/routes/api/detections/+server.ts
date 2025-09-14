@@ -1,6 +1,17 @@
 import { db } from '$lib/server/db';
 import { detections } from '$lib/server/db/schema';
+import { desc } from 'drizzle-orm';
 import type { RequestHandler } from '@sveltejs/kit';
+
+
+export const GET: RequestHandler = async () => {
+	const allDetections = await db.select().from(detections).orderBy(desc(detections.id));
+	return new Response(JSON.stringify(allDetections), {
+		status: 200,
+		headers: { 'Content-Type': 'application/json' }
+	});
+}
+
 
 export const POST: RequestHandler = async ({ request }) => {
 	const { image_id, confidence, bbox } = await request.json();
