@@ -1,0 +1,49 @@
+Table detections {
+  id serial [pk, not null, increment]
+  image_id integer [not null, ref: > images.id]
+  bbox jsonb [not null]
+  confidence "double precision" [not null]
+  area_score "double precision"
+  depth_score "double precision"
+  false_positive integer [default: 0]
+}
+
+Table images {
+  id serial [pk, not null, increment]
+  path_id integer [not null, ref: > paths.id]
+  image_url text [not null]
+  timestamp "timestamp with time zone" [default: `now()`]
+  location geometry [note: 'POINT, SRID 4326']
+  Indexes {
+    (location) [name: 'idx_images_location', type: gist]
+  }
+}
+
+Table paths {
+  id serial [pk, not null, increment]
+  rover_id integer [not null, ref: > rovers.id]
+  route geometry [note: 'LINESTRING, SRID 4326']
+  timestamp "timestamp with time zone" [default: `now()`]
+  Indexes {
+    (route) [name: 'idx_paths_route', type: gist]
+  }
+}
+
+Table rovers {
+  id serial [pk, not null, increment]
+  name varchar(100) [not null]
+  status varchar(50) [not null, default: 'active']
+  ip_address varchar(45) [not null]
+}
+
+Table session {
+  id text [pk, not null]
+  user_id text [not null, ref: > user.id]
+  expires_at "timestamp with time zone" [not null]
+}
+
+Table user {
+  id text [pk, not null]
+  username text [not null, unique]
+  password_hash text [not null]
+}
