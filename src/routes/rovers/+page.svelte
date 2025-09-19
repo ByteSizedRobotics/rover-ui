@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { PageServerData } from './$types';
-	import { onMount } from 'svelte';
 	
 	let { data }: { data: PageServerData } = $props();
 	
@@ -59,22 +58,6 @@
 		filteredRovers = filtered;
 	});
 	
-	// Keyboard shortcuts
-	onMount(() => {
-		const handleKeydown = (e: KeyboardEvent) => {
-			if (e.key === '/' && e.target !== document.querySelector('#search-input')) {
-				e.preventDefault();
-				document.querySelector('#search-input')?.focus();
-			}
-			if (e.key === '1') filter = 'all';
-			if (e.key === '2') filter = 'active';
-			if (e.key === '3') filter = 'inactive';
-		};
-		
-		document.addEventListener('keydown', handleKeydown);
-		return () => document.removeEventListener('keydown', handleKeydown);
-	});
-	
 	const activeCounts = $derived(data.roversData.filter(r => r.status === 'active').length);
 	const inactiveCounts = $derived(data.roversData.filter(r => r.status === 'inactive').length);
 </script>
@@ -84,11 +67,6 @@
 		<!-- Header -->
 		<header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
 			<div class="flex items-center gap-4">
-				<div class="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
-					<svg class="w-6 h-6 text-primary-content" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-					</svg>
-				</div>
 				<div>
 					<h1 class="text-3xl font-bold text-base-content">Rover Switchboard</h1>
 					<div class="text-sm text-base-content/70">
@@ -147,15 +125,8 @@
 				
 				<article 
 					class="card bg-base-200 shadow-xl hover:shadow-2xl transition-all duration-200 hover:-translate-y-1 border border-base-300"
-					tabindex="0"
 					role="group"
 					aria-label="{rover.name} {rover.id}"
-					onkeydown={(e) => {
-						if (e.key === 'Enter') {
-							const primaryBtn = e.currentTarget.querySelector('.btn-primary');
-							primaryBtn?.click();
-						}
-					}}
 				>
 					<!-- Image -->
 					<figure class="relative">
@@ -180,7 +151,7 @@
 					<div class="card-body">
 						<div class="flex items-start justify-between gap-3 mb-3">
 							<div class="flex items-center gap-3 flex-1 min-w-0">
-								<div class="badge badge-outline text-xs font-mono">RX-{rover.id}</div>
+								<div class="badge badge-outline text-xs font-mono">Rover-{rover.id}</div>
 								<h2 class="card-title text-lg truncate">{rover.name}</h2>
 							</div>
 							<div class="text-xs text-base-content/60 whitespace-nowrap">
@@ -235,26 +206,5 @@
 				</div>
 			</div>
 		{/if}
-
-		<!-- Footer hints -->
-		<footer class="mt-8 pt-6 border-t border-base-300">
-			<div class="flex flex-wrap gap-4 items-center text-sm text-base-content/60">
-				<span>Tips:</span>
-				<div class="flex items-center gap-1">
-					<kbd class="kbd kbd-xs">/</kbd>
-					<span>to focus search</span>
-				</div>
-				<div class="flex items-center gap-1">
-					<kbd class="kbd kbd-xs">1</kbd>
-					<kbd class="kbd kbd-xs">2</kbd>
-					<kbd class="kbd kbd-xs">3</kbd>
-					<span>to switch All/Active/Inactive</span>
-				</div>
-				<div class="flex items-center gap-1">
-					<kbd class="kbd kbd-xs">Enter</kbd>
-					<span>to trigger primary action on focused card</span>
-				</div>
-			</div>
-		</footer>
 	</div>
 </div>
