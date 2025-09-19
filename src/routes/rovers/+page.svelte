@@ -132,9 +132,9 @@
 					<figure class="relative">
 						<div class="aspect-video bg-blue-50 overflow-hidden rounded-t-2xl">
 							{#if rover.status === 'active'}
-								<img src="./LiveMetrics.png" alt={rover.name} class="w-full h-full object-cover" />
+								<img src="./UE5_1.png" alt={rover.name} class="w-full h-full object-cover scale-150" />
 							{:else}
-								<img src="./PathPlan.png" alt={rover.name} class="w-full h-full object-cover" />
+								<img src="./PathPlan.png" alt={rover.name} class="w-full h-full object-cover scale-75" />
 							{/if}
 						</div>
 						
