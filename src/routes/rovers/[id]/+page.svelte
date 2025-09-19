@@ -151,7 +151,7 @@
 	}
 </script>
 
-<div class="min-h-screen bg-base-200 p-4">
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4">
 	<!-- Launch Success Notification -->
 	{#if notification?.show}
 		<div class="notification-banner">
@@ -196,13 +196,13 @@
 		<!-- Top Row - Camera and Map -->
 		<div class="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
 			<!-- Live Camera Section -->
-			<div class="card h-full bg-base-100 shadow-xl">
-				<div class="card-body flex h-full flex-col">
-					<h2 class="card-title mb-4 text-xl">Live Camera</h2>
+			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 h-full">
+				<div class="p-6 flex h-full flex-col">
+					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Camera</h2>
 
 					<!-- Camera Feed Display -->
-					<div class="mb-4 flex aspect-video items-center justify-center rounded-lg bg-gray-300">
-						<div class="text-center text-gray-600">
+					<div class="mb-4 flex aspect-video items-center justify-center rounded-lg bg-blue-50 border border-blue-200">
+						<div class="text-center text-blue-600">
 							<svg
 								class="mx-auto mb-2 h-16 w-16"
 								fill="none"
@@ -216,21 +216,21 @@
 									d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
 								></path>
 							</svg>
-							<p>Camera {currentCamera} Feed</p>
-							<p class="text-sm">Streaming from /camera{currentCamera}/image_raw</p>
+							<p class="font-medium">Camera {currentCamera} Feed</p>
+							<p class="text-sm text-blue-500">Streaming from /camera{currentCamera}/image_raw</p>
 						</div>
 					</div>
 
 					<!-- Camera Switch Buttons -->
 					<div class="flex justify-center gap-2">
 						<button
-							class="btn {currentCamera === 1 ? 'btn-primary' : 'btn-outline'}"
+							class="px-4 py-2 rounded-lg font-medium transition-colors {currentCamera === 1 ? 'bg-blue-500 text-white' : 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
 							onclick={() => switchCamera(1)}
 						>
 							Camera 1
 						</button>
 						<button
-							class="btn {currentCamera === 2 ? 'btn-primary' : 'btn-outline'}"
+							class="px-4 py-2 rounded-lg font-medium transition-colors {currentCamera === 2 ? 'bg-blue-500 text-white' : 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
 							onclick={() => switchCamera(2)}
 						>
 							Camera 2
@@ -240,12 +240,12 @@
 			</div>
 
 			<!-- Map Section -->
-			<div class="card h-full bg-base-100 shadow-xl">
-				<div class="card-body flex h-full flex-col">
-					<h2 class="card-title mb-4 text-xl">Map</h2>
+			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 h-full">
+				<div class="p-6 flex h-full flex-col">
+					<h2 class="text-xl font-bold text-blue-900 mb-4">Map</h2>
 
 					<!-- Leaflet Map Display -->
-					<div class="relative mb-4 aspect-video flex-grow overflow-hidden rounded-lg">
+					<div class="relative mb-4 aspect-video flex-grow overflow-hidden rounded-lg border border-blue-200">
 						<div bind:this={mapContainer} class="z-0 h-full w-full"></div>
 					</div>
 				</div>
@@ -255,21 +255,21 @@
 		<!-- Bottom Row - Live Data, Data Table, Navigation -->
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
 			<!-- Live Metrics widened -->
-			<div class="card bg-base-100 shadow-xl lg:col-span-4">
-				<div class="card-body">
-					<h2 class="card-title mb-4 text-xl">Live Metrics</h2>
+			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 lg:col-span-4">
+				<div class="p-6">
+					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Metrics</h2>
 					<div class="mb-4 grid grid-cols-1 gap-2">
-						<div class="stat">
-							<div class="stat-title text-sm">IMU</div>
-							<div class="stat-value text-lg">{sensorData.imu}</div>
+						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+							<div class="text-sm text-blue-600 font-medium">IMU</div>
+							<div class="text-lg font-bold text-blue-900">{sensorData.imu}</div>
 						</div>
-						<div class="stat">
-							<div class="stat-title text-sm">TEMP</div>
-							<div class="stat-value text-lg">{sensorData.temperature}°C</div>
+						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+							<div class="text-sm text-blue-600 font-medium">TEMP</div>
+							<div class="text-lg font-bold text-blue-900">{sensorData.temperature}°C</div>
 						</div>
-						<div class="stat">
-							<div class="stat-title text-sm">Battery</div>
-							<div class="stat-value text-lg">{sensorData.battery}%</div>
+						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+							<div class="text-sm text-blue-600 font-medium">Battery</div>
+							<div class="text-lg font-bold text-blue-900">{sensorData.battery}%</div>
 						</div>
 					</div>
 
@@ -279,7 +279,7 @@
 							id="lidarMiniCanvas"
 							width="120"
 							height="120"
-							class="h-32 w-32"
+							class="h-32 w-32 border border-blue-200 rounded-lg"
 							bind:this={lidarCanvasEl}
 						></canvas>
 					</div>
@@ -287,25 +287,29 @@
 			</div>
 
 			<!-- Data Table narrowed -->
-			<div class="card bg-base-100 shadow-xl lg:col-span-6">
-				<div class="card-body">
-					<h2 class="card-title mb-4 text-xl">Data Table</h2>
+			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 lg:col-span-6">
+				<div class="p-6">
+					<h2 class="text-xl font-bold text-blue-900 mb-4">Data Table</h2>
 					<div class="overflow-x-auto">
-						<table class="table table-zebra w-full">
+						<table class="w-full">
 							<thead>
-								<tr>
-									<th>ID</th>
-									<th>Value</th>
-									<th>Status</th>
+								<tr class="border-b border-blue-200">
+									<th class="text-left text-blue-600 font-medium py-2">ID</th>
+									<th class="text-left text-blue-600 font-medium py-2">Value</th>
+									<th class="text-left text-blue-600 font-medium py-2">Status</th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each tableData as row}
-									<tr>
-										<td>{row.id}</td>
-										<td>{row.value}</td>
-										<td>
-											<span class="badge badge-outline">{row.status}</span>
+									<tr class="border-b border-blue-100 hover:bg-blue-50">
+										<td class="py-2 text-blue-900">{row.id}</td>
+										<td class="py-2 text-blue-900">{row.value}</td>
+										<td class="py-2">
+											<span class="px-2 py-1 rounded-full text-xs font-medium {
+												row.status === 'A' ? 'bg-blue-100 text-blue-600' :
+												row.status === 'B' ? 'bg-blue-200 text-blue-700' :
+												'bg-blue-300 text-blue-800'
+											}">{row.status}</span>
 										</td>
 									</tr>
 								{/each}
@@ -316,10 +320,10 @@
 			</div>
 
 			<!-- Navigation widened -->
-			<div class="card flex bg-base-100 shadow-xl lg:col-span-2">
-				<div class="card-body flex flex-col justify-center gap-4 p-4">
-					<a href="/manual-ctrl" class="btn btn-primary w-full">Manual Control</a>
-					<button class="btn btn-error w-full" onclick={emergencyStop}>E-Stop</button>
+			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 flex lg:col-span-2">
+				<div class="p-4 flex flex-col justify-center gap-4 w-full">
+					<a href="/manual-ctrl" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-center">Manual Control</a>
+					<button class="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg font-medium transition-colors" onclick={emergencyStop}>E-Stop</button>
 				</div>
 			</div>
 		</div>
@@ -339,11 +343,11 @@
 	}
 
 	.notification-content {
-		background: linear-gradient(135deg, #10b981, #059669);
+		background: linear-gradient(135deg, #3b82f6, #2563eb);
 		color: white;
 		padding: 16px 20px;
 		border-radius: 12px;
-		box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+		box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
 		display: flex;
 		align-items: flex-start;
 		gap: 12px;

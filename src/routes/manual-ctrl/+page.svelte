@@ -126,22 +126,22 @@
 	};
 </script>
 
-<div class="min-h-screen bg-gray-100 p-4" bind:this={component}>
-	<div class="mx-auto max-w-5xl overflow-hidden rounded-lg bg-white shadow-lg">
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4" bind:this={component}>
+	<div class="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-lg border border-blue-100">
 		<div class="p-6">
-			<h1 class="mb-6 text-center text-2xl font-bold">ROS Rover Control</h1>
+			<h1 class="mb-6 text-center text-2xl font-bold text-blue-900">ROS Rover Control</h1>
 
 			<!-- Connection status -->
-			<div class="mb-6 flex items-center justify-between rounded-lg bg-gray-50 p-4">
+			<div class="mb-6 flex items-center justify-between rounded-lg bg-blue-50 border border-blue-200 p-4">
 				<div>
-					<span class="font-semibold">Status:</span>
+					<span class="font-semibold text-blue-900">Status:</span>
 					<span class={statusColor}> {connectionStatus}</span>
 				</div>
 				{#if !isConnected}
 					<button
 						on:click={connectToRover}
 						disabled={connecting}
-						class="rounded bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:bg-blue-300"
+						class="rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600 disabled:bg-blue-300"
 					>
 						{connecting ? 'Connecting...' : 'Connect'}
 					</button>
@@ -163,7 +163,7 @@
 									on:touchstart={() => handleDirectionPress('forward')}
 									on:touchend={handleDirectionRelease}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-200 text-2xl hover:bg-gray-300 active:bg-gray-400"
+									class="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 border border-blue-300 text-2xl hover:bg-blue-200 active:bg-blue-300 text-blue-600 disabled:opacity-50"
 								>
 									↑
 								</button>
@@ -177,7 +177,7 @@
 									on:touchstart={() => handleDirectionPress('left')}
 									on:touchend={handleDirectionRelease}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-200 text-2xl hover:bg-gray-300 active:bg-gray-400"
+									class="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 border border-blue-300 text-2xl hover:bg-blue-200 active:bg-blue-300 text-blue-600 disabled:opacity-50"
 								>
 									←
 								</button>
@@ -186,7 +186,7 @@
 									on:mousedown={() => handleDirectionPress('stop')}
 									on:touchstart={() => handleDirectionPress('stop')}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-red-200 text-sm font-bold hover:bg-red-300 active:bg-red-400"
+									class="flex h-16 w-16 items-center justify-center rounded-lg bg-red-200 border border-red-300 text-sm font-bold hover:bg-red-300 active:bg-red-400 text-red-700 disabled:opacity-50"
 								>
 									STOP
 								</button>
@@ -198,7 +198,7 @@
 									on:touchstart={() => handleDirectionPress('right')}
 									on:touchend={handleDirectionRelease}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-200 text-2xl hover:bg-gray-300 active:bg-gray-400"
+									class="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 border border-blue-300 text-2xl hover:bg-blue-200 active:bg-blue-300 text-blue-600 disabled:opacity-50"
 								>
 									→
 								</button>
@@ -212,7 +212,7 @@
 									on:touchstart={() => handleDirectionPress('backward')}
 									on:touchend={handleDirectionRelease}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-200 text-2xl hover:bg-gray-300 active:bg-gray-400"
+									class="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 border border-blue-300 text-2xl hover:bg-blue-200 active:bg-blue-300 text-blue-600 disabled:opacity-50"
 								>
 									↓
 								</button>
@@ -221,7 +221,7 @@
 					</div>
 
 					<!-- Video Stream Section (Right side) -->
-					<div class="w-2/3 overflow-hidden rounded-lg bg-gray-100">
+					<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200">
 						<video
 							id="roverVideo"
 							autoplay
@@ -237,40 +237,40 @@
 				<!-- Lidar Visualization and Obstacle Detection Information -->
 				<div class="flex space-x-6">
 					<!-- Obstacle Detection Information (Left side) -->
-					<div class="w-1/3 rounded-lg bg-gray-100 p-4">
-						<h2 class="mb-4 text-xl font-semibold">Obstacles Forward Corridor</h2>
+					<div class="w-1/3 rounded-lg bg-blue-50 border border-blue-200 p-4">
+						<h2 class="mb-4 text-xl font-semibold text-blue-900">Obstacles Forward Corridor</h2>
 						<div class="flex flex-col space-y-4">
 							<div class="flex items-center">
-								<span class="mr-2 font-medium">Status:</span>
+								<span class="mr-2 font-medium text-blue-700">Status:</span>
 								<span
-									class={obstacleDetected ? 'font-bold text-red-500' : 'font-bold text-green-500'}
+									class={obstacleDetected ? 'font-bold text-red-500' : 'font-bold text-blue-600'}
 								>
 									{obstacleDetected ? 'Obstacle Detected!' : 'Clear Path'}
 								</span>
 							</div>
 							<div class="flex items-center">
-								<span class="mr-2 font-medium">Distance:</span>
+								<span class="mr-2 font-medium text-blue-700">Distance:</span>
 								{#if obstacleDetected}
 									<span class="font-bold text-red-500">
 										{obstacleDistance.toFixed(2)} meters
 									</span>
 								{:else}
-									<span class="italic text-gray-500"> No obstacles detected </span>
+									<span class="italic text-blue-500"> No obstacles detected </span>
 								{/if}
 							</div>
 						</div>
 
 						<!-- Command Log -->
 						<div class="mt-6">
-							<h3 class="mb-2 font-bold">Command Log:</h3>
-							<div class="h-40 overflow-y-auto rounded border border-gray-200 bg-gray-50 p-2">
+							<h3 class="mb-2 font-bold text-blue-900">Command Log:</h3>
+							<div class="h-40 overflow-y-auto rounded border border-blue-300 bg-white p-2">
 								{#if logs.length === 0}
-									<p class="italic text-gray-500">No commands sent yet.</p>
+									<p class="italic text-blue-500">No commands sent yet.</p>
 								{:else}
 									{#each logs as log}
 										<div class="mb-1 text-sm">
-											<span class="text-gray-500">[{log.time}]</span>
-											{log.message}
+											<span class="text-blue-400">[{log.time}]</span>
+											<span class="text-blue-700">{log.message}</span>
 										</div>
 									{/each}
 								{/if}
@@ -279,9 +279,9 @@
 					</div>
 
 					<!-- Lidar Visualization (Right side) -->
-					<div class="w-2/3 overflow-hidden rounded-lg bg-gray-100">
-						<div class="bg-gray-200 p-2">
-							<h2 class="text-xl font-semibold">Lidar Point Cloud</h2>
+					<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200">
+						<div class="bg-blue-100 border-b border-blue-200 p-2">
+							<h2 class="text-xl font-semibold text-blue-900">Lidar Point Cloud</h2>
 						</div>
 						<div class="relative h-64 w-full">
 							<canvas id="lidarCanvas" class="h-full w-full">

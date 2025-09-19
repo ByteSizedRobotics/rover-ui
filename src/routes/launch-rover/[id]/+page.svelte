@@ -226,11 +226,12 @@
 	}
 </script>
 
-<div class="container">
-	<header class="page-header">
-		<h1 class="title">Launch Rover {roverId}</h1>
-		<div class="divider"></div>
-	</header>
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6">
+	<div class="container max-w-4xl mx-auto">
+		<header class="page-header bg-white rounded-2xl border border-blue-100 shadow-lg p-6 mb-6">
+			<h1 class="title text-3xl font-bold text-blue-900">Launch Rover-{roverId}</h1>
+			<div class="divider mt-4 h-1 bg-gradient-to-r from-blue-500 to-blue-300 rounded"></div>
+		</header>
 
 	{#if waypoints.length === 0}
 		<div class="empty-state">
@@ -269,8 +270,8 @@
 			</div>
 		</section>
 
-		<section class="launch-section">
-			<button class="confirm" on:click={confirmLaunch} disabled={connecting}>
+		<section class="launch-section mb-6 text-center">
+			<button class="confirm bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 shadow-lg" on:click={confirmLaunch} disabled={connecting}>
 				<span class="btn-text">
 					{#if connecting}
 						Connecting & Launching...
@@ -283,38 +284,39 @@
 			</button>
 		</section>
 
-		<section class="log-section">
-			<h2 class="section-title">Launch Log</h2>
-			<div class="log-container">
+		<section class="log-section bg-white rounded-2xl border border-blue-100 shadow-lg p-6">
+			<h2 class="section-title text-2xl font-bold text-blue-900 mb-4">Launch Log</h2>
+			<div class="log-container bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-64 overflow-y-auto">
 				{#if logs.length > 0}
 					{#each logs as log}
-						<div class="log-entry {log.type}">
-							<span class="timestamp">{log.time}</span>
-							<span class="log-message">{log.message}</span>
+						<div class="log-entry mb-2 p-2 rounded {log.type === 'error' ? 'bg-red-100 text-red-700' : log.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">
+							<span class="timestamp text-xs opacity-75">{log.time}</span>
+							<span class="log-message ml-2">{log.message}</span>
 						</div>
 					{/each}
 					{#if status}
 						<div
-							class="log-entry {status.includes('failed')
-								? 'error'
+							class="log-entry mb-2 p-2 rounded {status.includes('failed')
+								? 'bg-red-100 text-red-700'
 								: status.includes('Launching')
-									? 'info'
-									: 'success'}"
+									? 'bg-blue-100 text-blue-700'
+									: 'bg-green-100 text-green-700'}"
 						>
-							<span class="timestamp">{new Date().toLocaleTimeString()}</span>
-							<span class="log-message">{status}</span>
+							<span class="timestamp text-xs opacity-75">{new Date().toLocaleTimeString()}</span>
+							<span class="log-message ml-2">{status}</span>
 						</div>
 					{/if}
 				{:else}
-					<p class="no-logs">No launch activity yet. Click "Confirm Launch" to begin.</p>
+					<p class="no-logs text-blue-600 italic">No launch activity yet. Click "Confirm Launch" to begin.</p>
 				{/if}
 			</div>
 		</section>
 	{/if}
 
 	<!-- Back to map (bottom-left) -->
-	<div class="bottom-left">
-		<a class="btn" href={`/map/${encodeURIComponent(roverId)}`}>← Back to Map</a>
+	<div class="bottom-left fixed left-4 bottom-4 z-10">
+		<a class="btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-lg" href={`/map/${encodeURIComponent(roverId)}`}>← Back to Map</a>
+	</div>
 	</div>
 </div>
 

@@ -361,43 +361,46 @@
 	}
 </script>
 
-<div class="controls">
-	<div style="position:relative;">
-		<input
-			type="text"
-			bind:value={startAddress}
-			placeholder="Enter start location"
-			on:input={handleStartInput}
-			on:focus={() => {
-				if (startSuggestions.length > 0) showStartSuggestions = true;
-			}}
-			on:blur={() => {
-				// Delay hiding suggestions to allow click to register
-				setTimeout(() => (showStartSuggestions = false), 200);
-			}}
-		/>
-		{#if showStartSuggestions && startSuggestions.length > 0}
-			<div class="suggestions">
-				{#each startSuggestions as suggestion}
-					<div
-						class="suggestion-item"
-						on:mousedown|preventDefault={() => selectStartSuggestion(suggestion)}
-					>
-						{formatSuggestion(suggestion)}
-					</div>
-				{/each}
-			</div>
-		{/if}
-	</div>
-	<div style="position:relative;">
-		<input
-			type="text"
-			bind:value={endAddress}
-			placeholder="Enter destination"
-			on:input={handleEndInput}
-			on:focus={() => {
-				if (endSuggestions.length > 0) showEndSuggestions = true;
-			}}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4">
+	<div class="controls">
+		<div style="position:relative;">
+			<input
+				type="text"
+				bind:value={startAddress}
+				placeholder="Enter start location"
+				class="input-field"
+				on:input={handleStartInput}
+				on:focus={() => {
+					if (startSuggestions.length > 0) showStartSuggestions = true;
+				}}
+				on:blur={() => {
+					// Delay hiding suggestions to allow click to register
+					setTimeout(() => (showStartSuggestions = false), 200);
+				}}
+			/>
+			{#if showStartSuggestions && startSuggestions.length > 0}
+				<div class="suggestions">
+					{#each startSuggestions as suggestion}
+						<div
+							class="suggestion-item"
+							on:mousedown|preventDefault={() => selectStartSuggestion(suggestion)}
+						>
+							{formatSuggestion(suggestion)}
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+		<div style="position:relative;">
+			<input
+				type="text"
+				bind:value={endAddress}
+				placeholder="Enter destination"
+				class="input-field"
+				on:input={handleEndInput}
+				on:focus={() => {
+					if (endSuggestions.length > 0) showEndSuggestions = true;
+				}}
 			on:blur={() => {
 				// Delay hiding suggestions to allow click to register
 				setTimeout(() => (showEndSuggestions = false), 200);
@@ -416,17 +419,18 @@
 			</div>
 		{/if}
 	</div>
-	<button on:click={setRoute}>Set Route</button>
+	<button class="set-route-btn" on:click={setRoute}>Set Route</button>
 	{#if routeSelected}
-		<button class="launch" on:click={launchRover}>Launch Rover</button>
+		<button class="launch-btn" on:click={launchRover}>Launch Rover</button>
 	{/if}
 </div>
 
-<div id="map"></div>
+<div id="map" class="map-container"></div>
 
 <!-- Fixed back button bottom-left -->
 <div class="bottom-left">
 	<a href="/" class="back-button">← Home</a>
+</div>
 </div>
 <!-- ``` We need to add dynamic map subpage for each rover id, modify main page to link to it, and make map
 use rover id when launching — the created file copy already does that (done). Now implement the launch-rover
@@ -438,55 +442,97 @@ and an API route `src/routes/api/launch/[id].ts` that accepts POST and returns s
 <style>
 	.suggestions {
 		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
 		background: white;
-		border: 1px solid #ccc;
-		border-radius: 5px;
-		width: 200px;
-		max-height: 180px;
+		border: 1px solid #cbd5e1;
+		border-radius: 0.5rem;
+		box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
+		z-index: 1000;
+		max-height: 200px;
 		overflow-y: auto;
-		z-index: 1001;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 	}
+
 	.suggestion-item {
-		padding: 8px;
+		padding: 12px;
 		cursor: pointer;
+		border-bottom: 1px solid #e2e8f0;
+		color: #1e40af;
+		transition: background-color 0.2s;
 	}
-	#map {
+
+	.suggestion-item:hover {
+		background-color: #dbeafe;
+	}
+
+	.suggestion-item:last-child {
+		border-bottom: none;
+	}
+
+	#map,
+	.map-container {
 		height: 900px;
+		border-radius: 1rem;
+		border: 2px solid #dbeafe;
+		overflow: hidden;
 	}
 
 	.controls {
 		display: flex;
-		gap: 10px;
-		margin-bottom: 10px;
+		gap: 12px;
+		margin-bottom: 16px;
+		padding: 20px;
+		background: white;
+		border-radius: 1rem;
+		border: 1px solid #dbeafe;
+		box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
 	}
 
-	input {
-		padding: 8px;
-		border: 1px solid #ccc;
-		border-radius: 5px;
-		width: 200px;
+	.input-field {
+		padding: 12px 16px;
+		border: 2px solid #cbd5e1;
+		border-radius: 0.5rem;
+		width: 250px;
+		font-size: 14px;
+		transition: border-color 0.2s, box-shadow 0.2s;
+		background: white;
 	}
 
-	button {
-		padding: 8px 12px;
-		background: #007bff;
+	.input-field:focus {
+		outline: none;
+		border-color: #3b82f6;
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+	}
+
+	.set-route-btn {
+		padding: 12px 20px;
+		background: #3b82f6;
 		color: white;
 		border: none;
-		border-radius: 5px;
+		border-radius: 0.5rem;
 		cursor: pointer;
+		font-weight: 500;
+		transition: background-color 0.2s;
 	}
 
-	button:hover {
-		background: #0056b3;
+	.set-route-btn:hover {
+		background: #2563eb;
 	}
 
-	/* Launch button (red) */
-	.launch {
-		background: #dc2626; /* red-600 */
+	.launch-btn {
+		padding: 12px 20px;
+		background: #dc2626;
+		color: white;
+		border: none;
+		border-radius: 0.5rem;
+		cursor: pointer;
+		font-weight: 500;
+		transition: background-color 0.2s;
 	}
-	.launch:hover {
-		background: #b91c1c; /* red-700 */
+
+	.launch-btn:hover {
+		background: #b91c1c;
 	}
 
 	/* Fixed back button in bottom-left */
@@ -499,19 +545,22 @@ and an API route `src/routes/api/launch/[id].ts` that accepts POST and returns s
 
 	.back-button {
 		display: inline-block;
-		padding: 8px 12px;
-		background: #007bff;
+		padding: 12px 16px;
+		background: #3b82f6;
 		color: white;
 		border: none;
-		border-radius: 5px;
+		border-radius: 0.5rem;
 		cursor: pointer;
 		text-decoration: none;
 		font-family: inherit;
-		font-size: inherit;
+		font-size: 14px;
+		font-weight: 500;
+		transition: background-color 0.2s;
+		box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
 	}
 
 	.back-button:hover {
-		background: #0056b3;
+		background: #2563eb;
 		color: white;
 	}
 </style>
