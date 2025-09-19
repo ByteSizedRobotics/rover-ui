@@ -148,14 +148,12 @@
 					<div class="relative mb-6">
 						<div class="absolute inset-0 rounded-full bg-blue-500/10 blur-xl transition-all duration-300 group-hover:blur-2xl"></div>
 						<div class="relative h-32 w-32 overflow-hidden rounded-full border-4 border-blue-200 bg-gradient-to-br from-blue-100 to-blue-200 transition-all duration-300 group-hover:border-blue-300">
-							<!-- Placeholder for team member photo -->
-							<div class="flex h-full w-full items-center justify-center text-4xl text-blue-600">
-								👨‍💻
-							</div>
+							<!-- Team member photo -->
+							<img src="/nathan.JPG" alt="Team Member 1" class="h-full w-full object-cover scale-90" />
 						</div>
 					</div>
 					<h3 class="mb-2 text-xl font-bold text-gray-800">Team Member 1</h3>
-					<p class="mb-2 text-sm font-medium text-blue-600">Lead Developer</p>
+					<p class="mb-2 text-sm font-medium text-blue-600">Title (eg. Lead Developer)</p>
 					<p class="text-center text-sm text-gray-600">Computer Engineering Student specializing in autonomous systems and robotics</p>
 				</div>
 
@@ -164,14 +162,12 @@
 					<div class="relative mb-6">
 						<div class="absolute inset-0 rounded-full bg-green-500/10 blur-xl transition-all duration-300 group-hover:blur-2xl"></div>
 						<div class="relative h-32 w-32 overflow-hidden rounded-full border-4 border-green-200 bg-gradient-to-br from-green-100 to-green-200 transition-all duration-300 group-hover:border-green-300">
-							<!-- Placeholder for team member photo -->
-							<div class="flex h-full w-full items-center justify-center text-4xl text-green-600">
-								👩‍💻
-							</div>
+							<!-- Team member photo -->
+							<img src="/maxime2.JPG" alt="Team Member 2" class="h-full w-full object-cover scale-200" />
 						</div>
 					</div>
 					<h3 class="mb-2 text-xl font-bold text-gray-800">Team Member 2</h3>
-					<p class="mb-2 text-sm font-medium text-green-600">AI/ML Engineer</p>
+					<p class="mb-2 text-sm font-medium text-green-600">Title</p>
 					<p class="text-center text-sm text-gray-600">Computer Engineering Student focusing on machine learning and computer vision</p>
 				</div>
 
@@ -180,14 +176,12 @@
 					<div class="relative mb-6">
 						<div class="absolute inset-0 rounded-full bg-purple-500/10 blur-xl transition-all duration-300 group-hover:blur-2xl"></div>
 						<div class="relative h-32 w-32 overflow-hidden rounded-full border-4 border-purple-200 bg-gradient-to-br from-purple-100 to-purple-200 transition-all duration-300 group-hover:border-purple-300">
-							<!-- Placeholder for team member photo -->
-							<div class="flex h-full w-full items-center justify-center text-4xl text-purple-600">
-								👨‍💻
-							</div>
+							<!-- Team member photo -->
+							<img src="/UE5_1.png" alt="Team Member 3" class="h-full w-full object-cover" />
 						</div>
 					</div>
 					<h3 class="mb-2 text-xl font-bold text-gray-800">Team Member 3</h3>
-					<p class="mb-2 text-sm font-medium text-purple-600">Systems Architect</p>
+					<p class="mb-2 text-sm font-medium text-purple-600">Title</p>
 					<p class="text-center text-sm text-gray-600">Computer Engineering Student specializing in distributed systems and infrastructure</p>
 				</div>
 
@@ -196,14 +190,12 @@
 					<div class="relative mb-6">
 						<div class="absolute inset-0 rounded-full bg-orange-500/10 blur-xl transition-all duration-300 group-hover:blur-2xl"></div>
 						<div class="relative h-32 w-32 overflow-hidden rounded-full border-4 border-orange-200 bg-gradient-to-br from-orange-100 to-orange-200 transition-all duration-300 group-hover:border-orange-300">
-							<!-- Placeholder for team member photo -->
-							<div class="flex h-full w-full items-center justify-center text-4xl text-orange-600">
-								👩‍💻
-							</div>
+							<!-- Team member photo -->
+							<img src="/PotholeExplorer.png" alt="Team Member 4" class="h-full w-full object-cover" />
 						</div>
 					</div>
 					<h3 class="mb-2 text-xl font-bold text-gray-800">Team Member 4</h3>
-					<p class="mb-2 text-sm font-medium text-orange-600">Full-Stack Developer</p>
+					<p class="mb-2 text-sm font-medium text-orange-600">Title</p>
 					<p class="text-center text-sm text-gray-600">Computer Engineering Student focusing on web development and user experience</p>
 				</div>
 			</div>
