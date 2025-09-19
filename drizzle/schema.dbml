@@ -32,7 +32,7 @@ Table paths {
 Table rovers {
   id serial [pk, not null, increment]
   name varchar(100) [not null]
-  status varchar(50) [not null, default: 'active']
+  last_heartbeat "timestamp with time zone" [default: `now()`]
   ip_address varchar(45) [not null]
 }
 

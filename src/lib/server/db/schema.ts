@@ -34,7 +34,7 @@ export const session = pgTable('session', {
 export const rovers = pgTable('rovers', {
 	id: serial('id').primaryKey().notNull(),
 	name: varchar('name', { length: 100 }).notNull(),
-	status: varchar('status', { length: 50 }).notNull().default('active'),
+	lastHeartbeat: timestamp('last_heartbeat', { withTimezone: true }).defaultNow(),
 	ipAddress: varchar('ip_address', { length: 45 }).notNull() // IPv4/IPv6
 });
 
