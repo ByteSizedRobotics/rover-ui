@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageServerData } from './$types';
+	import { getRoverStatus, minutesFromNow } from '$lib/utils';
 	
 	let { data }: { data: PageServerData } = $props();
 	
@@ -8,6 +9,7 @@
 	let searchQuery = $state('');
 	let filteredRovers = $state(data.roversData);
 	
+	// TODO: remove this
 	// Simulate health and heartbeat data for enhanced UI
 	// In a real app, this would come from the database or real-time monitoring
 	function getSimulatedHealth(rover: any) {
@@ -40,12 +42,12 @@
 	// Computed counts
 	$effect(() => {
 		let filtered = data.roversData;
-		
+
 		// Apply status filter
 		if (filter !== 'all') {
-			filtered = filtered.filter(rover => rover.status === filter);
+			filtered = filtered.filter(rover => getRoverStatus(rover) === filter);
 		}
-		
+
 		// Apply search filter
 		if (searchQuery.trim()) {
 			const query = searchQuery.toLowerCase();
@@ -54,12 +56,12 @@
 				rover.id.toString().includes(query)
 			);
 		}
-		
+
 		filteredRovers = filtered;
 	});
-	
-	const activeCounts = $derived(data.roversData.filter(r => r.status === 'active').length);
-	const inactiveCounts = $derived(data.roversData.filter(r => r.status === 'inactive').length);
+
+	const activeCounts = $derived(data.roversData.filter(r => getRoverStatus(r) === 'active').length);
+	const inactiveCounts = $derived(data.roversData.filter(r => getRoverStatus(r) === 'inactive').length);
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
@@ -121,7 +123,7 @@
 		<main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each filteredRovers as rover (rover.id)}
 				{@const health = getSimulatedHealth(rover)}
-				{@const heartbeatMins = getSimulatedHeartbeat(rover)}
+				{@const heartbeatMins = minutesFromNow(rover.lastHeartbeat ?? new Date(0))}
 				
 				<article 
 					class="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-blue-100"
@@ -131,7 +133,7 @@
 					<!-- Image -->
 					<figure class="relative">
 						<div class="aspect-video bg-blue-50 overflow-hidden rounded-t-2xl">
-							{#if rover.status === 'active'}
+							{#if getRoverStatus(rover) === 'active'}
 								<img src="./UE5_1.png" alt={rover.name} class="w-full h-full object-cover scale-150" />
 							{:else}
 								<img src="./PathPlan.png" alt={rover.name} class="w-full h-full object-cover scale-75" />
@@ -141,8 +143,8 @@
 						<!-- Status badge -->
 						<div class="absolute top-3 left-3">
 							<div class="px-3 py-1 rounded-full bg-black/50 border border-blue-200/30 text-white backdrop-blur-sm text-sm font-medium flex items-center gap-2">
-								<div class="w-2 h-2 rounded-full {rover.status === 'active' ? 'bg-green-400' : health === 'warn' ? 'bg-yellow-400' : 'bg-red-400'}"></div>
-								{rover.status.toUpperCase()}
+								<div class="w-2 h-2 rounded-full {getRoverStatus(rover) === 'active' ? 'bg-green-400' : health === 'warn' ? 'bg-yellow-400' : 'bg-red-400'}"></div>
+								{getRoverStatus(rover).toUpperCase()}
 							</div>
 						</div>
 					</figure>
@@ -161,7 +163,7 @@
 						
 						<!-- Actions -->
 						<div class="flex gap-2 mt-auto">
-							{#if rover.status === 'active'}
+							{#if getRoverStatus(rover) === 'active'}
 								<a href="/rovers/{rover.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
 									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
