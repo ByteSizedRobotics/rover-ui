@@ -29,7 +29,7 @@ CREATE TABLE "paths" (
 CREATE TABLE "rovers" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(100) NOT NULL,
-	"status" varchar(50) DEFAULT 'active' NOT NULL,
+	"last_heartbeat" timestamp with time zone DEFAULT now(),
 	"ip_address" varchar(45) NOT NULL
 );
 --> statement-breakpoint
@@ -54,10 +54,10 @@ CREATE INDEX "idx_images_location" ON "images" USING gist ("location" gist_geome
 CREATE INDEX "idx_paths_route" ON "paths" USING gist ("route" gist_geometry_ops_2d);
 
 -- === Seed Rovers ===
-INSERT INTO rovers (name, status, ip_address)
+INSERT INTO rovers (name, ip_address)
 VALUES
-  ('Curiosity', 'active', '192.168.1.10'),
-  ('Perseverance', 'active', '192.168.1.11')
+  ('Curiosity', '192.168.1.10'),
+  ('Perseverance', '192.168.1.11')
 RETURNING id;
 
 -- === Seed Paths ===

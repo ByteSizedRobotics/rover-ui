@@ -234,12 +234,12 @@
           "primaryKey": false,
           "notNull": true
         },
-        "status": {
-          "name": "status",
-          "type": "varchar(50)",
+        "last_heartbeat": {
+          "name": "last_heartbeat",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
-          "default": "'active'"
+          "default": "now()"
         },
         "ip_address": {
           "name": "ip_address",

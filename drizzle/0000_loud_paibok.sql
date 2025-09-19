@@ -26,7 +26,7 @@ CREATE TABLE "paths" (
 CREATE TABLE "rovers" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(100) NOT NULL,
-	"status" varchar(50) DEFAULT 'active' NOT NULL,
+	"last_heartbeat" timestamp with time zone DEFAULT now(),
 	"ip_address" varchar(45) NOT NULL
 );
 --> statement-breakpoint
