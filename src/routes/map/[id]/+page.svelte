@@ -428,12 +428,12 @@
 <div class="bottom-left">
 	<a href="/" class="back-button">← Home</a>
 </div>
-``` We need to add dynamic map subpage for each rover id, modify main page to link to it, and make map
+<!-- ``` We need to add dynamic map subpage for each rover id, modify main page to link to it, and make map
 use rover id when launching — the created file copy already does that (done). Now implement the launch-rover
 page to read sessionStorage key and display waypoints and a Launch confirm button that POSTs to /api/launch/:id
 (stub) and shows result. We also should remove the `window.prompt` from the original map page launchRover
 if still present. The new dynamic page uses roverId so that's done. Create `src/routes/launch-rover/[id]/+page.svelte`
-and an API route `src/routes/api/launch/[id].ts` that accepts POST and returns success (stub).
+and an API route `src/routes/api/launch/[id].ts` that accepts POST and returns success (stub). -->
 
 <style>
 	.suggestions {

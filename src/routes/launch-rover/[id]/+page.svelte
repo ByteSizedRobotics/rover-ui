@@ -391,8 +391,8 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-		max-height: 320px;
-		min-height: 320px;
+		max-height: 400px;
+		min-height: 400px;
 		overflow: auto;
 	}
 
@@ -552,8 +552,8 @@
 		overflow: auto;
 		box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 		flex: 1;
-		max-height: 320px;
-		min-height: 320px;
+		max-height: 400px;
+		min-height: 400px;
 	}
 
 	.wp-count {
