@@ -12,8 +12,13 @@ export const createPathFixture = async (rover_id?: number, routeWKT?: string) =>
 	const result = await db.execute(`
     INSERT INTO paths ("rover_id", route)
     VALUES (${rover_id}, ST_GeomFromText('${routeWKT}', 4326))
-    RETURNING *;
+    RETURNING id, rover_id, timestamp, ST_AsGeoJSON(route) AS route;
   `);
 
-	return result.rows[0];
+	// Parse the GeoJSON string for consistency with API
+	const row = result.rows[0];
+	if (typeof row.route === 'string') {
+		row.route = JSON.parse(row.route);
+	}
+	return row;
 };
