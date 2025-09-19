@@ -121,7 +121,7 @@
 		<div class="mx-auto mt-10 grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-3">
 			<div class="text-center">
 				<div class="mb-2 text-3xl font-bold text-blue-600">Autonomous</div>
-				<div class="text-gray-600">Monitor Infrastructure</div>
+				<div class="text-gray-600">Navigation System</div>
 			</div>
 			<div class="text-center">
 				<div class="mb-2 text-3xl font-bold text-green-600">Real-time</div>
