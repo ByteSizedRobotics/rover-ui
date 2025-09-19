@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Rover Switchboard — Image-First</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0B0B0E;
+      --panel:#121218;
+      --panel-2:#15151d;
+      --text:#EDEDED;
+      --muted:#B8B8C3;
+      --subtle:#8A8A97;
+      --accent:#FF6A00;          /* orange */
+      --accent-2:#FF9350;
+      --ok:#29CC7A;
+      --warn:#FFCE55;
+      --bad:#FF5577;
+      --chip:#1C1C25;
+      --stroke:#1F1F2A;
+      --radius: 16px;
+      --radius-sm: 12px;
+      --shadow: 0 12px 36px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.02);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:linear-gradient(180deg,#09090C 0%, #0B0B0E 100%);
+      color:var(--text); font: 500 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      letter-spacing:.2px;
+    }
+    .wrap{max-width:1200px; margin:0 auto; padding:28px 20px 80px}
+    header{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px}
+    .title{display:flex; align-items:center; gap:14px}
+    .logo{width:40px; height:40px; border-radius:12px; background:
+      radial-gradient(60% 70% at 30% 30%, rgba(255,106,0,.35), transparent 60%),
+      linear-gradient(135deg, #1b1b22 0%, #101018 100%);
+      box-shadow:var(--shadow); display:grid; place-items:center; border:1px solid var(--stroke)}
+    .logo::before{content:"➟"; font-size:18px; color:var(--accent); transform:translateY(-1px)}
+    h1{font-size:22px; margin:0}
+    .counts{display:flex; gap:10px; color:var(--muted); font-size:13px}
+    .counts b{color:var(--text)}
+
+    .toolbar{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+    .seg{display:flex; background:var(--panel); padding:6px; border-radius:999px; border:1px solid var(--stroke); box-shadow:var(--shadow)}
+    .seg button{appearance:none; border:0; background:transparent; color:var(--muted); padding:10px 16px; border-radius:999px; font-weight:600; cursor:pointer; transition:.2s ease}
+    .seg button[aria-pressed="true"]{color:var(--bg); background:linear-gradient(180deg,var(--accent) 0%, var(--accent-2) 100%); box-shadow: 0 6px 16px rgba(255,106,0,.35)}
+
+    .field{display:flex; align-items:center; gap:10px; background:var(--panel); padding:12px 14px; border-radius:999px; border:1px solid var(--stroke); box-shadow:var(--shadow)}
+    .field input, .field select{background:transparent; border:0; color:var(--text); outline:none; min-width:0}
+    .field input::placeholder{color:var(--subtle)}
+
+    .grid{display:grid; grid-template-columns: repeat(12, 1fr); gap:16px; margin-top:16px}
+    @media (max-width:1100px){ .grid{grid-template-columns: repeat(8, 1fr);} }
+    @media (max-width:720px){ .grid{grid-template-columns: repeat(4, 1fr);} }
+
+    .card{grid-column: span 6; background:linear-gradient(180deg, #14141d 0%, #101018 100%);
+      border:1px solid var(--stroke); border-radius:var(--radius); overflow:hidden; position:relative; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease}
+    .card:hover{ transform: translateY(-2px); box-shadow:var(--shadow); border-color:#2a2a38 }
+
+    .media{aspect-ratio: 16/9; background:#0f0f15; border-bottom:1px solid var(--stroke); position:relative}
+    .media img{width:100%; height:100%; object-fit:cover; display:block}
+    .badge{position:absolute; top:12px; left:12px; display:inline-flex; align-items:center; gap:8px; background:rgba(0,0,0,.45); backdrop-filter: blur(6px); border:1px solid var(--stroke); padding:6px 10px; border-radius:999px; font-size:12px}
+    .dot{width:8px; height:8px; border-radius:999px; background:var(--subtle)}
+    .dot.ok{background:var(--ok)}
+    .dot.warn{background:var(--warn)}
+    .dot.bad{background:var(--bad)}
+
+    .body{padding:16px 16px 18px 16px; display:grid; gap:12px}
+    .topline{display:flex; gap:10px; align-items:center}
+    .id{background:var(--chip); border:1px solid var(--stroke); padding:6px 10px; border-radius:10px; color:var(--muted); font-size:13px}
+    .name{font-weight:800; font-size:18px; letter-spacing:.2px}
+    .spacer{flex:1}
+    .small{font-size:12px; color:var(--muted)}
+
+    .actions{display:flex; gap:12px}
+    .btn{appearance:none; border:1px solid var(--stroke); background:var(--panel-2); color:var(--text); padding:12px 14px; border-radius:12px; font-weight:800; letter-spacing:.3px; cursor:pointer; transition:.15s ease; flex:1; text-align:center}
+    .btn:hover{ border-color:#2a2a38 }
+    .btn.primary{background:linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%); color:#0b0b0e; border-color:transparent; box-shadow: 0 8px 16px rgba(255,106,0,.35)}
+
+    .footer-hint{margin-top:20px; color:var(--subtle); font-size:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    .kbd{border:1px solid var(--stroke); background:var(--chip); padding:3px 6px; border-radius:6px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app">
+    <header>
+      <div class="title">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Rover Switchboard</h1>
+          <div class="counts" id="counts">Active: <b>0</b> • Inactive: <b>0</b> • All: <b>0</b></div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="seg" role="tablist" aria-label="Rover status filter">
+          <button role="tab" data-filter="all" aria-pressed="true">All</button>
+          <button role="tab" data-filter="active">Active</button>
+          <button role="tab" data-filter="inactive">Inactive</button>
+        </div>
+        <div class="field" role="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-4.2-4.2M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" stroke-width="1.5" opacity=".6"/></svg>
+          <input id="q" type="search" placeholder="Search rovers..." />
+        </div>
+      </div>
+    </header>
+
+    <main class="grid" id="grid" aria-live="polite"></main>
+
+    <div class="footer-hint">
+      Tips:
+      <span class="kbd">/</span> to focus search
+      <span class="kbd">1</span>/<span class="kbd">2</span>/<span class="kbd">3</span> to switch All/Active/Inactive
+      <span class="kbd">Enter</span> to trigger the primary action on a focused card
+    </div>
+  </div>
+
+  <script>
+    // --- Example data (exactly 3 rovers). Replace with your feed ---
+    const rovers = [
+      { id:"RX-201", name:"Vanguard", status:"active", lastHeartbeatMins:2, health:"ok", image:"https://images.unsplash.com/photo-1534791547709-4fa4a4eb3df9?q=80&w=1600&auto=format&fit=crop" },
+      { id:"RX-118", name:"Hermes", status:"inactive", lastHeartbeatMins:49, health:"warn", image:"https://images.unsplash.com/photo-1543946602-08df3fba6f9e?q=80&w=1600&auto=format&fit=crop" },
+      { id:"RX-560", name:"Ion", status:"active", lastHeartbeatMins:1, health:"bad", image:"https://images.unsplash.com/photo-1482192596544-9eb780fc7f66?q=80&w=1600&auto=format&fit=crop" }
+    ];
+
+    // --- Wiring points: replace with your navigation/state handlers ---
+    function onPlanPath(roverId){
+      // e.g., route to /planner?rover=roverId
+      alert("Plan Path for " + roverId);
+    }
+    function onOpenMetrics(roverId){
+      // e.g., route to /rovers/" + roverId + "/metrics
+      alert("Open Live Metrics for " + roverId);
+    }
+
+    // --- State & rendering ---
+    const state = { filter:"all", q:"" };
+    const elGrid = document.getElementById("grid");
+    const elCounts = document.getElementById("counts");
+    const elQ = document.getElementById("q");
+
+    document.querySelectorAll('[data-filter]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed','false'));
+        btn.setAttribute('aria-pressed','true');
+        state.filter = btn.dataset.filter;
+        render();
+      });
+    });
+    elQ.addEventListener('input', e=>{ state.q = e.target.value.trim().toLowerCase(); render(); });
+
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === '/') { e.preventDefault(); elQ.focus(); }
+      if(e.key === '1'){ clickFilter('all'); }
+      if(e.key === '2'){ clickFilter('active'); }
+      if(e.key === '3'){ clickFilter('inactive'); }
+    });
+    function clickFilter(which){ const btn = document.querySelector(`[data-filter="${which}"]`); btn.click(); }
+
+    function formatHeartbeat(mins){
+      if (mins < 1) return "just now";
+      if (mins === 1) return "1 min ago";
+      if (mins < 60) return `${mins} mins ago`;
+      const h = Math.floor(mins/60), m = mins % 60;
+      return `${h}h ${m}m ago`;
+    }
+
+    function computeCounts(list){
+      const a = list.filter(r=>r.status==='active').length;
+      const i = list.filter(r=>r.status==='inactive').length;
+      elCounts.innerHTML = `Active: <b>${a}</b> • Inactive: <b>${i}</b> • All: <b>${list.length}</b>`;
+    }
+
+    function filterList(){
+      let list = rovers.slice();
+      if(state.filter !== 'all') list = list.filter(r => r.status === state.filter);
+      if(state.q){
+        list = list.filter(r => (r.id + " " + r.name).toLowerCase().includes(state.q));
+      }
+      return list;
+    }
+
+    function badgeClass(health){ if(health==='ok') return 'ok'; if(health==='warn') return 'warn'; return 'bad'; }
+
+    function render(){
+      const list = filterList();
+      computeCounts(rovers);
+      elGrid.innerHTML = "";
+
+      if(list.length === 0){
+        const empty = document.createElement('div');
+        empty.style.gridColumn = '1/-1';
+        empty.style.display = 'grid';
+        empty.style.placeItems = 'center';
+        empty.style.padding = '46px';
+        empty.style.border = '1px dashed var(--stroke)';
+        empty.style.borderRadius = 'var(--radius)';
+        empty.style.color = 'var(--muted)';
+        empty.textContent = 'No rovers match your filters.';
+        elGrid.appendChild(empty);
+        return;
+      }
+
+      list.forEach((r)=>{
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.tabIndex = 0;
+        card.setAttribute('role','group');
+        card.setAttribute('aria-label', `${r.name} ${r.id}`);
+
+        card.innerHTML = `
+          <div class="media">
+            <img src="${r.image}" alt="${r.name} preview" />
+            <span class="badge"><span class="dot ${badgeClass(r.health)}"></span>${r.status.toUpperCase()}</span>
+          </div>
+          <div class="body">
+            <div class="topline">
+              <span class="id">${r.id}</span>
+              <div class="name">${r.name}</div>
+              <div class="spacer"></div>
+              <div class="small">⏱ ${formatHeartbeat(r.lastHeartbeatMins)}</div>
+            </div>
+            <div class="actions">
+              ${
+                r.status === 'inactive'
+                ? `<button class=\"btn primary act\" data-act=\"plan\" data-id=\"${r.id}\" aria-label=\"Plan path for ${r.name}\">Plan Path</button>
+                   <button class=\"btn act\" data-act=\"metrics\" data-id=\"${r.id}\" aria-label=\"Open metrics for ${r.name}\">View Metrics</button>`
+                : `<button class=\"btn primary act\" data-act=\"metrics\" data-id=\"${r.id}\" aria-label=\"Open live metrics for ${r.name}\">Open Live Metrics</button>
+                   <button class=\"btn act\" data-act=\"plan\" data-id=\"${r.id}\" aria-label=\"Plan path for ${r.name}\">Plan Path</button>`
+              }
+            </div>
+          </div>
+        `;
+
+        // Keyboard: Enter triggers the primary action
+        card.addEventListener('keydown', (e)=>{
+          if(e.key === 'Enter'){
+            const primary = card.querySelector('.btn.primary.act');
+            if(primary){ primary.click(); }
+          }
+        });
+
+        // Wire action buttons
+        card.querySelectorAll('.act').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const id = btn.dataset.id;
+            const act = btn.dataset.act;
+            if(act === 'plan') onPlanPath(id); else onOpenMetrics(id);
+          });
+        });
+
+        elGrid.appendChild(card);
+      });
+    }
+
+    // Initial paint
+    render();
+  </script>
+</body>
+</html>
