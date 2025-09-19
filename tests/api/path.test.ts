@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { api } from '../utils/api';
 import { createPathFixture } from '../fixtures/path';
+import { createRoverFixture } from '../fixtures/rover';
 
 
 const sampleLineString1 = 'LINESTRING(0 0, 1 1, 2 3)';
@@ -41,5 +42,27 @@ describe('GET /api/paths', () => {
                 })
             ])
         );
+    });
+});
+
+
+describe('POST /api/paths', () => {
+    it('creates a path with valid rover_id and routeWKT', async () => {
+        const rover = await createRoverFixture();
+        const rover_id = rover.id;
+
+        const res = await api()
+            .post('/api/paths')
+            .send({
+                rover_id,
+                routeWKT: sampleLineString1
+            })
+            .set('Content-Type', 'application/json');
+
+        expect(res.status).toBe(201);
+        expect(res.body).toMatchObject({
+            rover_id,
+            route: sampleGeoJSON1
+        });
     });
 });
