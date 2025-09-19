@@ -66,3 +66,31 @@ describe('POST /api/paths', () => {
         });
     });
 });
+
+
+describe('GET /api/paths/:id', () => {
+    it('retrieves a specific path by ID with correct linestring geometry', async () => {
+        const path = await createPathFixture(undefined, sampleLineString1);
+
+        const res = await api().get(`/api/paths/${path.id}`);
+        expect(res.status).toBe(200);
+        expect(res.body).toMatchObject({
+            id: path.id,
+            rover_id: path.rover_id,
+            route: sampleGeoJSON1
+        });
+    });
+});
+
+
+describe('DELETE /api/paths/:id', () => {
+    it('deletes a specific path by ID', async () => {
+        const path = await createPathFixture(undefined, sampleLineString1);
+
+        const res = await api().delete(`/api/paths/${path.id}`);
+        expect(res.status).toBe(204);
+
+        const fetchRes = await api().get(`/api/paths/${path.id}`);
+        expect(fetchRes.status).toBe(404);
+    });
+});
