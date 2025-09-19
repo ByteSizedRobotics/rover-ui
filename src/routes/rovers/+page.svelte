@@ -70,7 +70,7 @@
 				<div>
 					<h1 class="text-3xl font-bold text-blue-900">Rover Switchboard</h1>
 					<div class="text-sm text-blue-600">
-						Active: <span class="font-semibold text-blue-700">{activeCounts}</span> • 
+						Active: <span class="font-semibold text-green-600">{activeCounts}</span> • 
 						Inactive: <span class="font-semibold text-red-600">{inactiveCounts}</span> • 
 						All: <span class="font-semibold text-blue-700">{data.roversData.length}</span>
 					</div>
@@ -141,7 +141,7 @@
 						<!-- Status badge -->
 						<div class="absolute top-3 left-3">
 							<div class="px-3 py-1 rounded-full bg-black/50 border border-blue-200/30 text-white backdrop-blur-sm text-sm font-medium flex items-center gap-2">
-								<div class="w-2 h-2 rounded-full {rover.status === 'active' ? 'bg-blue-400' : health === 'warn' ? 'bg-yellow-400' : 'bg-red-400'}"></div>
+								<div class="w-2 h-2 rounded-full {rover.status === 'active' ? 'bg-green-400' : health === 'warn' ? 'bg-yellow-400' : 'bg-red-400'}"></div>
 								{rover.status.toUpperCase()}
 							</div>
 						</div>
@@ -168,24 +168,12 @@
 									</svg>
 									Live Metrics
 								</a>
-								<a href="/map/{rover.id}" class="flex-1 border border-blue-300 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-									</svg>
-									Plan Path
-								</a>
 							{:else}
 								<a href="/map/{rover.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
 									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
 									</svg>
 									Plan Path
-								</a>
-								<a href="/rovers/{rover.id}" class="flex-1 border border-blue-300 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-									</svg>
-									View Metrics
 								</a>
 							{/if}
 						</div>
