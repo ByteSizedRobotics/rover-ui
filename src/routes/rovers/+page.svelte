@@ -136,14 +136,14 @@
 							{#if getRoverStatus(rover) === 'active'}
 								<img src="./UE5_1.png" alt={rover.name} class="w-full h-full object-cover scale-150" />
 							{:else}
-								<img src="./PathPlan.png" alt={rover.name} class="w-full h-full object-cover scale-75" />
+								<img src="./MapExtended.png" alt={rover.name} class="w-full h-full object-cover scale-130" />
 							{/if}
 						</div>
 						
 						<!-- Status badge -->
 						<div class="absolute top-3 left-3">
 							<div class="px-3 py-1 rounded-full bg-black/50 border border-blue-200/30 text-white backdrop-blur-sm text-sm font-medium flex items-center gap-2">
-								<div class="w-2 h-2 rounded-full {getRoverStatus(rover) === 'active' ? 'bg-green-400' : health === 'warn' ? 'bg-yellow-400' : 'bg-red-400'}"></div>
+								<div class="w-2 h-2 rounded-full {getRoverStatus(rover) === 'active' ? 'bg-green-400' : 'bg-red-400'}"></div>
 								{getRoverStatus(rover).toUpperCase()}
 							</div>
 						</div>
