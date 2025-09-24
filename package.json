@@ -65,6 +65,7 @@
 		"leaflet-control-geocoder": "^3.1.0",
 		"leaflet-routing-machine": "^3.2.12",
 		"pg": "^8.13.1",
-		"postgres": "^3.4.5"
+		"postgres": "^3.4.5",
+		"roslib": "^1.4.1"
 	}
 }

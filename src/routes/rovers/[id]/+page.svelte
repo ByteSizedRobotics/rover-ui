@@ -5,6 +5,8 @@
 	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
 	import { createAndConnectMiniLidar, LidarMiniController } from './lidarController';
+	import { RoverDataSubscriber } from './roverDataSubscriber';
+	import type { ProcessedSensorData } from './roverDataTypes';
 
 	let { data }: { data: PageServerData } = $props();
 
@@ -21,10 +23,14 @@
 	// Live metrics state
 	let currentCamera = $state(1);
 	let sensorData = $state({
-		imu: -0.2,
-		temperature: 35,
-		battery: 85,
-		lidarAngle: 45
+		roll: 0,
+		pitch: 0,
+		yaw: 0,
+		temperature: 0,
+		batteryVoltage: 0,
+		linearVelocity: 0,
+		angularVelocity: 0,
+		isConnected: false
 	});
 	let tableData = $state([
 		{ id: 1, value: 10, status: 'A' },
@@ -33,11 +39,16 @@
 	]);
 	let roverPosition = $state({ x: 50, y: 40 }); // Percentage position on map
 	let roverGpsPosition = $state({ lat: 45.4215, lng: -75.6972 }); // GPS coordinates (Ottawa default)
+	let connectionStatus = $state('Disconnected');
+	
+	// ROS Data Subscriber
+	let dataSubscriber: RoverDataSubscriber | null = null;
 
 	// Leaflet map variables
 	let mapContainer: HTMLElement;
 	let map: any;
 	let L: any;
+	let roverMarker: any = null;
 
 	// Remove direct lidar websocket variables, replace with controller
 	let lidarController: LidarMiniController | null = null;
@@ -94,11 +105,55 @@
 				lidarController = createAndConnectMiniLidar({ canvas: 'lidarMiniCanvas' });
 			}, 80);
 		}
+
+		// Initialize ROS data subscriber
+		if (browser) {
+			dataSubscriber = new RoverDataSubscriber({
+				onDataUpdate: (data: ProcessedSensorData) => {
+					// Update sensor data
+					sensorData.roll = data.roll;
+					sensorData.pitch = data.pitch;
+					sensorData.yaw = data.yaw;
+					sensorData.temperature = data.temperature;
+					sensorData.batteryVoltage = data.batteryVoltage;
+					sensorData.linearVelocity = data.linearVelocity;
+					sensorData.angularVelocity = data.angularVelocity;
+					sensorData.isConnected = data.isConnected;
+					
+					// Update GPS position if available
+					if (data.gpsStatus === 'active') {
+						roverGpsPosition.lat = data.latitude;
+						roverGpsPosition.lng = data.longitude;
+						
+						// Update map if it exists
+						if (map && L && roverMarker) {
+							const newPos = [data.latitude, data.longitude];
+							roverMarker.setLatLng(newPos);
+							map.setView(newPos, map.getZoom()); // Keep current zoom level
+						}
+					}
+				},
+				onConnectionChange: (connected: boolean) => {
+					connectionStatus = connected ? 'Connected' : 'Disconnected';
+					sensorData.isConnected = connected;
+				},
+				onError: (error: string) => {
+					console.error('ROS Data Subscriber Error:', error);
+					connectionStatus = `Error: ${error}`;
+				}
+			});
+			
+			// Connect to ROS
+			dataSubscriber.connect();
+		}
 	});
 
 	onDestroy(() => {
 		lidarController?.disconnect();
 		lidarController = null;
+		
+		dataSubscriber?.disconnect();
+		dataSubscriber = null;
 	});
 
 	async function initializeMap() {
@@ -122,7 +177,7 @@
 				iconAnchor: [15, 15]
 			});
 
-			L.marker([roverGpsPosition.lat, roverGpsPosition.lng], { icon: roverIcon })
+			roverMarker = L.marker([roverGpsPosition.lat, roverGpsPosition.lng], { icon: roverIcon })
 				.addTo(map)
 				.bindPopup('Rover Position');
 
@@ -260,16 +315,40 @@
 					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Metrics</h2>
 					<div class="mb-4 grid grid-cols-1 gap-2">
 						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
-							<div class="text-sm text-blue-600 font-medium">IMU</div>
-							<div class="text-lg font-bold text-blue-900">{sensorData.imu}</div>
+							<div class="text-sm text-blue-600 font-medium">Roll/Pitch/Yaw</div>
+							<div class="text-sm font-bold text-blue-900">
+								{sensorData.isConnected ? 
+									`${sensorData.roll.toFixed(1)}° / ${sensorData.pitch.toFixed(1)}° / ${sensorData.yaw.toFixed(1)}°` : 
+									'-- / -- / --'
+								}
+							</div>
 						</div>
 						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
 							<div class="text-sm text-blue-600 font-medium">TEMP</div>
-							<div class="text-lg font-bold text-blue-900">{sensorData.temperature}°C</div>
+							<div class="text-lg font-bold text-blue-900">
+								{sensorData.isConnected ? `${sensorData.temperature.toFixed(1)}°C` : 'N/A'}
+							</div>
 						</div>
 						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
 							<div class="text-sm text-blue-600 font-medium">Battery</div>
-							<div class="text-lg font-bold text-blue-900">{sensorData.battery}%</div>
+							<div class="text-lg font-bold text-blue-900">
+								{sensorData.isConnected ? `${sensorData.batteryVoltage.toFixed(1)}V` : 'N/A'}
+							</div>
+						</div>
+						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+							<div class="text-sm text-blue-600 font-medium">Movement</div>
+							<div class="text-sm font-bold text-blue-900">
+								{sensorData.isConnected ? 
+									`L: ${sensorData.linearVelocity.toFixed(2)}m/s A: ${sensorData.angularVelocity.toFixed(2)}rad/s` :
+									'L: N/A  A: N/A'
+								}
+							</div>
+						</div>
+						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+							<div class="text-sm text-blue-600 font-medium">ROS Status</div>
+							<div class="text-sm font-bold {sensorData.isConnected ? 'text-green-600' : 'text-red-600'}">
+								{connectionStatus}
+							</div>
 						</div>
 					</div>
 

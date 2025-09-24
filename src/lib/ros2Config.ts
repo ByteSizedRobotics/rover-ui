@@ -14,12 +14,18 @@ export const ROS2_CONFIG = {
 		ROVER_STATE: '/rover_state', // Rover state updates (idle, manual_control, autonomous)
 		// ROVER_LOCATION: "/rover_location",          // Internal rover location topic
 
-		// Existing topics from manual control
+		// Sensor and Navigation Topics
+		GPS: '/fix', // GPS data (current rover location)
+		IMU_DATA: '/imu/data', // IMU data (Transformed to Quaternions)
+		IMU_RAW: '/imu/raw', // Raw sensor data [roll, pitch, yaw, temp, V]
+		LIDAR: '/scan', // Lidar scan data
+		CMD_VEL: '/cmd_vel', // Nav2 output movements
+		JSON_COMMANDS: '/json', // JSON commands sent to rover
+
+		// Legacy topics from manual control
 		COMMAND: '/JSON', // Legacy command topic for manual control
-		LIDAR: '/scan',
 		OBSTACLE_DETECTED: '/obstacle_detected',
-		OBSTACLE_DISTANCE: '/obstacle_distance',
-		GPS: '/fix' // this is the current rover location in GPS coords
+		OBSTACLE_DISTANCE: '/obstacle_distance'
 	},
 
 	// Connection timeout settings
