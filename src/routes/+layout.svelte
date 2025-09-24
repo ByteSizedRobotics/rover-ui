@@ -6,7 +6,7 @@
 
 <div class="navbar bg-base-300">
 	<div class="navbar-start">
-		<a href="/" class="btn btn-ghost text-xl">Control Centre</a>
+		<a href="/dashboard" class="btn btn-ghost text-xl">Control Centre</a>
 	</div>
 	<div class="navbar-center hidden lg:flex">
 		{#if $page.url.pathname !== '/'}
