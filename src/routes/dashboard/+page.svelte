@@ -6,7 +6,7 @@
 	}
 </script>
 
-<main class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+<main class="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
 	<!-- Header Section -->
 	<div class="container mx-auto px-6 py-4">
 		<div class="mb-8 text-center">
@@ -131,6 +131,14 @@
 				<div class="mb-2 text-3xl font-bold text-purple-600">AI-Powered</div>
 				<div class="text-gray-600">Detection & Analysis</div>
 			</div>
+		</div>
+		<div class="absolute bottom-4 left-4">
+			<button
+				on:click={() => goto('/')}
+				class="rounded-lg bg-gray-600 px-8 py-3 text-lg font-semibold text-white shadow-lg transition-transform duration-300 hover:scale-105 hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-500/50"
+			>
+				Go to Home
+			</button>
 		</div>
 	</div>
 </main>
