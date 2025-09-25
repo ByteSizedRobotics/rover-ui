@@ -56,12 +56,6 @@
 			}
 		});
 
-		commandCenterClient.onRoverStateUpdate((state) => {
-			addLog(`Rover state updated: ${state.state}`, 'info');
-			// Here you would update the database with the rover state
-			updateRoverStateInDatabase(state);
-		});
-
 		// Don't auto-connect - wait for user to click launch
 	});
 
@@ -196,34 +190,6 @@
 		];
 	}
 
-	/**
-	 * Update rover state in database
-	 * Template function for database integration
-	 */
-	async function updateRoverStateInDatabase(state: any) {
-		try {
-			// TODO: Replace with actual database update logic
-			console.log('Updating rover state in database:', state);
-
-			const response = await fetch(`/api/rovers/${encodeURIComponent(roverId)}/state`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					state: state.state,
-					timestamp: state.timestamp,
-					lastUpdate: new Date().toISOString()
-				})
-			});
-
-			if (response.ok) {
-				console.log('Rover state updated in database successfully');
-			} else {
-				console.error('Failed to update rover state in database:', response.statusText);
-			}
-		} catch (error) {
-			console.error('Error updating rover state in database:', error);
-		}
-	}
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6">
