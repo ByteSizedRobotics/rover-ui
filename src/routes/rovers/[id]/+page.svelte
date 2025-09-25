@@ -5,8 +5,6 @@
 	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
 	import { createAndConnectMiniLidar, LidarMiniController } from './lidarController';
-	import { RoverDataSubscriber } from './roverDataSubscriber';
-	import type { ProcessedSensorData } from './roverDataTypes';
 
 	let { data }: { data: PageServerData } = $props();
 
@@ -41,9 +39,6 @@
 	let roverGpsPosition = $state({ lat: 45.4215, lng: -75.6972 }); // GPS coordinates (Ottawa default)
 	let connectionStatus = $state('Disconnected');
 	
-	// ROS Data Subscriber
-	let dataSubscriber: RoverDataSubscriber | null = null;
-
 	// Leaflet map variables
 	let mapContainer: HTMLElement;
 	let map: any;
@@ -106,54 +101,11 @@
 			}, 80);
 		}
 
-		// Initialize ROS data subscriber
-		if (browser) {
-			dataSubscriber = new RoverDataSubscriber({
-				onDataUpdate: (data: ProcessedSensorData) => {
-					// Update sensor data
-					sensorData.roll = data.roll;
-					sensorData.pitch = data.pitch;
-					sensorData.yaw = data.yaw;
-					sensorData.temperature = data.temperature;
-					sensorData.batteryVoltage = data.batteryVoltage;
-					sensorData.linearVelocity = data.linearVelocity;
-					sensorData.angularVelocity = data.angularVelocity;
-					sensorData.isConnected = data.isConnected;
-					
-					// Update GPS position if available
-					if (data.gpsStatus === 'active') {
-						roverGpsPosition.lat = data.latitude;
-						roverGpsPosition.lng = data.longitude;
-						
-						// Update map if it exists
-						if (map && L && roverMarker) {
-							const newPos = [data.latitude, data.longitude];
-							roverMarker.setLatLng(newPos);
-							map.setView(newPos, map.getZoom()); // Keep current zoom level
-						}
-					}
-				},
-				onConnectionChange: (connected: boolean) => {
-					connectionStatus = connected ? 'Connected' : 'Disconnected';
-					sensorData.isConnected = connected;
-				},
-				onError: (error: string) => {
-					console.error('ROS Data Subscriber Error:', error);
-					connectionStatus = `Error: ${error}`;
-				}
-			});
-			
-			// Connect to ROS
-			dataSubscriber.connect();
-		}
 	});
 
 	onDestroy(() => {
 		lidarController?.disconnect();
 		lidarController = null;
-		
-		dataSubscriber?.disconnect();
-		dataSubscriber = null;
 	});
 
 	async function initializeMap() {
@@ -401,7 +353,7 @@
 			<!-- Navigation widened -->
 			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 flex lg:col-span-2">
 				<div class="p-4 flex flex-col justify-center gap-4 w-full">
-					<a href="/manual-ctrl" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-center">Manual Control</a>
+					<a href="/manual-ctrl/{roverId}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-center">Manual Control</a>
 					<button class="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg font-medium transition-colors" onclick={emergencyStop}>E-Stop</button>
 				</div>
 			</div>

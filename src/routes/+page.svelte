@@ -28,13 +28,14 @@
 						>
 							<!-- Team member photo -->
 							<img
-								src="/nathan.JPG"
+								src="/nathan.JPEG"
 								alt="Team Member 1"
-								class="h-full w-full object-cover scale-90"
+								class="h-32 w-32 object-cover scale-150"
+    							style="object-position: 20% 20px;"
 							/>
 						</div>
 					</div>
-					<h3 class="mb-2 text-xl font-bold text-gray-800">Team Member 1</h3>
+					<h3 class="mb-2 text-xl font-bold text-gray-800">Nathan Gawargy</h3>
 					<p class="mb-2 text-sm font-medium text-blue-600">Title (eg. Lead Developer)</p>
 					<p class="text-center text-sm text-gray-600">
 						Computer Engineering Student specializing in autonomous systems and robotics
@@ -60,7 +61,7 @@
 							/>
 						</div>
 					</div>
-					<h3 class="mb-2 text-xl font-bold text-gray-800">Team Member 2</h3>
+					<h3 class="mb-2 text-xl font-bold text-gray-800">Maxime Couture</h3>
 					<p class="mb-2 text-sm font-medium text-green-600">Title</p>
 					<p class="text-center text-sm text-gray-600">
 						Computer Engineering Student focusing on machine learning and computer vision
@@ -82,7 +83,7 @@
 							<img src="/UE5_1.png" alt="Team Member 3" class="h-full w-full object-cover" />
 						</div>
 					</div>
-					<h3 class="mb-2 text-xl font-bold text-gray-800">Team Member 3</h3>
+					<h3 class="mb-2 text-xl font-bold text-gray-800">Syed Yead Zaman</h3>
 					<p class="mb-2 text-sm font-medium text-purple-600">Title</p>
 					<p class="text-center text-sm text-gray-600">
 						Computer Engineering Student specializing in distributed systems and infrastructure
@@ -102,13 +103,14 @@
 						>
 							<!-- Team member photo -->
 							<img
-								src="/PotholeExplorer.png"
+								src="/louis.JPG"
 								alt="Team Member 4"
-								class="h-full w-full object-cover"
+								class="h-32 w-32 object-cover scale-150"
+    							style="object-position: 30% -15px;"
 							/>
 						</div>
 					</div>
-					<h3 class="mb-2 text-xl font-bold text-gray-800">Team Member 4</h3>
+					<h3 class="mb-2 text-xl font-bold text-gray-800">Louis Marleau</h3>
 					<p class="mb-2 text-sm font-medium text-orange-600">Title</p>
 					<p class="text-center text-sm text-gray-600">
 						Computer Engineering Student focusing on web development and user experience

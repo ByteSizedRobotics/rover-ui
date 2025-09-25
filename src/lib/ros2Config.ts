@@ -21,6 +21,7 @@ export const ROS2_CONFIG = {
 		LIDAR: '/scan', // Lidar scan data
 		CMD_VEL: '/cmd_vel', // Nav2 output movements
 		JSON_COMMANDS: '/json', // JSON commands sent to rover
+		TIMESTAMP: '/timestamp', // Timestamps for synchronization
 
 		// Legacy topics from manual control
 		COMMAND: '/JSON', // Legacy command topic for manual control
