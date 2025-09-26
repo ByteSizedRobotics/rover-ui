@@ -127,6 +127,8 @@ export class ROS2CommandCentreClient {
 	private _webrtcSocket: WebSocket | null = null;
 	private _peerConnection: RTCPeerConnection | null = null;
 	private _isWebRTCConnected: boolean = false;
+	private _remoteStream: MediaStream | null = null; // store last received remote stream
+	private _currentVideoElementId: string | null = null; // currently bound video element id
 
 	// Topic data storage
 	private _gpsData: GPSData | null = null;
@@ -358,7 +360,11 @@ export class ROS2CommandCentreClient {
 			// Handle incoming video stream
 			this._peerConnection.ontrack = (event) => {
 				console.log(`WebRTC video stream received for rover ${this._roverId}`);
-				// The video element will be set up by the UI component using setVideoElement
+				this._remoteStream = event.streams[0];
+				// If a video element has already been registered, apply immediately
+				if (this._currentVideoElementId) {
+					this.applyStreamToVideo();
+				}
 			};
 
 			// Handle ICE candidates
@@ -425,24 +431,36 @@ export class ROS2CommandCentreClient {
 	 * Set video element for WebRTC stream
 	 */
 	public setVideoElement(videoElementId: string): void {
+		this._currentVideoElementId = videoElementId;
+
 		if (!this._peerConnection) {
-			console.warn(`WebRTC not initialized for rover ${this._roverId}`);
-			return;
+			console.warn(`WebRTC not initialized yet for rover ${this._roverId}`);
+			return; // we'll bind when the peer connection + track arrive
 		}
 
-		// Set up ontrack handler to set video stream to the specified element
-		this._peerConnection.ontrack = (event) => {
-			const videoElement = document.getElementById(videoElementId) as HTMLVideoElement;
-			if (videoElement) {
-				videoElement.srcObject = event.streams[0];
-				videoElement.play().catch(e => {
-					console.error(`Error playing video for rover ${this._roverId}:`, e);
-				});
-				console.log(`WebRTC video stream set for rover ${this._roverId}`);
-			} else {
-				console.error(`Video element with id '${videoElementId}' not found for rover ${this._roverId}`);
-			}
-		};
+		// If we already have a remote stream (track event already fired), apply immediately
+		if (this._remoteStream) {
+			this.applyStreamToVideo();
+		}
+	}
+
+	/**
+	 * Apply currently stored remote stream to the registered video element
+	 */
+	private applyStreamToVideo(): void {
+		if (!this._currentVideoElementId || !this._remoteStream) return;
+		const videoElement = document.getElementById(this._currentVideoElementId) as HTMLVideoElement | null;
+		if (!videoElement) {
+			console.error(`Video element with id '${this._currentVideoElementId}' not found for rover ${this._roverId}`);
+			return;
+		}
+		if (videoElement.srcObject !== this._remoteStream) {
+			videoElement.srcObject = this._remoteStream;
+		}
+		videoElement.play().catch(e => {
+			console.error(`Error playing video for rover ${this._roverId}:`, e);
+		});
+		console.log(`WebRTC video stream bound to element '${this._currentVideoElementId}' for rover ${this._roverId}`);
 	}
 
 	/**

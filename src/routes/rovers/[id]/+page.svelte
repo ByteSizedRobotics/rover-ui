@@ -53,6 +53,13 @@
 	// ROS2 Command Center client for camera feed
 	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null);
 
+	// Re-bind video element if WebRTC becomes connected after initial mount
+	$effect(() => {
+		if (commandCenterClient?.isWebRTCConnected) {
+			commandCenterClient.setVideoElement(`roverVideo${currentCamera}`);
+		}
+	});
+
 	onMount(async () => {
 		// Import Leaflet CSS
 		if (browser) {
@@ -177,11 +184,10 @@
 
 	function switchCamera(cameraNumber: number) {
 		if (currentCamera === cameraNumber) return; // No change needed
-		
 		currentCamera = cameraNumber;
-		
-		// Update WebRTC video element binding if connected
-		if (commandCenterClient && commandCenterClient.isWebRTCConnected) {
+		// Re-bind stream to the new video element (we reuse the same remote stream)
+		if (commandCenterClient) {
+			// Even if isWebRTCConnected flag not yet true, setVideoElement will store id and bind later
 			commandCenterClient.setVideoElement(`roverVideo${cameraNumber}`);
 		}
 	}
