@@ -302,60 +302,62 @@
 	<!-- Main Dashboard Grid -->
 	<div class="mx-4 max-w-none space-y-6">
 		<!-- Top Row - Camera and Map -->
-		<div class="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
+		<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
 			<!-- Live Camera Section -->
-			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 h-full">
-				<div class="p-6 flex h-full flex-col">
+			<div class="bg-white rounded-2xl shadow-lg border border-blue-100">
+				<div class="p-6">
 					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Camera</h2>
 
 					<!-- Camera Feed Display -->
-					<div class="mb-4 aspect-video overflow-hidden rounded-lg bg-blue-50 border border-blue-200 relative">
-						<!-- Video elements for both cameras -->
-						<video
-							id="roverVideo1"
-							autoplay
-							playsinline
-							muted
-							width="1280"
-							height="720"
-							class="h-full w-full object-contain bg-black {currentCamera === 1 ? 'block' : 'hidden'}"
-						>
-							Your browser does not support the video tag.
-						</video>
-						<video
-							id="roverVideo2"
-							autoplay
-							playsinline
-							muted
-							width="1280"
-							height="720"
-							class="h-full w-full object-contain bg-black {currentCamera === 2 ? 'block' : 'hidden'}"
-						>
-							Your browser does not support the video tag.
-						</video>
+					<div class="mb-4 w-full max-w-2xl mx-auto" style="aspect-ratio: 16/9;">
+						<div class="w-full h-full overflow-hidden rounded-lg bg-black border border-blue-200 relative">
+							<!-- Video elements for both cameras -->
+							<video
+								id="roverVideo1"
+								autoplay
+								playsinline
+								muted
+								width="1280"
+								height="720"
+								class="absolute inset-0 w-full h-full object-contain {currentCamera === 1 ? 'block' : 'hidden'}"
+							>
+								Your browser does not support the video tag.
+							</video>
+							<video
+								id="roverVideo2"
+								autoplay
+								playsinline
+								muted
+								width="1280"
+								height="720"
+								class="absolute inset-0 w-full h-full object-contain {currentCamera === 2 ? 'block' : 'hidden'}"
+							>
+								Your browser does not support the video tag.
+							</video>
 						
-						<!-- Fallback when no stream is available -->
-						{#if !webrtcConnected}
-							<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
-								<div>
-									<svg
-										class="mx-auto mb-2 h-16 w-16"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2z"
-										></path>
-									</svg>
-									<p class="font-medium">Camera {currentCamera} Feed</p>
-									<p class="text-sm text-blue-500">{webrtcSocket ? 'Connecting to camera...' : 'Connecting to rover...'}</p>
+							<!-- Fallback when no stream is available -->
+							{#if !webrtcConnected}
+								<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
+									<div>
+										<svg
+											class="mx-auto mb-2 h-16 w-16"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2z"
+											></path>
+										</svg>
+										<p class="font-medium">Camera {currentCamera} Feed</p>
+										<p class="text-sm text-blue-500">{webrtcSocket ? 'Connecting to camera...' : 'Connecting to rover...'}</p>
+									</div>
 								</div>
-							</div>
-						{/if}
+							{/if}
+						</div>
 					</div>
 
 					<!-- Camera Switch Buttons -->
