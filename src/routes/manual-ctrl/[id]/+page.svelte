@@ -227,7 +227,7 @@
 							autoplay
 							playsinline
 							class="h-full w-full object-cover"
-							style="max-height: 360px;"
+							style="max-height: 720px;"
 						>
 							Your browser does not support the video tag.
 						</video>
