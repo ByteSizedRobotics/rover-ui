@@ -272,6 +272,11 @@
 	<div class="bottom-left fixed left-4 bottom-4 z-10">
 		<a class="btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-lg" href={`/map/${encodeURIComponent(roverId)}`}>← Back to Map</a>
 	</div>
+
+	<!-- Live Metrics (bottom-right) -->
+	<div class="bottom-right fixed right-4 bottom-4 z-10">
+		<a class="btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-lg" href={`/rovers/${encodeURIComponent(roverId)}`}>View Live Metrics →</a>
+	</div>
 	</div>
 </div>
 
@@ -630,6 +635,13 @@
 	.bottom-left {
 		position: fixed;
 		left: 16px;
+		bottom: 16px;
+		z-index: 1002;
+	}
+
+	.bottom-right {
+		position: fixed;
+		right: 16px;
 		bottom: 16px;
 		z-index: 1002;
 	}
