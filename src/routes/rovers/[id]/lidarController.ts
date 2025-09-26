@@ -158,7 +158,7 @@ export class LidarMiniController {
 			const angle = angle_min + i * angle_increment; // ROS frame
 			const adj = angle - Math.PI / 2 + Math.PI; // rotate 180 degrees more (added + Math.PI)
 			const rr = Math.min(range, maxRange) * scale;
-			const x = cx + Math.cos(adj) * rr;
+			const x = cx - Math.cos(adj) * rr; // negate x to fix left-right mirroring
 			const y = cy + Math.sin(adj) * rr;
 			const intensity = 1 - Math.min(range / maxRange, 1);
 			ctx.fillStyle = `rgba(${Math.floor(255 * intensity)}, ${Math.floor(255 * (1 - intensity))}, 80, 0.9)`;
