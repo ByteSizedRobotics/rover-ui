@@ -158,7 +158,7 @@ export class RoverController {
 
 		// Draw distance rings
 		// const maxRange = lidarData.range_max;
-		const maxRange = 0.5; // TODO: TEMPORARY HARDCODED VALUE FOR BETTER VISUALIZATION
+		const maxRange = 1.0; // Zoomed in view (was 0.5)
 		// this.addLog(`LiDAR max range is: ${maxRange}`);
 		const scale = Math.min(canvas.width, canvas.height) / (2.2 * maxRange);
 
@@ -199,10 +199,10 @@ export class RoverController {
 			}
 
 			// Calculate angle (adjust to make forward = top of canvas)
-			const angle = angle_min + i * angle_increment - Math.PI / 2 + Math.PI;
+			const angle = angle_min + i * angle_increment - Math.PI / 2;
 
 			// Calculate point coordinates
-			const x = centerX + Math.cos(angle) * range * scale;
+			const x = centerX - Math.cos(angle) * range * scale; // negate x to fix left-right mirroring
 			const y = centerY + Math.sin(angle) * range * scale;
 
 			// Color based on distance (red = close, green = far)
