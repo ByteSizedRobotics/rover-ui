@@ -5,6 +5,7 @@
 	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
 	import { createAndConnectMiniLidar, LidarMiniController } from './lidarController';
+	import { commandCenterManager, type ROS2CommandCentreClient } from '$lib/ros2CommandCentre';
 
 	let { data }: { data: PageServerData } = $props();
 
@@ -48,6 +49,9 @@
 	// Remove direct lidar websocket variables, replace with controller
 	let lidarController: LidarMiniController | null = null;
 	let lidarCanvasEl: HTMLCanvasElement | null = null;
+
+	// ROS2 Command Center client for camera feed
+	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null);
 
 	onMount(async () => {
 		// Import Leaflet CSS
@@ -101,11 +105,34 @@
 			}, 80);
 		}
 
+		// Initialize ROS2 Command Center client for camera feed
+		if (browser && roverId) {
+			setTimeout(async () => {
+				try {
+					commandCenterClient = commandCenterManager.getClient(roverId);
+					await commandCenterClient.connect();
+					
+					// Set up video element for WebRTC stream
+					commandCenterClient.setVideoElement(`roverVideo${currentCamera}`);
+					
+					console.log(`Command center connected for rover ${roverId}`);
+				} catch (error) {
+					console.error('Failed to connect to command center:', error);
+				}
+			}, 100);
+		}
+
 	});
 
 	onDestroy(() => {
 		lidarController?.disconnect();
 		lidarController = null;
+		
+		// Disconnect command center client
+		if (commandCenterClient) {
+			commandCenterClient.disconnect();
+			commandCenterClient = null;
+		}
 	});
 
 	async function initializeMap() {
@@ -149,7 +176,14 @@
 	}
 
 	function switchCamera(cameraNumber: number) {
+		if (currentCamera === cameraNumber) return; // No change needed
+		
 		currentCamera = cameraNumber;
+		
+		// Update WebRTC video element binding if connected
+		if (commandCenterClient && commandCenterClient.isWebRTCConnected) {
+			commandCenterClient.setVideoElement(`roverVideo${cameraNumber}`);
+		}
 	}
 
 	function emergencyStop() {
@@ -208,24 +242,51 @@
 					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Camera</h2>
 
 					<!-- Camera Feed Display -->
-					<div class="mb-4 flex aspect-video items-center justify-center rounded-lg bg-blue-50 border border-blue-200">
-						<div class="text-center text-blue-600">
-							<svg
-								class="mx-auto mb-2 h-16 w-16"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-								></path>
-							</svg>
-							<p class="font-medium">Camera {currentCamera} Feed</p>
-							<p class="text-sm text-blue-500">Streaming from /camera{currentCamera}/image_raw</p>
-						</div>
+					<div class="mb-4 aspect-video overflow-hidden rounded-lg bg-blue-50 border border-blue-200 relative">
+						<!-- Video elements for both cameras -->
+						<video
+							id="roverVideo1"
+							autoplay
+							playsinline
+							muted
+							class="h-full w-full object-cover {currentCamera === 1 ? 'block' : 'hidden'}"
+						>
+							Your browser does not support the video tag.
+						</video>
+						<video
+							id="roverVideo2"
+							autoplay
+							playsinline
+							muted
+							class="h-full w-full object-cover {currentCamera === 2 ? 'block' : 'hidden'}"
+						>
+							Your browser does not support the video tag.
+						</video>
+						
+						<!-- Fallback when no stream is available -->
+						{#if !commandCenterClient?.isWebRTCConnected}
+							<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
+								<div>
+									<svg
+										class="mx-auto mb-2 h-16 w-16"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2z"
+										></path>
+									</svg>
+									<p class="font-medium">Camera {currentCamera} Feed</p>
+									<p class="text-sm text-blue-500">
+										{commandCenterClient?.isConnected ? 'Connecting to camera...' : 'Connecting to rover...'}
+									</p>
+								</div>
+							</div>
+						{/if}
 					</div>
 
 					<!-- Camera Switch Buttons -->
