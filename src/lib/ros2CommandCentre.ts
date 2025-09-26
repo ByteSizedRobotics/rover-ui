@@ -618,19 +618,30 @@ export class ROS2CommandCentreClient {
 	private async waitForNodesRunning(requiredNodes: string[], timeoutMs: number = 30000): Promise<boolean> {
 		return new Promise((resolve) => {
 			const startTime = Date.now();
+			let checkCount = 0;
+			
+			console.log(`⏳ Starting to wait for nodes: [${requiredNodes.join(', ')}] with ${timeoutMs}ms timeout`);
 			
 			const checkNodes = () => {
+				checkCount++;
+				const elapsedTime = Date.now() - startTime;
+				
+				console.log(`🔍 Check #${checkCount} (${elapsedTime}ms elapsed)`);
+				
 				if (!this._nodeStatus) {
+					console.log(`📋 No node status received yet, continuing to wait...`);
 					// No status received yet, keep waiting
-					if (Date.now() - startTime < timeoutMs) {
+					if (elapsedTime < timeoutMs) {
 						setTimeout(checkNodes, 1000);
 						return;
 					} else {
-						console.warn(`Timeout waiting for node status after ${timeoutMs}ms`);
+						console.error(`⏰ Timeout waiting for any node status after ${timeoutMs}ms`);
 						resolve(false);
 						return;
 					}
 				}
+
+				console.log(`📊 Current node status:`, this._nodeStatus.nodes);
 
 				// Check if all required nodes are running
 				const runningNodes = requiredNodes.filter(node => 
@@ -641,19 +652,39 @@ export class ROS2CommandCentreClient {
 					this._nodeStatus?.nodes[node] === 'error'
 				);
 
-				console.log(`Node status check: ${runningNodes.length}/${requiredNodes.length} running, ${errorNodes.length} errors`);
+				const offlineNodes = requiredNodes.filter(node => 
+					this._nodeStatus?.nodes[node] === 'offline'
+				);
+
+				const startingNodes = requiredNodes.filter(node => 
+					this._nodeStatus?.nodes[node] === 'starting'
+				);
+
+				const unknownNodes = requiredNodes.filter(node => 
+					!this._nodeStatus?.nodes[node] || 
+					!['running', 'error', 'offline', 'starting', 'stopping'].includes(this._nodeStatus?.nodes[node] || '')
+				);
+
+				console.log(`📈 Node status breakdown:`);
+				console.log(`  ✅ Running (${runningNodes.length}): [${runningNodes.join(', ')}]`);
+				console.log(`  🟡 Starting (${startingNodes.length}): [${startingNodes.join(', ')}]`);
+				console.log(`  ⚫ Offline (${offlineNodes.length}): [${offlineNodes.join(', ')}]`);
+				console.log(`  ❌ Error (${errorNodes.length}): [${errorNodes.join(', ')}]`);
+				console.log(`  ❓ Unknown (${unknownNodes.length}): [${unknownNodes.join(', ')}]`);
 
 				if (runningNodes.length === requiredNodes.length) {
-					console.log('All required nodes are running');
+					console.log('🎉 All required nodes are running!');
 					resolve(true);
 				} else if (errorNodes.length > 0) {
-					console.warn(`Nodes in error state: ${errorNodes.join(', ')}`);
+					console.error(`💥 Nodes in error state: ${errorNodes.join(', ')}`);
 					resolve(false);
-				} else if (Date.now() - startTime < timeoutMs) {
+				} else if (elapsedTime < timeoutMs) {
 					// Keep waiting
+					console.log(`⏳ Waiting for ${requiredNodes.length - runningNodes.length} more nodes... (${timeoutMs - elapsedTime}ms remaining)`);
 					setTimeout(checkNodes, 1000);
 				} else {
-					console.warn(`Timeout waiting for nodes: ${requiredNodes.filter(node => this._nodeStatus?.nodes[node] !== 'running').join(', ')}`);
+					const pendingNodes = requiredNodes.filter(node => this._nodeStatus?.nodes[node] !== 'running');
+					console.error(`⏰ Timeout waiting for nodes: [${pendingNodes.join(', ')}]`);
 					resolve(false);
 				}
 			};
