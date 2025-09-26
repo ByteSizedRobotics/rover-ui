@@ -316,7 +316,9 @@
 							autoplay
 							playsinline
 							muted
-							class="h-full w-full object-cover {currentCamera === 1 ? 'block' : 'hidden'}"
+							width="1280"
+							height="720"
+							class="h-full w-full object-contain bg-black {currentCamera === 1 ? 'block' : 'hidden'}"
 						>
 							Your browser does not support the video tag.
 						</video>
@@ -325,7 +327,9 @@
 							autoplay
 							playsinline
 							muted
-							class="h-full w-full object-cover {currentCamera === 2 ? 'block' : 'hidden'}"
+							width="1280"
+							height="720"
+							class="h-full w-full object-contain bg-black {currentCamera === 2 ? 'block' : 'hidden'}"
 						>
 							Your browser does not support the video tag.
 						</video>
