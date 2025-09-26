@@ -308,9 +308,9 @@
 					<div class="flex justify-center">
 						<canvas
 							id="lidarMiniCanvas"
-							width="120"
-							height="120"
-							class="h-32 w-32 border border-blue-200 rounded-lg"
+							width="300"
+							height="300"
+							class="h-80 w-80 border border-blue-200 rounded-lg"
 							bind:this={lidarCanvasEl}
 						></canvas>
 					</div>
