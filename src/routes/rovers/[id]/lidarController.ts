@@ -41,7 +41,7 @@ export class LidarMiniController {
 		this._topic = options.topic || ROS2_CONFIG.TOPICS.LIDAR;
 		this._onScan = options.onScan;
 		this._pointStride = options.pointStride ?? 3;
-		this._maxVisualRange = options.maxVisualRange ?? 2.0;
+		this._maxVisualRange = options.maxVisualRange ?? 1.0; // Zoomed in more (was 2.0)
 		this._canvasId = options.canvasId;
 		if (this._canvasId) this.setupCanvas(this._canvasId);
 	}
@@ -156,7 +156,7 @@ export class LidarMiniController {
 			const range = ranges[i];
 			if (isNaN(range) || range < range_min || range > range_max) continue;
 			const angle = angle_min + i * angle_increment; // ROS frame
-			const adj = angle - Math.PI / 2; // rotate to put forward at top
+			const adj = angle - Math.PI / 2 + Math.PI; // rotate 180 degrees more (added + Math.PI)
 			const rr = Math.min(range, maxRange) * scale;
 			const x = cx + Math.cos(adj) * rr;
 			const y = cy + Math.sin(adj) * rr;
