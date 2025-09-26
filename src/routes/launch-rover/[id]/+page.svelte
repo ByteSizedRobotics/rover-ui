@@ -22,12 +22,11 @@
 		isConnected: false,
 		lastHeartbeat: 0,
 		connectionErrors: 0,
-		roverState: 'unknown',
+		timestamp: 0,
 		isNavigating: false,
-		currentWaypoint: 0,
 		totalWaypoints: 0
 	};
-
+	
 	// Read waypoints from sessionStorage
 	const key = `launch_waypoints_${roverId}`;
 	const raw = typeof window !== 'undefined' ? sessionStorage.getItem(key) : null;
@@ -45,19 +44,6 @@
 			console.error('Failed to parse saved waypoints', err);
 		}
 	}
-
-	onMount(() => {
-		// Set up command center client callbacks
-		commandCenterClient.onStateChange((status) => {
-			commandCenterStatus = status;
-			addLog(`Command Center status: ${status.isConnected ? 'Connected' : 'Disconnected'}`, 'info');
-			if (status.roverState) {
-				addLog(`Rover state: ${status.roverState}`, 'info');
-			}
-		});
-
-		// Don't auto-connect - wait for user to click launch
-	});
 
 	onDestroy(() => {
 		if (commandCenterClient?.isConnected) {
