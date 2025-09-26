@@ -19,23 +19,16 @@ export interface RoverSoftwareData {
 	timestamp?: number;
 }
 
-export interface RoverState {
-	state: 'idle' | 'manual_control' | 'autonomous';
-	timestamp: number;
-	roverId?: string;
-}
-
 export interface CommandCenterStatus {
 	isConnected: boolean;
 	lastHeartbeat: number;
 	connectionErrors: number;
-	roverState: string;
+	timestamp: number;
 	isNavigating?: boolean;
-	currentWaypoint?: number;
 	totalWaypoints?: number;
 }
 
-export interface GPSData {
+export interface GPSData { // TODO: NATHAN Update this
 	latitude: number;
 	longitude: number;
 	altitude: number;
@@ -43,7 +36,7 @@ export interface GPSData {
 	timestamp: number;
 }
 
-export interface IMUData {
+export interface IMUData { // TODO: NATHAN Update this
 	orientation: {
 		x: number;
 		y: number;
@@ -63,7 +56,7 @@ export interface IMUData {
 	timestamp: number;
 }
 
-export interface IMURawData {
+export interface IMURawData { // TODO: NATHAN Update this
 	roll: number;
 	pitch: number;
 	yaw: number;
@@ -102,6 +95,18 @@ export interface ObstacleData {
 	timestamp: number;
 }
 
+export interface NodeStatus {
+	timestamp: number;
+	nodes: {
+		gps?: string;
+		csi_camera_1?: string;
+		obstacle_detection?: string;
+		manual_control?: string;
+		motor_control?: string;
+		[key: string]: string | undefined;
+	};
+}
+
 export class ROS2CommandCentreClient {
 	private _socket: WebSocket | null = null;
 	private _isConnected: boolean = false;
@@ -109,13 +114,14 @@ export class ROS2CommandCentreClient {
 	private _heartbeatInterval: NodeJS.Timeout | null = null;
 	private _lastHeartbeat: number = 0;
 	private _connectionErrors: number = 0;
-	private _roverState: string = 'unknown';
+	private _timestamp: number = Date.now();
+	private _lastTimestampDbWrite: number = 0;
 	private _isNavigating: boolean = false;
-	private _currentWaypoint: number = 0;
 	private _totalWaypoints: number = 0;
 	private _onStateChange: ((status: CommandCenterStatus) => void) | null = null;
-	private _onRoverStateUpdate: ((state: RoverState) => void) | null = null;
+	private _onTimestampUpdate: ((state: number) => void) | null = null;
 	private _onLidarDataUpdate: ((data: LidarData) => void) | null = null;
+	private _onNodeStatusUpdate: ((status: NodeStatus) => void) | null = null;
 
 	// WebRTC camera stream properties
 	private _webrtcSocket: WebSocket | null = null;
@@ -131,6 +137,7 @@ export class ROS2CommandCentreClient {
 	private _jsonCommands: any | null = null;
 	private _legacyCommands: any | null = null;
 	private _obstacleData: ObstacleData | null = null;
+	private _nodeStatus: NodeStatus | null = null;
 
 	constructor(roverId: string) {
 		this._roverId = roverId;
@@ -140,15 +147,15 @@ export class ROS2CommandCentreClient {
 	get isConnected(): boolean {
 		return this._isConnected;
 	}
-	get roverState(): string {
-		return this._roverState;
+	get timestamp(): number {
+		return this._timestamp;
 	}
 	get isNavigating(): boolean {
 		return this._isNavigating;
 	}
-	get currentWaypoint(): number {
-		return this._currentWaypoint;
-	}
+	// get currentWaypoint(): number {
+	// 	return this._currentWaypoint;
+	// }
 	get totalWaypoints(): number {
 		return this._totalWaypoints;
 	}
@@ -164,15 +171,15 @@ export class ROS2CommandCentreClient {
 	get lidarData(): LidarData | null {
 		return this._lidarData;
 	}
-	get cmdVelData(): CmdVelData | null {
-		return this._cmdVelData;
-	}
+	// get cmdVelData(): CmdVelData | null {
+	// 	return this._cmdVelData;
+	// }
 	get jsonCommands(): any | null {
 		return this._jsonCommands;
 	}
-	get legacyCommands(): any | null {
-		return this._legacyCommands;
-	}
+	// get legacyCommands(): any | null {
+	// 	return this._legacyCommands;
+	// }
 	get obstacleData(): ObstacleData | null {
 		return this._obstacleData;
 	}
@@ -185,14 +192,16 @@ export class ROS2CommandCentreClient {
 	get obstacleDistance(): number {
 		return this._obstacleData?.distance || 0;
 	}
+	get nodeStatus(): NodeStatus | null {
+		return this._nodeStatus;
+	}
 	get status(): CommandCenterStatus {
 		return {
 			isConnected: this._isConnected,
 			lastHeartbeat: this._lastHeartbeat,
 			connectionErrors: this._connectionErrors,
-			roverState: this._roverState,
+			timestamp: this._timestamp,
 			isNavigating: this._isNavigating,
-			currentWaypoint: this._currentWaypoint,
 			totalWaypoints: this._totalWaypoints
 		};
 	}
@@ -215,8 +224,8 @@ export class ROS2CommandCentreClient {
 					this._connectionErrors = 0;
 					console.log(`Connected to ROS2 Command Center for rover ${this._roverId}`);
 
-					// Subscribe to rover state updates
-					// this.subscribeToRoverState();
+					// Subscribe to timestamp updates
+					this.subscribeToTimestamp();
 
 					// Subscribe to all sensor and command topics
 					this.subscribeToGPS();
@@ -227,6 +236,7 @@ export class ROS2CommandCentreClient {
 					// this.subscribeToLegacyCommands();
 					this.subscribeToObstacleDetected();
 					this.subscribeToObstacleDistance();
+					this.subscribeToNodeStatus();
 
 					// Start heartbeat
 					this.startHeartbeat();
@@ -458,35 +468,7 @@ export class ROS2CommandCentreClient {
 		this._socket.send(JSON.stringify(message));
 		console.log(`Sent command to rover ${this._roverId}:`, command.type);
 	}
-
-	/**
-	 * Send manual control command (movement commands like Forward, Stop, etc.)
-	 */
-	async sendManualCommand(action: string, speed?: number): Promise<void> {
-		if (!this._isConnected || !this._socket) {
-			throw new Error('Not connected to ROS2 Command Center');
-		}
-
-		const command = {
-			action,
-			speed: speed || 1,
-			roverId: this._roverId,
-			timestamp: new Date().toISOString()
-		};
-
-		// Send on the legacy COMMAND topic for manual control
-		const message = {
-			op: 'publish',
-			topic: ROS2_CONFIG.TOPICS.COMMAND,
-			msg: {
-				data: JSON.stringify(command)
-			}
-		};
-
-		this._socket.send(JSON.stringify(message));
-		console.log(`Sent manual command to rover ${this._roverId}:`, action);
-	}
-
+	
 	/**
 	 * Send software data to the rover
 	 */
@@ -517,7 +499,6 @@ export class ROS2CommandCentreClient {
 	async launchRover(waypoints: Array<{ lat: number; lng: number }>): Promise<void> {
 		// Set navigation state
 		this._totalWaypoints = waypoints.length;
-		this._currentWaypoint = 0;
 		this._isNavigating = true;
 		this.notifyStateChange();
 
@@ -529,6 +510,21 @@ export class ROS2CommandCentreClient {
 				launch_mode: 'autonomous'
 			}
 		});
+
+		console.log('Waiting for required nodes to start up...');
+		
+		// Wait for required nodes to be running (based on Python autonomous_nodes)
+		const requiredNodes = ['gps', 'csi_camera_1', 'obstacle_detection', 'motor_control'];
+		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
+		
+		if (!nodesStarted) {
+			console.error('Failed to start all required nodes for autonomous navigation');
+			this._isNavigating = false;
+			this.notifyStateChange();
+			throw new Error('Required nodes failed to start for autonomous navigation');
+		}
+
+		console.log('All required nodes are running, sending waypoints...');
 
 		// Then send the waypoints data
 		await this.sendSoftwareData({
@@ -542,6 +538,8 @@ export class ROS2CommandCentreClient {
 				}))
 			}
 		});
+
+		console.log('Rover launch completed successfully');
 	}
 
 	/**
@@ -554,6 +552,19 @@ export class ROS2CommandCentreClient {
 				control_mode: 'manual'
 			}
 		});
+
+		console.log('Waiting for manual control nodes to start up...');
+		
+		// Wait for required nodes to be running (based on Python manual_control_nodes)
+		const requiredNodes = ['manual_control', 'motor_control', 'gps', 'obstacle_detection', 'csi_camera_1'];
+		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
+		
+		if (!nodesStarted) {
+			console.error('Failed to start all required nodes for manual control');
+			throw new Error('Required nodes failed to start for manual control');
+		}
+
+		console.log('Manual control setup completed successfully');
 	}
 
 	/**
@@ -569,7 +580,6 @@ export class ROS2CommandCentreClient {
 
 		// Update navigation state
 		this._isNavigating = false;
-		this._currentWaypoint = 0;
 		this._totalWaypoints = 0;
 		this.notifyStateChange();
 	}
@@ -584,8 +594,8 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Set rover state update callback
 	 */
-	onRoverStateUpdate(callback: (state: RoverState) => void): void {
-		this._onRoverStateUpdate = callback;
+	onTimestampUpdate(callback: (state: number) => void): void {
+		this._onTimestampUpdate = callback;
 	}
 
 	/**
@@ -593,6 +603,64 @@ export class ROS2CommandCentreClient {
 	 */
 	onLidarData(callback: (data: LidarData) => void): void {
 		this._onLidarDataUpdate = callback;
+	}
+
+	/**
+	 * Set node status update callback
+	 */
+	onNodeStatusUpdate(callback: (status: NodeStatus) => void): void {
+		this._onNodeStatusUpdate = callback;
+	}
+
+	/**
+	 * Wait for specified nodes to reach running state
+	 */
+	private async waitForNodesRunning(requiredNodes: string[], timeoutMs: number = 30000): Promise<boolean> {
+		return new Promise((resolve) => {
+			const startTime = Date.now();
+			
+			const checkNodes = () => {
+				if (!this._nodeStatus) {
+					// No status received yet, keep waiting
+					if (Date.now() - startTime < timeoutMs) {
+						setTimeout(checkNodes, 1000);
+						return;
+					} else {
+						console.warn(`Timeout waiting for node status after ${timeoutMs}ms`);
+						resolve(false);
+						return;
+					}
+				}
+
+				// Check if all required nodes are running
+				const runningNodes = requiredNodes.filter(node => 
+					this._nodeStatus?.nodes[node] === 'running'
+				);
+				
+				const errorNodes = requiredNodes.filter(node => 
+					this._nodeStatus?.nodes[node] === 'error'
+				);
+
+				console.log(`Node status check: ${runningNodes.length}/${requiredNodes.length} running, ${errorNodes.length} errors`);
+
+				if (runningNodes.length === requiredNodes.length) {
+					console.log('All required nodes are running');
+					resolve(true);
+				} else if (errorNodes.length > 0) {
+					console.warn(`Nodes in error state: ${errorNodes.join(', ')}`);
+					resolve(false);
+				} else if (Date.now() - startTime < timeoutMs) {
+					// Keep waiting
+					setTimeout(checkNodes, 1000);
+				} else {
+					console.warn(`Timeout waiting for nodes: ${requiredNodes.filter(node => this._nodeStatus?.nodes[node] !== 'running').join(', ')}`);
+					resolve(false);
+				}
+			};
+
+			// Start checking immediately
+			checkNodes();
+		});
 	}
 
 	/**
@@ -656,36 +724,6 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
-	 * Subscribe to command velocity data
-	 */
-	private subscribeToCmdVel(): void {
-		if (!this._socket) return;
-
-		const subscribeMsg = {
-			op: 'subscribe',
-			topic: ROS2_CONFIG.TOPICS.CMD_VEL,
-			type: 'geometry_msgs/Twist'
-		};
-
-		this._socket.send(JSON.stringify(subscribeMsg));
-	}
-
-	/**
-	 * Subscribe to legacy commands
-	 */
-	private subscribeToLegacyCommands(): void {
-		if (!this._socket) return;
-
-		const subscribeMsg = {
-			op: 'subscribe',
-			topic: ROS2_CONFIG.TOPICS.COMMAND,
-			type: 'std_msgs/String'
-		};
-
-		this._socket.send(JSON.stringify(subscribeMsg));
-	}
-
-	/**
 	 * Subscribe to obstacle detection
 	 */
 	private subscribeToObstacleDetected(): void {
@@ -716,14 +754,29 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
-	 * Subscribe to rover state updates
+	 * Subscribe to node status updates
 	 */
-	private subscribeToRoverState(): void {
+	private subscribeToNodeStatus(): void {
 		if (!this._socket) return;
 
 		const subscribeMsg = {
 			op: 'subscribe',
-			topic: ROS2_CONFIG.TOPICS.ROVER_STATE,
+			topic: ROS2_CONFIG.TOPICS.NODE_STATUS,
+			type: 'std_msgs/String'
+		};
+
+		this._socket.send(JSON.stringify(subscribeMsg));
+	}
+
+	/**
+	 * Subscribe to rover state updates
+	 */
+	private subscribeToTimestamp(): void {
+		if (!this._socket) return;
+
+		const subscribeMsg = {
+			op: 'subscribe',
+			topic: ROS2_CONFIG.TOPICS.TIMESTAMP,
 			type: 'std_msgs/String'
 		};
 
@@ -733,16 +786,16 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Unsubscribe from rover state updates
 	 */
-	private unsubscribeFromRoverState(): void {
-		if (!this._socket) return;
+	// private unsubscribeFromRoverState(): void {
+	// 	if (!this._socket) return;
 
-		const unsubscribeMsg = {
-			op: 'unsubscribe',
-			topic: ROS2_CONFIG.TOPICS.ROVER_STATE
-		};
+	// 	const unsubscribeMsg = {
+	// 		op: 'unsubscribe',
+	// 		topic: ROS2_CONFIG.TOPICS.ROVER_STATE
+	// 	};
 
-		this._socket.send(JSON.stringify(unsubscribeMsg));
-	}
+	// 	this._socket.send(JSON.stringify(unsubscribeMsg));
+	// }
 
 	/**
 	 * Unsubscribe from all topics
@@ -751,16 +804,15 @@ export class ROS2CommandCentreClient {
 		if (!this._socket) return;
 
 		const topics = [
-			ROS2_CONFIG.TOPICS.ROVER_STATE,
+			// ROS2_CONFIG.TOPICS.ROVER_STATE,
 			ROS2_CONFIG.TOPICS.GPS,
 			ROS2_CONFIG.TOPICS.IMU_DATA,
 			ROS2_CONFIG.TOPICS.IMU_RAW,
 			ROS2_CONFIG.TOPICS.LIDAR,
-			ROS2_CONFIG.TOPICS.CMD_VEL,
-			ROS2_CONFIG.TOPICS.JSON_COMMANDS,
-			ROS2_CONFIG.TOPICS.COMMAND,
 			ROS2_CONFIG.TOPICS.OBSTACLE_DETECTED,
-			ROS2_CONFIG.TOPICS.OBSTACLE_DISTANCE
+			ROS2_CONFIG.TOPICS.OBSTACLE_DISTANCE,
+			ROS2_CONFIG.TOPICS.TIMESTAMP,
+			ROS2_CONFIG.TOPICS.NODE_STATUS
 		];
 
 		topics.forEach((topic) => {
@@ -821,7 +873,14 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Database write functions (placeholder implementations)
 	 */
-	
+
+	// TODO: NATHAN need write timestamp to database function
+	private async writeTimestampToDatabase(timestamp: number): Promise<void> {
+		// TODO: Implement database write for timestamp
+		console.log(`[DB Placeholder] Writing timestamp for rover ${this._roverId}:`, timestamp);
+		// Example: await db.insert(timestampTable).values({ rover_id: this._roverId, timestamp });
+	}
+
 	/**
 	 * Write GPS data to database
 	 */
@@ -859,33 +918,6 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
-	 * Write command velocity data to database
-	 */
-	private async writeCmdVelDataToDatabase(data: CmdVelData): Promise<void> {
-		// TODO: Implement database write for command velocity data
-		console.log(`[DB Placeholder] Writing CmdVel data for rover ${this._roverId}:`, data);
-		// Example: await db.insert(cmdVelTable).values({ rover_id: this._roverId, ...data });
-	}
-
-	/**
-	 * Write JSON commands to database
-	 */
-	private async writeJSONCommandsToDatabase(data: any): Promise<void> {
-		// TODO: Implement database write for JSON commands
-		console.log(`[DB Placeholder] Writing JSON commands for rover ${this._roverId}:`, data);
-		// Example: await db.insert(jsonCommandsTable).values({ rover_id: this._roverId, command_data: JSON.stringify(data), timestamp: Date.now() });
-	}
-
-	/**
-	 * Write legacy commands to database
-	 */
-	private async writeLegacyCommandsToDatabase(data: any): Promise<void> {
-		// TODO: Implement database write for legacy commands
-		console.log(`[DB Placeholder] Writing legacy commands for rover ${this._roverId}:`, data);
-		// Example: await db.insert(legacyCommandsTable).values({ rover_id: this._roverId, command_data: JSON.stringify(data), timestamp: Date.now() });
-	}
-
-	/**
 	 * Write obstacle data to database
 	 */
 	private async writeObstacleDataToDatabase(data: ObstacleData): Promise<void> {
@@ -904,8 +936,12 @@ export class ROS2CommandCentreClient {
 			if (!data.topic || !data.msg) return;
 
 			switch (data.topic) {
-				case ROS2_CONFIG.TOPICS.ROVER_STATE:
-					this.handleRoverStateMessage(data);
+				case ROS2_CONFIG.TOPICS.TIMESTAMP:
+					this.handleTimestampMessage(data);
+					break;
+
+				case ROS2_CONFIG.TOPICS.NODE_STATUS:
+					this.handleNodeStatusMessage(data);
 					break;
 
 				case ROS2_CONFIG.TOPICS.GPS:
@@ -922,18 +958,6 @@ export class ROS2CommandCentreClient {
 
 				case ROS2_CONFIG.TOPICS.LIDAR:
 					this.handleLidarMessage(data);
-					break;
-
-				case ROS2_CONFIG.TOPICS.CMD_VEL:
-					this.handleCmdVelMessage(data);
-					break;
-
-				case ROS2_CONFIG.TOPICS.JSON_COMMANDS:
-					this.handleJSONCommandsMessage(data);
-					break;
-
-				case ROS2_CONFIG.TOPICS.COMMAND:
-					this.handleLegacyCommandsMessage(data);
 					break;
 
 				case ROS2_CONFIG.TOPICS.OBSTACLE_DETECTED:
@@ -954,21 +978,140 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
-	 * Handle rover state message
+	 * Handle timestamp message from rover
 	 */
-	private handleRoverStateMessage(data: any): void {
-		const stateData = typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
-		this._roverState = stateData.state || stateData;
+	private handleTimestampMessage(data: any): void {
+		try {
+			const timestampData = typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
+			
+			// Update the timestamp from the rover
+			this._timestamp = timestampData.timestamp || timestampData || Date.now();
+			
+			// Check if 15 seconds have passed since last database write
+			const now = Date.now();
+			const timeSinceLastWrite = now - this._lastTimestampDbWrite;
+			const fifteenSeconds = 15 * 1000; // 15 seconds in milliseconds
+			
+			if (timeSinceLastWrite >= fifteenSeconds) {
+				this.writeTimestampToDatabase(this._timestamp);
+				this._lastTimestampDbWrite = now;
+			}
 
-		if (this._onRoverStateUpdate) {
-			this._onRoverStateUpdate({
-				state: this._roverState as 'idle' | 'manual_control' | 'autonomous',
-				timestamp: Date.now(),
-				roverId: this._roverId
-			});
+			// Call timestamp update callback if set
+			if (this._onTimestampUpdate) {
+				this._onTimestampUpdate(this._timestamp);
+			}
+
+			this.notifyStateChange();
+		} catch (error) {
+			console.error('Error parsing timestamp data:', error);
 		}
+	}
 
-		this.notifyStateChange();
+	/**
+	 * Handle node status message from rover
+	 */
+	private handleNodeStatusMessage(data: any): void {
+		try {
+			const statusData = typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
+			
+			// Update the node status from the rover
+			this._nodeStatus = {
+				timestamp: statusData.timestamp || Date.now(),
+				nodes: statusData.nodes || {}
+			};
+
+			// Log detailed node status information
+			console.log(`===== Node Status Update for Rover ${this._roverId} =====`);
+			console.log(`Timestamp: ${new Date(this._nodeStatus.timestamp * 1000).toISOString()}`);
+			console.log('Node Status Details:');
+			
+			// Log each node's status with color coding for better visibility
+			Object.entries(this._nodeStatus.nodes).forEach(([nodeName, status]) => {
+				const statusIcon = this.getStatusIcon(status);
+				console.log(`  ${statusIcon} ${nodeName}: ${status}`);
+			});
+
+			// Summary counts
+			const statusCounts = this.getNodeStatusCounts(this._nodeStatus.nodes);
+			console.log(`Summary: ${statusCounts.running} running, ${statusCounts.offline} offline, ${statusCounts.starting} starting, ${statusCounts.stopping} stopping, ${statusCounts.error} error`);
+			console.log('===============================================');
+
+			// Call node status update callback if set
+			if (this._onNodeStatusUpdate) {
+				this._onNodeStatusUpdate(this._nodeStatus);
+			}
+
+			this.notifyStateChange();
+		} catch (error) {
+			console.error('Error parsing node status data:', error);
+		}
+	}
+
+	/**
+	 * Get status icon for visual representation in logs
+	 */
+	private getStatusIcon(status: string | undefined): string {
+		switch (status) {
+			case 'running':
+				return '✅';
+			case 'offline':
+				return '⚫';
+			case 'starting':
+				return '🟡';
+			case 'stopping':
+				return '🟠';
+			case 'error':
+				return '❌';
+			default:
+				return '❓';
+		}
+	}
+
+	/**
+	 * Get counts of nodes by status for summary logging
+	 */
+	private getNodeStatusCounts(nodes: { [key: string]: string | undefined }): {
+		running: number;
+		offline: number;
+		starting: number;
+		stopping: number;
+		error: number;
+		unknown: number;
+	} {
+		const counts = {
+			running: 0,
+			offline: 0,
+			starting: 0,
+			stopping: 0,
+			error: 0,
+			unknown: 0
+		};
+
+		Object.values(nodes).forEach(status => {
+			switch (status) {
+				case 'running':
+					counts.running++;
+					break;
+				case 'offline':
+					counts.offline++;
+					break;
+				case 'starting':
+					counts.starting++;
+					break;
+				case 'stopping':
+					counts.stopping++;
+					break;
+				case 'error':
+					counts.error++;
+					break;
+				default:
+					counts.unknown++;
+					break;
+			}
+		});
+
+		return counts;
 	}
 
 	/**
@@ -1057,54 +1200,6 @@ export class ROS2CommandCentreClient {
 		// Call lidar callback if set
 		if (this._onLidarDataUpdate) {
 			this._onLidarDataUpdate(lidarData);
-		}
-	}
-
-	/**
-	 * Handle command velocity message
-	 */
-	private handleCmdVelMessage(data: any): void {
-		const cmdVelData: CmdVelData = {
-			linear: {
-				x: data.msg.linear?.x || 0,
-				y: data.msg.linear?.y || 0,
-				z: data.msg.linear?.z || 0
-			},
-			angular: {
-				x: data.msg.angular?.x || 0,
-				y: data.msg.angular?.y || 0,
-				z: data.msg.angular?.z || 0
-			},
-			timestamp: Date.now()
-		};
-
-		this._cmdVelData = cmdVelData;
-		this.writeCmdVelDataToDatabase(cmdVelData);
-	}
-
-	/**
-	 * Handle JSON commands message
-	 */
-	private handleJSONCommandsMessage(data: any): void {
-		try {
-			const commandData = typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
-			this._jsonCommands = commandData;
-			this.writeJSONCommandsToDatabase(commandData);
-		} catch (error) {
-			console.error('Error parsing JSON commands:', error);
-		}
-	}
-
-	/**
-	 * Handle legacy commands message
-	 */
-	private handleLegacyCommandsMessage(data: any): void {
-		try {
-			const commandData = typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
-			this._legacyCommands = commandData;
-			this.writeLegacyCommandsToDatabase(commandData);
-		} catch (error) {
-			console.error('Error parsing legacy commands:', error);
 		}
 	}
 

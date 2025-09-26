@@ -89,32 +89,32 @@
 			}
 
 			// Send to the existing API endpoint (for logging/database)
-			try {
-				const res = await fetch(`/api/launch/${encodeURIComponent(roverId)}`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ waypoints })
-				});
+			// try {
+			// 	const res = await fetch(`/api/launch/${encodeURIComponent(roverId)}`, {
+			// 		method: 'POST',
+			// 		headers: { 'Content-Type': 'application/json' },
+			// 		body: JSON.stringify({ waypoints })
+			// 	});
 
-				if (!res.ok) {
-					throw new Error(`API request failed with status ${res.status}`);
-				}
+			// 	if (!res.ok) {
+			// 		throw new Error(`API request failed with status ${res.status}`);
+			// 	}
 
-				const contentType = res.headers.get('content-type');
-				if (!contentType || !contentType.includes('application/json')) {
-					const text = await res.text();
-					throw new Error(`Expected JSON response, got: ${text.substring(0, 100)}...`);
-				}
+			// 	const contentType = res.headers.get('content-type');
+			// 	if (!contentType || !contentType.includes('application/json')) {
+			// 		const text = await res.text();
+			// 		throw new Error(`Expected JSON response, got: ${text.substring(0, 100)}...`);
+			// 	}
 
-				const j = await res.json();
-				addLog('Launch logged to database', 'info');
-			} catch (error) {
-				// Log API error but don't fail the launch
-				addLog(
-					`Database logging failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-					'error'
-				);
-			}
+			// 	const j = await res.json();
+			// 	addLog('Launch logged to database', 'info');
+			// } catch (error) {
+			// 	// Log API error but don't fail the launch
+			// 	addLog(
+			// 		`Database logging failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			// 		'error'
+			// 	);
+			// }
 
 			// Now send launch command and waypoints to ROS2 Command Center
 			if (commandCenterClient.isConnected && waypoints.length > 0) {
@@ -138,9 +138,12 @@
 					// Add log about redirect
 					addLog('Redirecting to rover control panel...', 'success');
 
+					// add wait for 10 seconds before redirecting
+					await new Promise((resolve) => setTimeout(resolve, 10000));
+
 					// Redirect to rover page after a short delay to show the success message
 					setTimeout(() => {
-						goto(`/rover/${encodeURIComponent(roverId)}`);
+						goto(`/rovers/${encodeURIComponent(roverId)}`);
 					}, 2000);
 				} catch (error) {
 					const errorMsg = error instanceof Error ? error.message : 'Unknown error';

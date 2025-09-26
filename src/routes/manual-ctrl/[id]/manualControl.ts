@@ -60,7 +60,7 @@ export class RoverController {
 			url: rosConfig?.url || ROS2_CONFIG.RASPBERRY_PI_IP,
 			rosPort: rosConfig?.rosPort || ROS2_CONFIG.ROS_BRIDGE_PORT,
 			webrtcPort: rosConfig?.webrtcPort || ROS2_CONFIG.WEBRTC_PORT,
-			commandTopic: rosConfig?.commandTopic || ROS2_CONFIG.TOPICS.COMMAND,
+			commandTopic: rosConfig?.commandTopic || ROS2_CONFIG.TOPICS.MOTOR_MANUAL_JSON_COMMAND,
 			lidarTopic: rosConfig?.lidarTopic || ROS2_CONFIG.TOPICS.LIDAR,
 			obstacleDetectedTopic:
 				rosConfig?.obstacleDetectedTopic || ROS2_CONFIG.TOPICS.OBSTACLE_DETECTED,

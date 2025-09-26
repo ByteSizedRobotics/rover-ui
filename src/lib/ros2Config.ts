@@ -7,24 +7,23 @@ export const ROS2_CONFIG = {
 
 	// ROS2 Topics
 	TOPICS: {
-		// Command Center Communication
+		// Command Center Communication (data sent from SW -> ROVER)
 		ROVER_COMMAND: '/command', // Commands to rover (LaunchRover, ManualControl, Stop)
 		ROVER_SWDATA: '/gps_waypoints', // Software data (waypoints, navigation params)
 		ROVER_HEARTBEAT: '/heartbeat', // Heartbeat from software to rover
-		ROVER_STATE: '/rover_state', // Rover state updates (idle, manual_control, autonomous)
+		MOTOR_MANUAL_JSON_COMMAND: '/JSON', // JSON motor command topic for manual control
+
+		// ROVER_STATE: '/rover_state', // Rover state updates (idle, manual_control, autonomous)
 		// ROVER_LOCATION: "/rover_location",          // Internal rover location topic
 
-		// Sensor and Navigation Topics
+		// Sensor and Navigation Topics (data sent from ROVER -> SW)
 		GPS: '/fix', // GPS data (current rover location)
 		IMU_DATA: '/imu/data', // IMU data (Transformed to Quaternions)
 		IMU_RAW: '/imu/raw', // Raw sensor data [roll, pitch, yaw, temp, V]
 		LIDAR: '/scan', // Lidar scan data
-		CMD_VEL: '/cmd_vel', // Nav2 output movements
-		JSON_COMMANDS: '/json', // JSON commands sent to rover
+		// CMD_VEL: '/cmd_vel', // Nav2 output movements
 		TIMESTAMP: '/timestamp', // Timestamps for synchronization
-
-		// Legacy topics from manual control
-		COMMAND: '/JSON', // Legacy command topic for manual control
+		NODE_STATUS: '/node_status', // Node status updates from command centre
 		OBSTACLE_DETECTED: '/obstacle_detected',
 		OBSTACLE_DISTANCE: '/obstacle_distance'
 	},
