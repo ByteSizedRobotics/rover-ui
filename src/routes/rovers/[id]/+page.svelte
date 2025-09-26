@@ -309,7 +309,7 @@
 					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Camera</h2>
 
 					<!-- Camera Feed Display -->
-					<div class="mb-4 w-full max-w-2xl mx-auto" style="aspect-ratio: 16/9;">
+					<div class="mb-4 w-full max-w-2xl mx-auto" style="aspect-ratio: 820/616;">
 						<div class="w-full h-full overflow-hidden rounded-lg bg-black border border-blue-200 relative">
 							<!-- Video elements for both cameras -->
 							<video
@@ -317,8 +317,8 @@
 								autoplay
 								playsinline
 								muted
-								width="1280"
-								height="720"
+								width="820"
+								height="616"
 								class="absolute inset-0 w-full h-full object-contain {currentCamera === 1 ? 'block' : 'hidden'}"
 							>
 								Your browser does not support the video tag.
