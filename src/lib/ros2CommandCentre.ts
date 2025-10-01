@@ -113,6 +113,7 @@ export class ROS2CommandCentreClient {
 	private _roverId: string;
 	private _heartbeatInterval: NodeJS.Timeout | null = null;
 	private _lastHeartbeat: number = 0;
+	private _heartbeatErrors: number = 0;
 	private _connectionErrors: number = 0;
 	private _timestamp: number = Date.now();
 	private _lastTimestampDbWrite: number = 0;
@@ -212,9 +213,27 @@ export class ROS2CommandCentreClient {
 	 * Connect to the ROS2 Command Center
 	 */
 	async connect(): Promise<void> {
-		if (this._isConnected) {
+		// Check if already connected with valid socket
+		if (this._isConnected && this._socket?.readyState === WebSocket.OPEN) {
+			console.log(`Already connected to ROS2 Command Center for rover ${this._roverId}`);
 			return;
 		}
+
+		// Clean up any existing socket before reconnecting
+		if (this._socket) {
+			console.log(`Cleaning up existing socket before reconnecting for rover ${this._roverId}`);
+			this._socket.onclose = null;
+			this._socket.onerror = null;
+			this._socket.onmessage = null;
+			this._socket.onopen = null;
+			if (this._socket.readyState === WebSocket.OPEN || this._socket.readyState === WebSocket.CONNECTING) {
+				this._socket.close();
+			}
+			this._socket = null;
+		}
+
+		// Ensure clean state
+		this._isConnected = false;
 
 		return new Promise((resolve, reject) => {
 			try {
@@ -252,7 +271,18 @@ export class ROS2CommandCentreClient {
 
 				this._socket.onerror = (error) => {
 					this._connectionErrors++;
-					console.error('ROS2 Command Center connection error:', error);
+					this._isConnected = false;
+					console.error(`ROS2 Command Center connection error for rover ${this._roverId}:`, error);
+					
+					// Clean up socket and stop heartbeat
+					this.stopHeartbeat();
+					if (this._socket) {
+						this._socket.onclose = null;  // Prevent onclose from firing after error
+						this._socket.onerror = null;
+						this._socket.onmessage = null;
+						this._socket.onopen = null;
+					}
+					
 					this.notifyStateChange();
 					reject(new Error('Failed to connect to ROS2 Command Center'));
 				};
@@ -279,18 +309,37 @@ export class ROS2CommandCentreClient {
 	 * Disconnect from the ROS2 Command Center
 	 */
 	disconnect(): void {
+		// Track if state actually changed to prevent duplicate notifications
+		const wasConnected = this._isConnected;
+		
+		// Set disconnected state FIRST
+		this._isConnected = false;
+		
 		this.stopHeartbeat();
 		this.disconnectWebRTC();
 
 		if (this._socket) {
+			// Remove event handlers to prevent them from firing during close
+			this._socket.onclose = null;
+			this._socket.onerror = null;
+			this._socket.onmessage = null;
+			this._socket.onopen = null;
+			
 			// Unsubscribe from all topics
 			this.unsubscribeFromAllTopics();
-			this._socket.close();
+			
+			// Close the socket
+			if (this._socket.readyState === WebSocket.OPEN || this._socket.readyState === WebSocket.CONNECTING) {
+				this._socket.close();
+			}
 			this._socket = null;
 		}
 
-		this._isConnected = false;
-		this.notifyStateChange();
+		// Only notify if state actually changed
+		if (wasConnected) {
+			console.log(`Disconnected from ROS2 Command Center for rover ${this._roverId}`);
+			this.notifyStateChange();
+		}
 	}
 
 	/**
@@ -848,11 +897,13 @@ export class ROS2CommandCentreClient {
 	private startHeartbeat(): void {
 		this.stopHeartbeat(); // Clear any existing heartbeat
 
+		console.log(`[Heartbeat] Starting heartbeat for rover ${this._roverId}`);
+		
 		this._heartbeatInterval = setInterval(() => {
 			this.sendHeartbeat();
 		}, 3000); // Send heartbeat every 3 seconds
 
-		// Send initial heartbeat
+		// Send initial heartbeat immediately
 		this.sendHeartbeat();
 	}
 
@@ -861,6 +912,7 @@ export class ROS2CommandCentreClient {
 	 */
 	private stopHeartbeat(): void {
 		if (this._heartbeatInterval) {
+			console.log(`[Heartbeat] Stopping heartbeat for rover ${this._roverId}`);
 			clearInterval(this._heartbeatInterval);
 			this._heartbeatInterval = null;
 		}
@@ -870,22 +922,47 @@ export class ROS2CommandCentreClient {
 	 * Send heartbeat to rover
 	 */
 	private sendHeartbeat(): void {
-		if (!this._isConnected || !this._socket) return;
+		// Check connection status
+		if (!this._isConnected || !this._socket) {
+			console.warn(`[Heartbeat] Cannot send heartbeat for rover ${this._roverId}: Not connected (socket=${!!this._socket}, connected=${this._isConnected})`);
+			return;
+		}
 
-		const heartbeatMsg = {
-			op: 'publish',
-			topic: ROS2_CONFIG.TOPICS.ROVER_HEARTBEAT,
-			msg: {
-				data: JSON.stringify({
-					rover_id: this._roverId,
-					timestamp: Date.now(),
-					status: 'alive'
-				})
+		// Check if socket is in OPEN state
+		if (this._socket.readyState !== WebSocket.OPEN) {
+			console.warn(`[Heartbeat] Cannot send heartbeat for rover ${this._roverId}: WebSocket not ready (state=${this._socket.readyState})`);
+			return;
+		}
+
+		try {
+			const heartbeatMsg = {
+				op: 'publish',
+				topic: ROS2_CONFIG.TOPICS.ROVER_HEARTBEAT,
+				msg: {
+					data: JSON.stringify({
+						rover_id: this._roverId,
+						timestamp: Date.now(),
+						status: 'alive',
+						is_navigating: this._isNavigating
+					})
+				}
+			};
+
+			this._socket.send(JSON.stringify(heartbeatMsg));
+			this._lastHeartbeat = Date.now();
+			this._heartbeatErrors = 0; // Reset error count on success
+			
+			console.log(`[Heartbeat] ✓ Sent heartbeat for rover ${this._roverId} (navigating=${this._isNavigating})`);
+		} catch (error) {
+			this._heartbeatErrors++;
+			console.error(`[Heartbeat] ✗ Failed to send heartbeat for rover ${this._roverId} (error #${this._heartbeatErrors}):`, error);
+			
+			// If too many errors, stop the heartbeat to prevent spam
+			if (this._heartbeatErrors >= 5) {
+				console.error(`[Heartbeat] Too many heartbeat errors (${this._heartbeatErrors}), stopping heartbeat for rover ${this._roverId}`);
+				this.stopHeartbeat();
 			}
-		};
-
-		this._socket.send(JSON.stringify(heartbeatMsg));
-		this._lastHeartbeat = Date.now();
+		}
 	}
 
 	/**

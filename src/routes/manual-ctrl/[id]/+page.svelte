@@ -50,39 +50,42 @@
 		// Auto-connect to ROS node
 		connectToRover();
 		
-		// Initialize lidar visualization with command center
-		if (browser) {
-			setTimeout(() => {
-				// Create lidar visualization controller
-				lidarController = createMiniLidar({ canvas: 'lidarCanvas' });
-				
-				// Get command center client for this rover
-				commandCenterClient = commandCenterManager.getClient(roverId);
-				
-				// Connect to ROS2 command center for sensor data
-				commandCenterClient.connect().then(() => {
-					console.log('Connected to ROS2 Command Center for sensor data');
-					
-					// Subscribe to lidar data updates and feed them to the controller
-					commandCenterClient.onLidarData((lidarData) => {
-						if (lidarController) {
-							lidarController.updateData(lidarData);
-						}
-					});
-					
-					// Subscribe to obstacle detection data
-					setInterval(() => {
-						const obstacleData = commandCenterClient?.obstacleData;
-						if (obstacleData) {
-							obstacleDetected = obstacleData.detected;
-							obstacleDistance = obstacleData.distance;
-						}
-					}, 100);
-				}).catch((err) => {
-					console.error('Failed to connect to ROS2 Command Center:', err);
-				});
-			}, 100);
-		}
+		\t\t// Initialize lidar visualization and video with command center
+\t\tif (browser) {
+\t\t\tsetTimeout(() => {
+\t\t\t\t// Create lidar visualization controller
+\t\t\t\tlidarController = createMiniLidar({ canvas: 'lidarCanvas' });
+\t\t\t\t
+\t\t\t\t// Get command center client for this rover
+\t\t\t\tcommandCenterClient = commandCenterManager.getClient(roverId);
+\t\t\t\t
+\t\t\t\t// Connect to ROS2 command center for sensor data and video
+\t\t\t\tcommandCenterClient.connect().then(() => {
+\t\t\t\t\tconsole.log('Connected to ROS2 Command Center for sensor data and video');
+\t\t\t\t\t
+\t\t\t\t\t// Set video element for WebRTC stream
+\t\t\t\t\tcommandCenterClient.setVideoElement('roverVideo');
+\t\t\t\t\t
+\t\t\t\t\t// Subscribe to lidar data updates and feed them to the controller
+\t\t\t\t\tcommandCenterClient.onLidarData((lidarData) => {
+\t\t\t\t\t\tif (lidarController) {
+\t\t\t\t\t\t\tlidarController.updateData(lidarData);
+\t\t\t\t\t\t}
+\t\t\t\t\t});
+\t\t\t\t\t
+\t\t\t\t\t// Subscribe to obstacle detection data
+\t\t\t\t\tsetInterval(() => {
+\t\t\t\t\t\tconst obstacleData = commandCenterClient?.obstacleData;
+\t\t\t\t\t\tif (obstacleData) {
+\t\t\t\t\t\t\tobstacleDetected = obstacleData.detected;
+\t\t\t\t\t\t\tobstacleDistance = obstacleData.distance;
+\t\t\t\t\t\t}
+\t\t\t\t\t}, 100);
+\t\t\t\t}).catch((err) => {
+\t\t\t\t\tconsole.error('Failed to connect to ROS2 Command Center:', err);
+\t\t\t\t});
+\t\t\t}, 100);
+\t\t}
 
 		return () => {
 			// CLEANUP AFTER MOVING AWAY FROM THIS PAGE

@@ -6,7 +6,6 @@
 	import { browser } from '$app/environment';
 	import { createMiniLidar, LidarMiniController } from './lidarController';
 	import { commandCenterManager, type ROS2CommandCentreClient } from '$lib/ros2CommandCentre';
-	import { getWebRTCWebSocketURL } from '$lib/ros2Config';
 
 	let { data }: { data: PageServerData } = $props();
 
@@ -51,78 +50,13 @@
 	let lidarController: LidarMiniController | null = null;
 	let lidarCanvasEl: HTMLCanvasElement | null = null;
 
-	// ROS2 Command Center client for camera feed
-	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null); // retained for future sensor integration
+	// ROS2 Command Center client for sensor data and video
+	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null);
 
-	// Direct WebRTC (manual-control style) state
-	let webrtcSocket: WebSocket | null = null;
-	let peerConnection: RTCPeerConnection | null = null;
-	let remoteStream: MediaStream | null = null;
-	let webrtcConnected = $state(false);
-
-	function bindStreamToCurrentCamera() {
-		if (!remoteStream) return;
-		const videoEl = document.getElementById(`roverVideo${currentCamera}`) as HTMLVideoElement | null;
-		if (videoEl && videoEl.srcObject !== remoteStream) {
-			videoEl.srcObject = remoteStream;
-			videoEl.play().catch((e) => console.error('Video play error:', e));
-		}
-	}
-
-	async function startWebRTC() {
-		// Initialize RTCPeerConnection
-		peerConnection = new RTCPeerConnection({
-			iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }]
-		});
-
-		peerConnection.addTransceiver('video', { direction: 'recvonly' });
-
-		peerConnection.ontrack = (event) => {
-			remoteStream = event.streams[0];
-			webrtcConnected = true;
-			bindStreamToCurrentCamera();
-		};
-
-		peerConnection.onicecandidate = (event) => {
-			if (event.candidate && webrtcSocket) {
-				webrtcSocket.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
-			}
-		};
-
-		const offer = await peerConnection.createOffer();
-		await peerConnection.setLocalDescription(offer);
-		if (webrtcSocket) {
-			webrtcSocket.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
-		}
-	}
-
-	function connectWebRTC() {
-		try {
-			const wsUrl = getWebRTCWebSocketURL();
-			webrtcSocket = new WebSocket(wsUrl);
-			webrtcSocket.onopen = () => {
-				startWebRTC().catch((e) => console.error('Failed to start WebRTC:', e));
-			};
-			webrtcSocket.onerror = (e) => {
-				console.error('WebRTC signaling error:', e);
-			};
-			webrtcSocket.onclose = () => {
-				webrtcConnected = false;
-			};
-			webrtcSocket.onmessage = (event) => {
-				try {
-					const msg = JSON.parse(event.data);
-					if (msg.type === 'answer' && peerConnection) {
-						peerConnection.setRemoteDescription(new RTCSessionDescription(msg));
-					} else if (msg.type === 'ice-candidate' && peerConnection) {
-						peerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate));
-					}
-				} catch (err) {
-					console.error('Error parsing WebRTC message:', err);
-				}
-			};
-		} catch (err) {
-			console.error('Failed to open WebRTC socket:', err);
+	function switchCamera(cameraNum: number) {
+		currentCamera = cameraNum;
+		if (commandCenterClient) {
+			commandCenterClient.setVideoElement(`roverVideo${cameraNum}`);
 		}
 	}
 
@@ -180,10 +114,13 @@
 				// Get command center client for this rover
 				commandCenterClient = commandCenterManager.getClient(roverId);
 				
-				// Connect to ROS2 command center
+				// Connect to ROS2 command center (handles both sensors and video)
 				commandCenterClient.connect().then(() => {
 					connectionStatus = 'Connected';
 					sensorData.isConnected = true;
+					
+					// Set video element for WebRTC stream (camera 1 by default)
+					commandCenterClient.setVideoElement(`roverVideo${currentCamera}`);
 					
 					// Subscribe to lidar data updates and feed them to the controller
 					commandCenterClient.onLidarData((lidarData) => {
@@ -216,30 +153,15 @@
 			}, 80);
 		}
 
-		// Direct WebRTC setup for camera feed (manual-control style)
-		if (browser) {
-			setTimeout(connectWebRTC, 120);
-		}
-
 	});
 
 	onDestroy(() => {
 		lidarController = null;
 		
-		// Clean up command center client
+		// Clean up command center client (handles both sensors and video)
 		if (commandCenterClient) {
 			commandCenterClient.disconnect();
 			commandCenterClient = null;
-		}
-
-		// Clean up WebRTC
-		if (peerConnection) {
-			peerConnection.close();
-			peerConnection = null;
-		}
-		if (webrtcSocket) {
-			webrtcSocket.close();
-			webrtcSocket = null;
 		}
 	});
 

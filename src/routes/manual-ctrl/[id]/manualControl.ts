@@ -1,4 +1,4 @@
-import { ROS2_CONFIG, getROSWebSocketURL, getWebRTCWebSocketURL } from '../../../lib/ros2Config';
+import { ROS2_CONFIG, getROSWebSocketURL } from '../../../lib/ros2Config';
 import type { LidarData } from '$lib/ros2CommandCentre';
 
 // Types
@@ -12,7 +12,6 @@ export interface RosConfig {
 	url: string;
 	rosPort: number;
 	commandTopic: string;
-	webrtcPort: number;
 }
 
 export class RoverController {
@@ -21,7 +20,6 @@ export class RoverController {
 	private _connectionStatus: string = 'Disconnected';
 	private _statusColor: string = 'text-red-500';
 	private _logs: LogEntry[] = [];
-	private _webrtc_socket: WebSocket | null = null;
 	private _ros_socket: WebSocket | null = null;
 	private _rosConfig: RosConfig;
 	private _speed: number = 1; // Default speed setting
@@ -35,7 +33,6 @@ export class RoverController {
 		this._rosConfig = {
 			url: rosConfig?.url || ROS2_CONFIG.RASPBERRY_PI_IP,
 			rosPort: rosConfig?.rosPort || ROS2_CONFIG.ROS_BRIDGE_PORT,
-			webrtcPort: rosConfig?.webrtcPort || ROS2_CONFIG.WEBRTC_PORT,
 			commandTopic: rosConfig?.commandTopic || ROS2_CONFIG.TOPICS.MOTOR_MANUAL_JSON_COMMAND
 		};
 	}
@@ -66,51 +63,9 @@ export class RoverController {
 
 		return new Promise((resolve, reject) => {
 			try {
-				// ROS WebSocket Connection
+				// ROS WebSocket Connection (for motor commands only)
 				const wsUrlROS = getROSWebSocketURL(this._rosConfig.url, this._rosConfig.rosPort);
 				this._ros_socket = new WebSocket(wsUrlROS);
-
-				// WebRTC WebSocket Connection
-				const wsUrlWebRTC = getWebRTCWebSocketURL(this._rosConfig.url, this._rosConfig.webrtcPort);
-				this._webrtc_socket = new WebSocket(wsUrlWebRTC);
-
-				// WebRTC Socket Event Handlers
-				this._webrtc_socket.onopen = () => {
-					if (this._webrtc_socket) {
-						this.addLog(`WebRTC connection established at ${this._webrtc_socket.url}`);
-						this.startWebRTC();
-					}
-				};
-
-				this._webrtc_socket.onerror = (error) => {
-					this.addLog(`WebRTC connection error: ${error.type}`);
-				};
-
-				this._webrtc_socket.onclose = () => {
-					this.addLog('WebRTC connection closed');
-				};
-
-				this._webrtc_socket.onmessage = (event) => {
-					try {
-						const data = JSON.parse(event.data);
-
-						// Handle WebRTC signaling messages
-						switch (data.type) {
-							case 'answer': // Handle WebRTC answer
-								this.peerConnection?.setRemoteDescription(new RTCSessionDescription(data));
-								this.addLog('WebRTC answer received and applied');
-								break;
-							case 'ice-candidate': // Handle ICE candidates
-								this.peerConnection?.addIceCandidate(new RTCIceCandidate(data.candidate));
-								this.addLog('ICE candidate received and added');
-								break;
-							default:
-								this.addLog(`Received unknown WebRTC message type: ${data.type}`);
-						}
-					} catch (e) {
-						this.addLog(`Error parsing WebRTC message: ${e}`);
-					}
-				};
 
 				// ROS Socket Event Handlers
 				this._ros_socket.onopen = () => {
@@ -153,60 +108,6 @@ export class RoverController {
 				reject(error);
 			}
 		});
-	}
-
-	private peerConnection: RTCPeerConnection | null = null;
-
-	private async startWebRTC() {
-		this.addLog('Starting WebRTC connection...');
-
-		// Initialize WebRTC peer connection
-		this.peerConnection = new RTCPeerConnection({
-			iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }]
-		});
-
-		// Ensure the WebRTC offer requests a video stream (without adding a local camera)
-		const transceiver = this.peerConnection.addTransceiver('video', { direction: 'recvonly' });
-
-		// Handle incoming video stream
-		this.peerConnection.ontrack = (event) => {
-			const videoElement = document.getElementById('roverVideo') as HTMLVideoElement;
-			if (videoElement) {
-				videoElement.srcObject = event.streams[0];
-				videoElement.play(); // Ensure playback starts
-				this.addLog('WebRTC video stream received');
-			}
-		};
-
-		// Handle ICE candidates
-		this.peerConnection.onicecandidate = (event) => {
-			if (event.candidate && this._webrtc_socket) {
-				this._webrtc_socket.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
-			}
-		};
-
-		// Create an offer and send it to the server
-		const offer = await this.peerConnection.createOffer();
-		await this.peerConnection.setLocalDescription(offer);
-
-		if (this._webrtc_socket) {
-			this._webrtc_socket.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
-			this.addLog('WebRTC offer sent to ROS 2 server');
-		}
-
-		// Handle answer from ROS 2
-		if (this._webrtc_socket) {
-			this._webrtc_socket.onmessage = (event) => {
-				const message = JSON.parse(event.data);
-				if (message.type === 'answer') {
-					this.peerConnection?.setRemoteDescription(new RTCSessionDescription(message));
-					this.addLog('WebRTC answer received and applied');
-				} else if (message.type === 'ice-candidate') {
-					this.peerConnection?.addIceCandidate(new RTCIceCandidate(message.candidate));
-					this.addLog('ICE candidate received and added');
-				}
-			};
-		}
 	}
 
 	disconnectFromRover(): Promise<void> {
