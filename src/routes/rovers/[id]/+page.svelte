@@ -5,7 +5,7 @@
 	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
 	import { createMiniLidar, LidarMiniController } from './lidarController';
-	import { commandCenterManager, type ROS2CommandCentreClient } from '$lib/ros2CommandCentre';
+	import { commandCenterManager, type ROS2CommandCentreClient, type WebRTCStatus } from '$lib/ros2CommandCentre';
 
 	let { data }: { data: PageServerData } = $props();
 
@@ -52,10 +52,28 @@
 
 	// ROS2 Command Center client for sensor data and video
 	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null);
+	let isWebRTCReady = $state(false);
+	let webRTCStatusMessage = $state('Connecting to rover...');
+	let cleanupWebRTCListener: (() => void) | null = null;
+
+	function updateWebRTCStatus(status: WebRTCStatus) {
+		const activeElementId = `roverVideo${currentCamera}`;
+		const matchesCurrentCamera = status.videoElementId === activeElementId;
+		const hasStreamForActiveCamera = status.hasRemoteStream && matchesCurrentCamera;
+
+		isWebRTCReady = hasStreamForActiveCamera;
+		webRTCStatusMessage = status.isConnected
+			? status.hasRemoteStream
+				? (hasStreamForActiveCamera ? 'Camera feed connected' : 'Switching camera...')
+				: 'Connecting to camera...'
+			: 'Connecting to rover...';
+	}
 
 	function switchCamera(cameraNum: number) {
 		currentCamera = cameraNum;
 		if (commandCenterClient) {
+			isWebRTCReady = false;
+			webRTCStatusMessage = 'Switching camera...';
 			commandCenterClient.setVideoElement(`roverVideo${cameraNum}`);
 		}
 	}
@@ -113,6 +131,8 @@
 				
 				// Get command center client for this rover
 				commandCenterClient = commandCenterManager.getClient(roverId);
+				cleanupWebRTCListener?.();
+				cleanupWebRTCListener = commandCenterClient.onWebRTCStatusChange(updateWebRTCStatus);
 				
 				// Connect to ROS2 command center (handles both sensors and video)
 				commandCenterClient.connect().then(() => {
@@ -159,6 +179,12 @@
 
 	onDestroy(() => {
 		lidarController = null;
+		if (cleanupWebRTCListener) {
+			cleanupWebRTCListener();
+			cleanupWebRTCListener = null;
+		}
+		isWebRTCReady = false;
+		webRTCStatusMessage = 'Connecting to rover...';
 		
 		// Clean up command center client (handles both sensors and video)
 		if (commandCenterClient) {
@@ -290,7 +316,7 @@
 							</video>
 						
 							<!-- Fallback when no stream is available -->
-							{#if !commandCenterClient?.isWebRTCConnected}
+							{#if !isWebRTCReady}
 								<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
 									<div>
 										<svg
@@ -307,7 +333,7 @@
 											></path>
 										</svg>
 										<p class="font-medium">Camera {currentCamera} Feed</p>
-										<p class="text-sm text-blue-500">{commandCenterClient?.isConnected ? 'Connecting to camera...' : 'Connecting to rover...'}</p>
+										<p class="text-sm text-blue-500">{webRTCStatusMessage}</p>
 									</div>
 								</div>
 							{/if}

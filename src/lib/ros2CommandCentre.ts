@@ -28,6 +28,12 @@ export interface CommandCenterStatus {
 	totalWaypoints?: number;
 }
 
+export interface WebRTCStatus {
+	isConnected: boolean;
+	hasRemoteStream: boolean;
+	videoElementId: string | null;
+}
+
 export interface GPSData { // TODO: NATHAN Update this
 	latitude: number;
 	longitude: number;
@@ -123,6 +129,7 @@ export class ROS2CommandCentreClient {
 	private _onTimestampUpdate: ((state: number) => void) | null = null;
 	private _onLidarDataUpdate: ((data: LidarData) => void) | null = null;
 	private _onNodeStatusUpdate: ((status: NodeStatus) => void) | null = null;
+	private _webRTCStatusListeners: Set<(status: WebRTCStatus) => void> = new Set();
 
 	// WebRTC camera stream properties
 	private _webrtcSocket: WebSocket | null = null;
@@ -342,6 +349,16 @@ export class ROS2CommandCentreClient {
 		}
 	}
 
+	private setWebRTCConnected(isConnected: boolean): void {
+		if (this._isWebRTCConnected !== isConnected) {
+			this._isWebRTCConnected = isConnected;
+			this.emitWebRTCStatus();
+		} else {
+			// Still emit so listeners can react to other status changes
+			this.emitWebRTCStatus();
+		}
+	}
+
 	/**
 	 * Connect WebRTC for camera streaming
 	 */
@@ -357,12 +374,12 @@ export class ROS2CommandCentreClient {
 
 			this._webrtcSocket.onerror = (error) => {
 				console.error(`WebRTC connection error for rover ${this._roverId}:`, error);
-				this._isWebRTCConnected = false;
+				this.setWebRTCConnected(false);
 			};
 
 			this._webrtcSocket.onclose = () => {
 				console.log(`WebRTC connection closed for rover ${this._roverId}`);
-				this._isWebRTCConnected = false;
+				this.setWebRTCConnected(false);
 			};
 
 			this._webrtcSocket.onmessage = (event) => {
@@ -370,7 +387,7 @@ export class ROS2CommandCentreClient {
 			};
 		} catch (error) {
 			console.error(`Failed to connect WebRTC for rover ${this._roverId}:`, error);
-			this._isWebRTCConnected = false;
+			this.setWebRTCConnected(false);
 		}
 	}
 
@@ -388,7 +405,8 @@ export class ROS2CommandCentreClient {
 			this._webrtcSocket = null;
 		}
 
-		this._isWebRTCConnected = false;
+		this._remoteStream = null;
+		this.setWebRTCConnected(false);
 	}
 
 	/**
@@ -410,6 +428,7 @@ export class ROS2CommandCentreClient {
 			this._peerConnection.ontrack = (event) => {
 				console.log(`WebRTC video stream received for rover ${this._roverId}`);
 				this._remoteStream = event.streams[0];
+				this.emitWebRTCStatus();
 				// If a video element has already been registered, apply immediately
 				if (this._currentVideoElementId) {
 					this.applyStreamToVideo();
@@ -438,10 +457,10 @@ export class ROS2CommandCentreClient {
 				console.log(`WebRTC offer sent to ROS 2 server for rover ${this._roverId}`);
 			}
 
-			this._isWebRTCConnected = true;
+			this.setWebRTCConnected(true);
 		} catch (error) {
 			console.error(`Error starting WebRTC for rover ${this._roverId}:`, error);
-			this._isWebRTCConnected = false;
+			this.setWebRTCConnected(false);
 		}
 	}
 
@@ -478,18 +497,42 @@ export class ROS2CommandCentreClient {
 
 	/**
 	 * Set video element for WebRTC stream
+	 * This will wait for WebRTC to be ready and retry binding if needed
 	 */
 	public setVideoElement(videoElementId: string): void {
 		this._currentVideoElementId = videoElementId;
+		console.log(`Setting video element '${videoElementId}' for rover ${this._roverId}`);
+		this.emitWebRTCStatus();
 
-		if (!this._peerConnection) {
-			console.warn(`WebRTC not initialized yet for rover ${this._roverId}`);
-			return; // we'll bind when the peer connection + track arrive
+		// If we already have a remote stream, try to apply immediately
+		if (this._remoteStream) {
+			console.log(`Remote stream already available, applying to '${videoElementId}'`);
+			this.applyStreamToVideo();
+		} else if (!this._peerConnection) {
+			// WebRTC not ready yet, wait for it with timeout
+			console.log(`WebRTC not ready yet for rover ${this._roverId}, waiting...`);
+			this.waitForWebRTCAndApply();
+		} else {
+			// Peer connection exists but no stream yet - will apply when ontrack fires
+			console.log(`Peer connection ready, waiting for stream for rover ${this._roverId}`);
+		}
+	}
+
+	/**
+	 * Wait for WebRTC connection to be ready, then apply stream
+	 */
+	private waitForWebRTCAndApply(retries = 0, maxRetries = 50): void {
+		if (retries >= maxRetries) {
+			console.error(`WebRTC failed to initialize after ${maxRetries} retries for rover ${this._roverId}`);
+			return;
 		}
 
-		// If we already have a remote stream (track event already fired), apply immediately
-		if (this._remoteStream) {
+		if (this._remoteStream && this._currentVideoElementId) {
+			console.log(`WebRTC ready after ${retries} retries, applying stream`);
 			this.applyStreamToVideo();
+		} else {
+			// Retry after 100ms
+			setTimeout(() => this.waitForWebRTCAndApply(retries + 1, maxRetries), 100);
 		}
 	}
 
@@ -497,19 +540,49 @@ export class ROS2CommandCentreClient {
 	 * Apply currently stored remote stream to the registered video element
 	 */
 	private applyStreamToVideo(): void {
-		if (!this._currentVideoElementId || !this._remoteStream) return;
+		if (!this._currentVideoElementId || !this._remoteStream) {
+			console.warn(`Cannot apply stream: elementId=${this._currentVideoElementId}, hasStream=${!!this._remoteStream}`);
+			return;
+		}
+
 		const videoElement = document.getElementById(this._currentVideoElementId) as HTMLVideoElement | null;
 		if (!videoElement) {
 			console.error(`Video element with id '${this._currentVideoElementId}' not found for rover ${this._roverId}`);
+			// Retry after a delay in case the element isn't in DOM yet
+			setTimeout(() => {
+				const retryElement = document.getElementById(this._currentVideoElementId!) as HTMLVideoElement | null;
+				if (retryElement && this._remoteStream) {
+					console.log(`Video element found on retry, applying stream`);
+					retryElement.srcObject = this._remoteStream;
+					retryElement.play().catch(e => console.error(`Error playing video:`, e));
+				}
+			}, 500);
 			return;
 		}
+
+		console.log(`Applying WebRTC stream to video element '${this._currentVideoElementId}' for rover ${this._roverId}`);
+		
+		// Set the stream
 		if (videoElement.srcObject !== this._remoteStream) {
 			videoElement.srcObject = this._remoteStream;
+			console.log(`Stream source set for video element`);
 		}
-		videoElement.play().catch(e => {
-			console.error(`Error playing video for rover ${this._roverId}:`, e);
-		});
-		console.log(`WebRTC video stream bound to element '${this._currentVideoElementId}' for rover ${this._roverId}`);
+		this.emitWebRTCStatus();
+
+		// Try to play the video
+		videoElement.play()
+			.then(() => {
+				console.log(`✅ WebRTC video stream successfully playing on '${this._currentVideoElementId}' for rover ${this._roverId}`);
+				this.emitWebRTCStatus();
+			})
+			.catch(e => {
+				console.error(`❌ Error playing video for rover ${this._roverId}:`, e);
+				// Try unmuting if autoplay was blocked
+				videoElement.muted = true;
+				videoElement.play().catch(e2 => {
+					console.error(`Failed to play even when muted:`, e2);
+				});
+			});
 	}
 
 	/**
@@ -677,6 +750,33 @@ export class ROS2CommandCentreClient {
 	 */
 	onNodeStatusUpdate(callback: (status: NodeStatus) => void): void {
 		this._onNodeStatusUpdate = callback;
+	}
+
+	/**
+	 * Subscribe to WebRTC status updates (connection + stream availability)
+	 * Returns a cleanup function to remove the listener
+	 */
+	onWebRTCStatusChange(callback: (status: WebRTCStatus) => void): () => void {
+		this._webRTCStatusListeners.add(callback);
+		callback(this.getWebRTCStatus());
+		return () => {
+			this._webRTCStatusListeners.delete(callback);
+		};
+	}
+
+	private getWebRTCStatus(): WebRTCStatus {
+		return {
+			isConnected: this._isWebRTCConnected,
+			hasRemoteStream: !!this._remoteStream,
+			videoElementId: this._currentVideoElementId
+		};
+	}
+
+	private emitWebRTCStatus(): void {
+		const status = this.getWebRTCStatus();
+		for (const listener of this._webRTCStatusListeners) {
+			listener(status);
+		}
 	}
 
 	/**

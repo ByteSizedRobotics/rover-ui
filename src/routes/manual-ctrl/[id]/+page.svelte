@@ -3,89 +3,106 @@
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { browser } from '$app/environment';
-	import { RoverController } from './manualControl';
+	import { RoverController, type LogEntry } from './manualControl';
 	import { createMiniLidar, type LidarMiniController } from '../../rovers/[id]/lidarController';
-	import { commandCenterManager, type ROS2CommandCentreClient } from '$lib/ros2CommandCentre';
+	import { commandCenterManager, type ROS2CommandCentreClient, type WebRTCStatus } from '$lib/ros2CommandCentre';
 
 	// Create controller with update callback
 	const params = get(page).params;
 	const roverId = params.id;
 	
-	let controller: RoverController;
+	let controller = $state<RoverController | undefined>(undefined);
 	let component: any;
-	let connecting = false;
+	let connecting = $state(false);
 	
 	// Lidar visualization
 	let lidarController: LidarMiniController | null = null;
 	let commandCenterClient: ROS2CommandCentreClient | null = null;
+	let isWebRTCReady = $state(false);
+	let webRTCStatusMessage = $state('Connecting to rover...');
+	let cleanupWebRTCListener: (() => void) | null = null;
+
+	function updateWebRTCStatus(status: WebRTCStatus) {
+		const boundToVideo = status.videoElementId === 'roverVideo';
+		const hasStream = status.hasRemoteStream && boundToVideo;
+		isWebRTCReady = hasStream;
+		webRTCStatusMessage = status.isConnected
+			? status.hasRemoteStream
+				? (hasStream ? 'Camera feed connected' : 'Switching camera...')
+				: 'Connecting to camera...'
+			: 'Connecting to rover...';
+	}
 	
 	// Obstacle detection state
 	let obstacleDetected = $state(false);
 	let obstacleDistance = $state(0);
 
-	// Use reactive statements to access controller state
-	$: isConnected = controller?.isConnected || false;
-	$: connectionStatus = controller?.connectionStatus || 'Disconnected';
-	$: statusColor = controller?.statusColor || 'text-red-500';
-	$: logs = controller?.logs || [];
+	// Controller state - updated via callback
+	let isConnected = $state(false);
+	let connectionStatus = $state('Disconnected');
+	let statusColor = $state('text-red-500');
+	let logs = $state<LogEntry[]>([]);
 
 	// Initialize the controller when component mounts
 	onMount(() => {
 		// Create controller with callback and custom ROS config if needed
 		controller = new RoverController(() => {
 			// This callback forces Svelte to update when controller state changes
-			component = component;
-
-			// Force update of reactive variables when controller state changes
-			logs = controller.logs;
-			isConnected = controller.isConnected;
-			connectionStatus = controller.connectionStatus;
-			statusColor = controller.statusColor;
+			if (controller) {
+				isConnected = controller.isConnected;
+				connectionStatus = controller.connectionStatus;
+				statusColor = controller.statusColor;
+				logs = controller.logs;
+			}
 		});
 
 		// Add keyboard event listeners for both arrow keys and WASD
 		window.addEventListener('keydown', handleKeyDown);
 		window.addEventListener('keyup', handleKeyUp);
 
-		// Auto-connect to ROS node
-		connectToRover();
-		
-		\t\t// Initialize lidar visualization and video with command center
-\t\tif (browser) {
-\t\t\tsetTimeout(() => {
-\t\t\t\t// Create lidar visualization controller
-\t\t\t\tlidarController = createMiniLidar({ canvas: 'lidarCanvas' });
-\t\t\t\t
-\t\t\t\t// Get command center client for this rover
-\t\t\t\tcommandCenterClient = commandCenterManager.getClient(roverId);
-\t\t\t\t
-\t\t\t\t// Connect to ROS2 command center for sensor data and video
-\t\t\t\tcommandCenterClient.connect().then(() => {
-\t\t\t\t\tconsole.log('Connected to ROS2 Command Center for sensor data and video');
-\t\t\t\t\t
-\t\t\t\t\t// Set video element for WebRTC stream
-\t\t\t\t\tcommandCenterClient.setVideoElement('roverVideo');
-\t\t\t\t\t
-\t\t\t\t\t// Subscribe to lidar data updates and feed them to the controller
-\t\t\t\t\tcommandCenterClient.onLidarData((lidarData) => {
-\t\t\t\t\t\tif (lidarController) {
-\t\t\t\t\t\t\tlidarController.updateData(lidarData);
-\t\t\t\t\t\t}
-\t\t\t\t\t});
-\t\t\t\t\t
-\t\t\t\t\t// Subscribe to obstacle detection data
-\t\t\t\t\tsetInterval(() => {
-\t\t\t\t\t\tconst obstacleData = commandCenterClient?.obstacleData;
-\t\t\t\t\t\tif (obstacleData) {
-\t\t\t\t\t\t\tobstacleDetected = obstacleData.detected;
-\t\t\t\t\t\t\tobstacleDistance = obstacleData.distance;
-\t\t\t\t\t\t}
-\t\t\t\t\t}, 100);
-\t\t\t\t}).catch((err) => {
-\t\t\t\t\tconsole.error('Failed to connect to ROS2 Command Center:', err);
-\t\t\t\t});
-\t\t\t}, 100);
-\t\t}
+	// Auto-connect to ROS node
+	connectToRover();
+	
+		// Initialize lidar visualization and video with command center
+		if (browser) {
+			setTimeout(() => {
+				// Create lidar visualization controller
+				lidarController = createMiniLidar({ canvas: 'lidarCanvas' });
+				
+				// Get command center client for this rover
+				commandCenterClient = commandCenterManager.getClient(roverId);
+				cleanupWebRTCListener?.();
+				cleanupWebRTCListener = commandCenterClient.onWebRTCStatusChange(updateWebRTCStatus);
+				
+				// Connect to ROS2 command center for sensor data and video
+				commandCenterClient.connect().then(() => {
+					console.log('Connected to ROS2 Command Center for sensor data and video');
+					
+					if (!commandCenterClient) return;
+					
+					// Set video element for WebRTC stream
+					commandCenterClient.setVideoElement('roverVideo');
+					
+					// Subscribe to lidar data updates and feed them to the controller
+					commandCenterClient.onLidarData((lidarData) => {
+						if (lidarController) {
+							lidarController.updateData(lidarData);
+						}
+					});
+					
+					// Subscribe to obstacle detection data
+					setInterval(() => {
+						const obstacleData = commandCenterClient?.obstacleData;
+						if (obstacleData) {
+							obstacleDetected = obstacleData.detected;
+							obstacleDistance = obstacleData.distance ?? 0;
+						}
+					}, 100);
+				}).catch((err) => {
+					console.error('Failed to connect to ROS2 Command Center:', err);
+				});
+			}, 100);
+		}
 
 		return () => {
 			// CLEANUP AFTER MOVING AWAY FROM THIS PAGE
@@ -102,14 +119,21 @@
 				commandCenterClient.disconnect();
 				commandCenterClient = null;
 			}
+
+			if (cleanupWebRTCListener) {
+				cleanupWebRTCListener();
+				cleanupWebRTCListener = null;
+			}
+			isWebRTCReady = false;
+			webRTCStatusMessage = 'Connecting to rover...';
 			
 			lidarController = null;
 		};
 	});
 
 	// Helper functions to delegate to controller
-	const handleKeyDown = (event: KeyboardEvent) => controller.handleKeyDown(event);
-	const handleKeyUp = (event: KeyboardEvent) => controller.handleKeyUp(event);
+	const handleKeyDown = (event: KeyboardEvent) => controller?.handleKeyDown(event);
+	const handleKeyUp = (event: KeyboardEvent) => controller?.handleKeyUp(event);
 
 	// Updated UI button handlers - directly call movement functions
 	const handleDirectionPress = (direction: string) => {
@@ -141,6 +165,8 @@
 	};
 
 	const connectToRover = async () => {
+		if (!controller) return;
+		
 		connecting = true;
 
 		// Force immediate UI update to show "Connecting..." state
@@ -173,6 +199,8 @@
 	};
 
 	const disconnectFromRover = async () => {
+		if (!controller) return;
+		
 		try {
 			await controller.disconnectFromRover();
 		} catch (error) {
@@ -271,25 +299,46 @@
 								>
 									↓
 								</button>
-							</div>
-						</div>
-					</div>
+			</div>
+		</div>
 
-					<!-- Video Stream Section (Right side) -->
-					<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200">
-						<video
-							id="roverVideo"
-							autoplay
-							playsinline
-							class="h-full w-full object-cover"
-							style="max-height: 720px;"
+		<!-- Video Stream Section (Right side) -->
+		<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200 relative">
+			<video
+				id="roverVideo"
+				autoplay
+				playsinline
+				muted
+				class="h-full w-full object-cover"
+				style="max-height: 720px;"
+			>
+				Your browser does not support the video tag.
+			</video>
+			
+			<!-- Fallback when no stream is available -->
+			{#if !isWebRTCReady}
+				<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
+					<div>
+						<svg
+							class="mx-auto mb-2 h-16 w-16"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
 						>
-							Your browser does not support the video tag.
-						</video>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2z"
+							></path>
+						</svg>
+						<p class="font-medium">Rover Camera Feed</p>
+						<p class="text-sm text-blue-500">{webRTCStatusMessage}</p>
 					</div>
 				</div>
-
-				<!-- Lidar Visualization and Obstacle Detection Information -->
+			{/if}
+		</div>
+	</div>				<!-- Lidar Visualization and Obstacle Detection Information -->
 				<div class="flex space-x-6">
 					<!-- Obstacle Detection Information (Left side) -->
 					<div class="w-1/3 rounded-lg bg-blue-50 border border-blue-200 p-4">
