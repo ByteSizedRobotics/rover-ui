@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
+	import { filterSuggestions, formatSuggestionLabel } from '$lib/locationSuggestions';
+	import type { NominatimAddress, NominatimResult } from '$lib/locationSuggestions';
 
 	const params = get(page).params;
 	const roverId = params.id;
@@ -25,29 +27,19 @@
 	let suggestionsController: AbortController | null = null;
 	let selectedStartCoords: GeoLocation | null = null;
 	let selectedEndCoords: GeoLocation | null = null;
+	let lastStartFetch = 0;
+	let lastEndFetch = 0;
+	let latestStartQuery = '';
+	let latestEndQuery = '';
+	const MIN_FETCH_INTERVAL = 150; // Minimum ms between API calls
 
-	// Type definitions for Nominatim results
-	interface NominatimAddress {
-		house_number?: string;
-		road?: string;
-		street?: string;
-		city?: string;
-		town?: string;
-		village?: string;
-		state?: string;
-		province?: string;
-		country?: string;
-		postcode?: string;
-		[key: string]: string | undefined;
-	}
-
-	interface NominatimResult {
-		place_id: number;
-		lat: string;
-		lon: string;
-		display_name: string;
-		address?: NominatimAddress;
-		[key: string]: any;
+	// Debug reactive statement
+	$: {
+		console.log('=== REACTIVE DEBUG ===');
+		console.log('startSuggestions:', startSuggestions);
+		console.log('startSuggestions.length:', startSuggestions.length);
+		console.log('showStartSuggestions:', showStartSuggestions);
+		console.log('===================');
 	}
 
 	interface GeoLocation {
@@ -231,9 +223,9 @@
 			return suggestionCache.get(cacheKey) ?? [];
 		}
 
-		const { params, houseNumber } = buildSearchParams(query, 10);
+		const { params, houseNumber } = buildSearchParams(query, 5);
 		params.set('dedupe', '1');
-		params.set('limit', '10');
+		params.set('limit', '5');
 
 		try {
 			if (suggestionsController) {
@@ -253,37 +245,19 @@
 
 			let results: NominatimResult[] = await response.json();
 			console.log('Raw results:', results);
+			console.log('Number of raw results:', results.length);
 
-			// If user entered a house number, prioritize matches with that number
-			if (houseNumber) {
-				results.sort((a: NominatimResult, b: NominatimResult) => {
-					const aMatch = a.address?.house_number === houseNumber ? 1 : 0;
-					const bMatch = b.address?.house_number === houseNumber ? 1 : 0;
-					return bMatch - aMatch;
-				});
+			let filtered = filterSuggestions(results, { houseNumber, limit: 5 });
+			if (filtered.length === 0 && results.length > 0) {
+				console.log('Filter removed all results, falling back to raw slice.');
+				filtered = results.slice(0, 5);
 			}
 
-			// Filter for unique street/road/city combinations
-			const seen = new Set<string>();
-			results = results.filter((r: NominatimResult) => {
-				const address = r.address || {};
-				const road = address.road || address.street || '';
-				const city = address.city || address.town || address.village || '';
-				const province = address.state || address.province || '';
-				const house = address.house_number || '';
-				const key = `${road}|${city}|${province}`;
+			console.log('Filtered results:', filtered);
+			console.log('Number of filtered results:', filtered.length);
 
-				if (seen.has(key)) return false;
-				seen.add(key);
-				return Boolean(house && road);
-			});
-
-			console.log('Filtered results:', results);
-
-			// Limit to 5 unique results and cache
-			const trimmedResults = results.slice(0, 5);
-			suggestionCache.set(cacheKey, trimmedResults);
-			return trimmedResults;
+			suggestionCache.set(cacheKey, filtered);
+			return filtered;
 		} catch (error) {
 			if ((error as Error).name === 'AbortError') {
 				return [];
@@ -295,62 +269,77 @@
 		}
 	}
 
-	// Add debounce to avoid too many API calls
+	// Immediate fetch with rate limiting
 	let startInputTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	async function handleStartInput(e: Event): Promise<void> {
+		console.log('>>> handleStartInput called');
 		const target = e.target as HTMLInputElement;
 		startAddress = target.value;
-			selectedStartCoords = null;
+		console.log('>>> Input value:', startAddress);
+		selectedStartCoords = null;
+		const normalizedQuery = startAddress.trim().toLowerCase();
+		latestStartQuery = normalizedQuery;
 
-		// Clear any existing timeout
+		if (startAddress.length < 1) {
+			startSuggestions = [];
+			showStartSuggestions = false;
+			console.log('>>> Input too short, clearing suggestions');
+			return;
+		}
+
+		// Check cache immediately for instant results
+		const cacheKey = `${normalizedQuery}|${currentCity}|${currentProvince}`;
+		if (suggestionCache.has(cacheKey)) {
+			startSuggestions = [...(suggestionCache.get(cacheKey) ?? [])];
+			showStartSuggestions = startSuggestions.length > 0;
+			console.log('>>> Using cached suggestions:', startSuggestions.length);
+			return;
+		}
+
+		// Rate limiting: ensure minimum interval between requests
+		const now = Date.now();
+		const timeSinceLastFetch = now - lastStartFetch;
+		
 		if (startInputTimeout) clearTimeout(startInputTimeout);
+		
+		if (timeSinceLastFetch < MIN_FETCH_INTERVAL) {
+			// Schedule fetch after minimum interval
+			startInputTimeout = setTimeout(() => handleStartInput(e), MIN_FETCH_INTERVAL - timeSinceLastFetch);
+			return;
+		}
 
-		// Set a new timeout to delay the API call
-		startInputTimeout = setTimeout(async () => {
-			if (startAddress.length > 2) {
-				try {
-					console.log('Fetching suggestions for:', startAddress);
-					startSuggestions = await fetchSuggestions(startAddress);
-					console.log('Got suggestions:', startSuggestions);
-					showStartSuggestions = startSuggestions.length > 0;
-				} catch (error) {
-					console.error('Error fetching suggestions:', error);
-					startSuggestions = [];
-					showStartSuggestions = false;
-				}
-			} else {
-				startSuggestions = [];
-				showStartSuggestions = false;
+		// Fetch immediately
+		lastStartFetch = now;
+		try {
+			console.log('Fetching suggestions for:', startAddress);
+			const previousSuggestions = startSuggestions;
+			const fetchedSuggestions = await fetchSuggestions(startAddress);
+			console.log('Got suggestions:', fetchedSuggestions);
+			console.log('Number of suggestions:', fetchedSuggestions.length);
+			if (latestStartQuery !== normalizedQuery) {
+				console.log('Discarding outdated start suggestions for query:', normalizedQuery);
+				return;
 			}
-		}, 300); // 300ms debounce
-	}
-
-	function formatSuggestion(suggestion: NominatimResult): string {
-		const address = suggestion.address || {};
-		let parts: string[] = [];
-
-		// Add house number if available and relevant
-		if (address.house_number) parts.push(address.house_number);
-
-		// Add road/street name
-		if (address.road) parts.push(address.road);
-		else if (address.street) parts.push(address.street);
-
-		// Add city/town/village
-		if (address.city) parts.push(address.city);
-		else if (address.town) parts.push(address.town);
-		else if (address.village) parts.push(address.village);
-
-		// Add province/state for Canadian addresses
-		if (address.state) parts.push(address.state);
-		else if (address.province) parts.push(address.province);
-
-		return parts.length ? parts.join(', ') : suggestion.display_name;
+			if (fetchedSuggestions.length === 0 && previousSuggestions.length > 0) {
+				console.log('Keeping previous start suggestions (empty response).');
+				startSuggestions = [...previousSuggestions];
+				showStartSuggestions = true;
+				return;
+			}
+			startSuggestions = [...fetchedSuggestions];
+			showStartSuggestions = startSuggestions.length > 0;
+			console.log('showStartSuggestions is now:', showStartSuggestions);
+		} catch (error) {
+			console.error('Error fetching suggestions:', error);
+			startSuggestions = [];
+			showStartSuggestions = false;
+		}
 	}
 
 	function selectStartSuggestion(suggestion: NominatimResult): void {
-		startAddress = formatSuggestion(suggestion);
+		startAddress = formatSuggestionLabel(suggestion);
+		latestStartQuery = startAddress.trim().toLowerCase();
 		showStartSuggestions = false;
 		startSuggestions = [];
 		selectedStartCoords = {
@@ -359,39 +348,71 @@
 		};
 	}
 
-	// Add debounce for end input as well
+	// Immediate fetch with rate limiting
 	let endInputTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	async function handleEndInput(e: Event): Promise<void> {
 		const target = e.target as HTMLInputElement;
 		endAddress = target.value;
 		selectedEndCoords = null;
+		const normalizedQuery = endAddress.trim().toLowerCase();
+		latestEndQuery = normalizedQuery;
 
-		// Clear any existing timeout
+		if (endAddress.length < 1) {
+			endSuggestions = [];
+			showEndSuggestions = false;
+			return;
+		}
+
+		// Check cache immediately for instant results
+		const cacheKey = `${normalizedQuery}|${currentCity}|${currentProvince}`;
+		if (suggestionCache.has(cacheKey)) {
+			endSuggestions = [...(suggestionCache.get(cacheKey) ?? [])];
+			showEndSuggestions = endSuggestions.length > 0;
+			return;
+		}
+
+		// Rate limiting: ensure minimum interval between requests
+		const now = Date.now();
+		const timeSinceLastFetch = now - lastEndFetch;
+		
 		if (endInputTimeout) clearTimeout(endInputTimeout);
+		
+		if (timeSinceLastFetch < MIN_FETCH_INTERVAL) {
+			// Schedule fetch after minimum interval
+			endInputTimeout = setTimeout(() => handleEndInput(e), MIN_FETCH_INTERVAL - timeSinceLastFetch);
+			return;
+		}
 
-		// Set a new timeout to delay the API call
-		endInputTimeout = setTimeout(async () => {
-			if (endAddress.length > 2) {
-				try {
-					console.log('Fetching suggestions for:', endAddress);
-					endSuggestions = await fetchSuggestions(endAddress);
-					console.log('Got suggestions:', endSuggestions);
-					showEndSuggestions = endSuggestions.length > 0;
-				} catch (error) {
-					console.error('Error fetching suggestions:', error);
-					endSuggestions = [];
-					showEndSuggestions = false;
-				}
-			} else {
-				endSuggestions = [];
-				showEndSuggestions = false;
+		// Fetch immediately
+		lastEndFetch = now;
+		try {
+			console.log('Fetching suggestions for:', endAddress);
+			const previousSuggestions = endSuggestions;
+			const fetchedSuggestions = await fetchSuggestions(endAddress);
+			console.log('Got suggestions:', fetchedSuggestions);
+			if (latestEndQuery !== normalizedQuery) {
+				console.log('Discarding outdated end suggestions for query:', normalizedQuery);
+				return;
 			}
-		}, 300); // 300ms debounce
+			if (fetchedSuggestions.length === 0 && previousSuggestions.length > 0) {
+				console.log('Keeping previous end suggestions (empty response).');
+				endSuggestions = [...previousSuggestions];
+				showEndSuggestions = true;
+				return;
+			}
+			endSuggestions = [...fetchedSuggestions];
+			showEndSuggestions = endSuggestions.length > 0;
+		} catch (error) {
+			console.error('Error fetching suggestions:', error);
+			endSuggestions = [];
+			showEndSuggestions = false;
+		}
 	}
 
 	function selectEndSuggestion(suggestion: NominatimResult): void {
-		endAddress = formatSuggestion(suggestion);
+		endAddress = formatSuggestionLabel(suggestion);
+		latestEndQuery = endAddress.trim().toLowerCase();
 		showEndSuggestions = false;
 		endSuggestions = [];
 		selectedEndCoords = {
@@ -528,13 +549,16 @@
 				}}
 			/>
 			{#if showStartSuggestions && startSuggestions.length > 0}
-				<div class="suggestions">
+				<div class="suggestions" role="list">
 					{#each startSuggestions as suggestion}
 						<div
 							class="suggestion-item"
+							role="button"
+							tabindex="0"
 							on:mousedown|preventDefault={() => selectStartSuggestion(suggestion)}
+							on:keydown={(e) => e.key === 'Enter' && selectStartSuggestion(suggestion)}
 						>
-							{formatSuggestion(suggestion)}
+							{formatSuggestionLabel(suggestion)}
 						</div>
 					{/each}
 				</div>
@@ -556,14 +580,17 @@
 			}}
 		/>
 		{#if showEndSuggestions && endSuggestions.length > 0}
-			<div class="suggestions">
+			<div class="suggestions" role="list">
 				{#each endSuggestions as suggestion}
 					<div
-						class="suggestion-item"
-						on:mousedown|preventDefault={() => selectEndSuggestion(suggestion)}
-					>
-						{formatSuggestion(suggestion)}
-					</div>
+							class="suggestion-item"
+							role="button"
+							tabindex="0"
+							on:mousedown|preventDefault={() => selectEndSuggestion(suggestion)}
+							on:keydown={(e) => e.key === 'Enter' && selectEndSuggestion(suggestion)}
+						>
+							{formatSuggestionLabel(suggestion)}
+						</div>
 				{/each}
 			</div>
 		{/if}
