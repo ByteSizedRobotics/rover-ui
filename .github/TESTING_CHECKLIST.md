@@ -16,7 +16,7 @@
 - [ ] Points update in real-time (movement visible)
 - [ ] Canvas renders correctly (rover at center, forward = top)
 - [ ] Color gradient works (red = close, green = far)
-- [ ] Distance rings are visible (0.5m increments)
+- [ ] Distance rings are visible (0.5m increments).
 
 ### Connection Status
 - [ ] "Connected" status shows when connected
