@@ -299,11 +299,12 @@
 								>
 									↓
 								</button>
-			</div>
-		</div>
+							</div>
+						</div>
+					</div>
 
-		<!-- Video Stream Section (Right side) -->
-		<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200 relative">
+					<!-- Video Stream Section (Right side) -->
+					<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200 relative">
 			<video
 				id="roverVideo"
 				autoplay
