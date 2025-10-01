@@ -119,6 +119,8 @@
 					connectionStatus = 'Connected';
 					sensorData.isConnected = true;
 					
+					if (!commandCenterClient) return;
+					
 					// Set video element for WebRTC stream (camera 1 by default)
 					commandCenterClient.setVideoElement(`roverVideo${currentCamera}`);
 					
@@ -205,13 +207,6 @@
 		}
 	}
 
-	function switchCamera(cameraNumber: number) {
-		if (currentCamera === cameraNumber) return; // No change needed
-		currentCamera = cameraNumber;
-		// Re-bind remote stream (if already received) to new visible element
-		bindStreamToCurrentCamera();
-	}
-
 	function emergencyStop() {
 		// TODO: Implement emergency stop
 		console.log('Emergency stop triggered');
@@ -295,7 +290,7 @@
 							</video>
 						
 							<!-- Fallback when no stream is available -->
-							{#if !webrtcConnected}
+							{#if !commandCenterClient?.isWebRTCConnected}
 								<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
 									<div>
 										<svg
@@ -312,7 +307,7 @@
 											></path>
 										</svg>
 										<p class="font-medium">Camera {currentCamera} Feed</p>
-										<p class="text-sm text-blue-500">{webrtcSocket ? 'Connecting to camera...' : 'Connecting to rover...'}</p>
+										<p class="text-sm text-blue-500">{commandCenterClient?.isConnected ? 'Connecting to camera...' : 'Connecting to rover...'}</p>
 									</div>
 								</div>
 							{/if}
