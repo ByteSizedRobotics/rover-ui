@@ -4,7 +4,7 @@
 	import { get } from 'svelte/store';
 	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
-	import { createAndConnectMiniLidar, LidarMiniController } from './lidarController';
+	import { createMiniLidar, LidarMiniController } from './lidarController';
 	import { commandCenterManager, type ROS2CommandCentreClient } from '$lib/ros2CommandCentre';
 	import { getWebRTCWebSocketURL } from '$lib/ros2Config';
 
@@ -171,10 +171,48 @@
 			// A short delay can help ensure the container is rendered and sized
 			setTimeout(initializeMap, 50);
 		}
-		// Create and connect lidar controller (no inline websocket logic remains)
+		// Create lidar controller and connect to ROS2 Command Center for data
 		if (browser) {
 			setTimeout(() => {
-				lidarController = createAndConnectMiniLidar({ canvas: 'lidarMiniCanvas' });
+				// Create lidar visualization controller
+				lidarController = createMiniLidar({ canvas: 'lidarMiniCanvas' });
+				
+				// Get command center client for this rover
+				commandCenterClient = commandCenterManager.getClient(roverId);
+				
+				// Connect to ROS2 command center
+				commandCenterClient.connect().then(() => {
+					connectionStatus = 'Connected';
+					sensorData.isConnected = true;
+					
+					// Subscribe to lidar data updates and feed them to the controller
+					commandCenterClient.onLidarData((lidarData) => {
+						if (lidarController) {
+							lidarController.updateData(lidarData);
+						}
+					});
+					
+					// Subscribe to state changes
+					commandCenterClient.onStateChange((status) => {
+						connectionStatus = status.isConnected ? 'Connected' : 'Disconnected';
+						sensorData.isConnected = status.isConnected;
+					});
+					
+					// Subscribe to IMU data for sensor display
+					setInterval(() => {
+							const imuRaw = commandCenterClient?.imuRawData;
+							if (imuRaw) {
+								sensorData.roll = imuRaw.roll;
+								sensorData.pitch = imuRaw.pitch;
+								sensorData.yaw = imuRaw.yaw;
+								sensorData.temperature = imuRaw.temperature;
+								sensorData.batteryVoltage = imuRaw.voltage;
+							}
+					}, 100);
+				}).catch((err) => {
+					console.error('Failed to connect to ROS2 Command Center:', err);
+					connectionStatus = 'Connection Failed';
+				});
 			}, 80);
 		}
 
@@ -186,10 +224,9 @@
 	});
 
 	onDestroy(() => {
-		lidarController?.disconnect();
 		lidarController = null;
 		
-		// Clean up command center client if used (not needed for video feed now)
+		// Clean up command center client
 		if (commandCenterClient) {
 			commandCenterClient.disconnect();
 			commandCenterClient = null;

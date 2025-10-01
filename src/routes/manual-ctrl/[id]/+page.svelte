@@ -1,19 +1,33 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { page } from '$app/stores';
+	import { get } from 'svelte/store';
+	import { browser } from '$app/environment';
 	import { RoverController } from './manualControl';
+	import { createMiniLidar, type LidarMiniController } from '../../rovers/[id]/lidarController';
+	import { commandCenterManager, type ROS2CommandCentreClient } from '$lib/ros2CommandCentre';
 
 	// Create controller with update callback
+	const params = get(page).params;
+	const roverId = params.id;
+	
 	let controller: RoverController;
 	let component: any;
 	let connecting = false;
+	
+	// Lidar visualization
+	let lidarController: LidarMiniController | null = null;
+	let commandCenterClient: ROS2CommandCentreClient | null = null;
+	
+	// Obstacle detection state
+	let obstacleDetected = $state(false);
+	let obstacleDistance = $state(0);
 
 	// Use reactive statements to access controller state
 	$: isConnected = controller?.isConnected || false;
 	$: connectionStatus = controller?.connectionStatus || 'Disconnected';
 	$: statusColor = controller?.statusColor || 'text-red-500';
 	$: logs = controller?.logs || [];
-	$: obstacleDetected = controller?.obstacleDetected || false;
-	$: obstacleDistance = controller?.obstacleDistance || 0; // Ensure obstacleDistance is treated as a number
 
 	// Initialize the controller when component mounts
 	onMount(() => {
@@ -23,8 +37,6 @@
 			component = component;
 
 			// Force update of reactive variables when controller state changes
-			obstacleDetected = controller.obstacleDetected;
-			obstacleDistance = controller.obstacleDistance;
 			logs = controller.logs;
 			isConnected = controller.isConnected;
 			connectionStatus = controller.connectionStatus;
@@ -37,6 +49,40 @@
 
 		// Auto-connect to ROS node
 		connectToRover();
+		
+		// Initialize lidar visualization with command center
+		if (browser) {
+			setTimeout(() => {
+				// Create lidar visualization controller
+				lidarController = createMiniLidar({ canvas: 'lidarCanvas' });
+				
+				// Get command center client for this rover
+				commandCenterClient = commandCenterManager.getClient(roverId);
+				
+				// Connect to ROS2 command center for sensor data
+				commandCenterClient.connect().then(() => {
+					console.log('Connected to ROS2 Command Center for sensor data');
+					
+					// Subscribe to lidar data updates and feed them to the controller
+					commandCenterClient.onLidarData((lidarData) => {
+						if (lidarController) {
+							lidarController.updateData(lidarData);
+						}
+					});
+					
+					// Subscribe to obstacle detection data
+					setInterval(() => {
+						const obstacleData = commandCenterClient?.obstacleData;
+						if (obstacleData) {
+							obstacleDetected = obstacleData.detected;
+							obstacleDistance = obstacleData.distance;
+						}
+					}, 100);
+				}).catch((err) => {
+					console.error('Failed to connect to ROS2 Command Center:', err);
+				});
+			}, 100);
+		}
 
 		return () => {
 			// CLEANUP AFTER MOVING AWAY FROM THIS PAGE
@@ -47,6 +93,14 @@
 			if (controller?.isConnected) {
 				controller.disconnectFromRover();
 			}
+			
+			// Clean up command center client
+			if (commandCenterClient) {
+				commandCenterClient.disconnect();
+				commandCenterClient = null;
+			}
+			
+			lidarController = null;
 		};
 	});
 
@@ -91,8 +145,6 @@
 		statusColor = 'text-yellow-500';
 		try {
 			await controller.connectToRover();
-			// Initialize lidar visualization once connected
-			controller.initLidarVisualization('lidarCanvas');
 		} catch (error) {
 			console.error('Failed to connect to ROS:', error);
 			connectionStatus = 'Disconnected';

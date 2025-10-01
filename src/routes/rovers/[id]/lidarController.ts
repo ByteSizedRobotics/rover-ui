@@ -1,88 +1,41 @@
-import { ROS2_CONFIG, getROSWebSocketURL } from '$lib/ros2Config';
-
-export interface LidarScan {
-	angle_min: number;
-	angle_max: number;
-	angle_increment: number;
-	time_increment: number;
-	scan_time: number;
-	range_min: number;
-	range_max: number;
-	ranges: number[];
-	intensities?: number[];
-}
+import type { LidarData } from '$lib/ros2CommandCentre';
 
 interface LidarMiniControllerOptions {
-	rosIp?: string;
-	rosPort?: number;
-	topic?: string;
 	canvasId?: string;
-	onScan?: (scan: LidarScan) => void;
+	onScan?: (scan: LidarData) => void;
 	pointStride?: number; // skip factor for rendering
 	maxVisualRange?: number; // cap visualization distance (m)
 }
 
 export class LidarMiniController {
-	private _socket: WebSocket | null = null;
-	private _scan: LidarScan | null = null;
+	private _scan: LidarData | null = null;
 	private _canvas: HTMLCanvasElement | null = null;
 	private _ctx: CanvasRenderingContext2D | null = null;
-	private _onScan?: (scan: LidarScan) => void;
-	private _topic: string;
-	private _rosIp: string;
-	private _rosPort: number;
+	private _onScan?: (scan: LidarData) => void;
 	private _pointStride: number;
 	private _maxVisualRange: number;
 	private _canvasId?: string;
 
 	constructor(options: LidarMiniControllerOptions = {}) {
-		this._rosIp = options.rosIp || ROS2_CONFIG.RASPBERRY_PI_IP;
-		this._rosPort = options.rosPort || ROS2_CONFIG.ROS_BRIDGE_PORT;
-		this._topic = options.topic || ROS2_CONFIG.TOPICS.LIDAR;
 		this._onScan = options.onScan;
 		this._pointStride = options.pointStride ?? 3;
-		this._maxVisualRange = options.maxVisualRange ?? 1.0; // Zoomed in more (was 2.0)
+		this._maxVisualRange = options.maxVisualRange ?? 1.0;
 		this._canvasId = options.canvasId;
 		if (this._canvasId) this.setupCanvas(this._canvasId);
 	}
 
-	get isConnected(): boolean {
-		return !!this._socket && this._socket.readyState === WebSocket.OPEN;
-	}
-	get lastScan(): LidarScan | null {
+	get lastScan(): LidarData | null {
 		return this._scan;
 	}
 
-	connect(): Promise<void> {
-		if (this.isConnected) return Promise.resolve();
-		return new Promise((resolve, reject) => {
-			try {
-				const url = getROSWebSocketURL(this._rosIp, this._rosPort);
-				this._socket = new WebSocket(url);
-				this._socket.onopen = () => {
-					this.subscribe();
-					resolve();
-				};
-				this._socket.onmessage = (evt) => this.handleMessage(evt.data);
-				this._socket.onerror = (e) => reject(e);
-				this._socket.onclose = () => {
-					/* no-op */
-				};
-			} catch (e) {
-				reject(e);
-			}
-		});
-	}
-
-	disconnect() {
-		if (!this._socket) return;
-		try {
-			if (this._socket.readyState === WebSocket.OPEN) {
-				this._socket.send(JSON.stringify({ op: 'unsubscribe', topic: this._topic }));
-			}
-			this._socket.close();
-		} catch {}
-		this._socket = null;
+	/**
+	 * Update lidar data from external source (e.g., ROS2CommandCentreClient)
+	 * @param data LidarData from ROS2 subscription
+	 */
+	updateData(data: LidarData): void {
+		this._scan = data;
+		if (this._onScan) this._onScan(data);
+		this.draw();
 	}
 
 	setCanvas(canvas: HTMLCanvasElement) {
@@ -98,29 +51,6 @@ export class LidarMiniController {
 	private setupCanvas(id: string) {
 		const el = document.getElementById(id) as HTMLCanvasElement | null;
 		if (el) this.setCanvas(el);
-	}
-
-	private subscribe() {
-		if (!this._socket) return;
-		const msg = {
-			op: 'subscribe',
-			topic: this._topic,
-			type: 'sensor_msgs/LaserScan'
-		};
-		this._socket.send(JSON.stringify(msg));
-	}
-
-	private handleMessage(raw: string) {
-		try {
-			const data = JSON.parse(raw);
-			if (data.topic === this._topic && data.msg) {
-				this._scan = data.msg as LidarScan;
-				if (this._onScan) this._onScan(this._scan);
-				this.draw();
-			}
-		} catch (e) {
-			// swallow parse errors silently for now
-		}
 	}
 
 	private draw() {
@@ -169,8 +99,11 @@ export class LidarMiniController {
 	}
 }
 
-// Helper to create, optionally bind canvas, and auto-connect.
-export function createAndConnectMiniLidar(
+/**
+ * Helper to create a LidarMiniController and optionally bind it to a canvas.
+ * Data should be provided via updateData() method from an external source.
+ */
+export function createMiniLidar(
 	options: { canvas: HTMLCanvasElement | string } & Omit<LidarMiniControllerOptions, 'canvasId'>
 ): LidarMiniController {
 	const { canvas, ...rest } = options;
@@ -181,6 +114,5 @@ export function createAndConnectMiniLidar(
 	if (canvas instanceof HTMLCanvasElement) {
 		controller.setCanvas(canvas);
 	}
-	controller.connect().catch(() => {});
 	return controller;
 }
