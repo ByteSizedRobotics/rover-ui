@@ -377,8 +377,8 @@
 			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 lg:col-span-4">
 				<div class="p-6">
 					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Metrics</h2>
-					<div class="mb-4 grid grid-cols-1 gap-2">
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+					<div class="mb-4 grid grid-cols-2 gap-2">
+						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200 col-span-2">
 							<div class="text-sm text-blue-600 font-medium">Roll/Pitch/Yaw</div>
 							<div class="text-sm font-bold text-blue-900">
 								{sensorData.isConnected ? 
@@ -399,7 +399,7 @@
 								{sensorData.isConnected ? `${sensorData.batteryVoltage.toFixed(1)}V` : 'N/A'}
 							</div>
 						</div>
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+						<!-- <div class="bg-blue-50 p-3 rounded-lg border border-blue-200 col-span-2">
 							<div class="text-sm text-blue-600 font-medium">Movement</div>
 							<div class="text-sm font-bold text-blue-900">
 								{sensorData.isConnected ? 
@@ -407,8 +407,8 @@
 									'L: N/A  A: N/A'
 								}
 							</div>
-						</div>
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+						</div> -->
+						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200 col-span-2">
 							<div class="text-sm text-blue-600 font-medium">ROS Status</div>
 							<div class="text-sm font-bold {sensorData.isConnected ? 'text-green-600' : 'text-red-600'}">
 								{connectionStatus}
