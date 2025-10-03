@@ -125,7 +125,7 @@
 					addLog('Redirecting to rover control panel...', 'success');
 
 					// add wait for 10 seconds before redirecting
-					await new Promise((resolve) => setTimeout(resolve, 100));
+					await new Promise((resolve) => setTimeout(resolve, 1000));
 
 					// Redirect to rover page after a short delay to show the success message
 					setTimeout(() => {

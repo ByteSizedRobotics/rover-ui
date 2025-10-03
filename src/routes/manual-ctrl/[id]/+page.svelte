@@ -212,7 +212,7 @@
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4" bind:this={component}>
 	<div class="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-lg border border-blue-100">
 		<div class="p-6">
-			<h1 class="mb-6 text-center text-2xl font-bold text-blue-900">ROS Rover Control</h1>
+			<h1 class="mb-6 text-center text-2xl font-bold text-blue-900">Manual Control</h1>
 
 			<!-- Connection status -->
 			<div class="mb-6 flex items-center justify-between rounded-lg bg-blue-50 border border-blue-200 p-4">
