@@ -75,10 +75,18 @@
 				cleanupWebRTCListener = commandCenterClient.onWebRTCStatusChange(updateWebRTCStatus);
 				
 				// Connect to ROS2 command center for sensor data and video
-				commandCenterClient.connect().then(() => {
+				commandCenterClient.connect().then(async () => {
 					console.log('Connected to ROS2 Command Center for sensor data and video');
 					
 					if (!commandCenterClient) return;
+					
+					// Enable manual control mode by sending command to ROS2 topic
+					try {
+						await commandCenterClient.enableManualControl();
+						console.log('Manual control mode enabled successfully');
+					} catch (error) {
+						console.error('Failed to enable manual control mode:', error);
+					}
 					
 					// Set video element for WebRTC stream
 					commandCenterClient.setVideoElement('roverVideo');
