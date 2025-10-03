@@ -6,6 +6,7 @@
 	import { browser } from '$app/environment';
 	import { createMiniLidar, LidarMiniController } from './lidarController';
 	import { commandCenterManager, type ROS2CommandCentreClient, type WebRTCStatus } from '$lib/ros2CommandCentre';
+	import { goto } from '$app/navigation';
 
 	let { data }: { data: PageServerData } = $props();
 
@@ -31,11 +32,7 @@
 		angularVelocity: 0,
 		isConnected: false
 	});
-	let tableData = $state([
-		{ id: 1, value: 10, status: 'A' },
-		{ id: 2, value: 21, status: 'B' },
-		{ id: 3, value: 15, status: 'C' }
-	]);
+	let tableData = $state([]); // Will be filled with pothole data
 	let roverPosition = $state({ x: 50, y: 40 }); // Percentage position on map
 	let roverGpsPosition = $state({ lat: 45.4215, lng: -75.6972 }); // GPS coordinates (Ottawa default)
 	let connectionStatus = $state('Disconnected');
@@ -190,6 +187,18 @@
 						connectionStatus = 'Connection Failed';
 					});
 			}, 80);
+		}
+
+		// Fetch detection data
+		try {
+			const res = await fetch('/api/detections');
+			if (res.ok) {
+				tableData = await res.json();
+			} else {
+				console.error('Failed to fetch detection data:', res.statusText);
+			}
+		} catch (err) {
+			console.error('Error fetching detection data:', err);
 		}
 
 	});
@@ -460,22 +469,18 @@
 							<thead>
 								<tr class="border-b border-blue-200">
 									<th class="text-left text-blue-600 font-medium py-2">ID</th>
-									<th class="text-left text-blue-600 font-medium py-2">Value</th>
-									<th class="text-left text-blue-600 font-medium py-2">Status</th>
+									<th class="text-left text-blue-600 font-medium py-2">Confidence</th>
+									<th class="text-left text-blue-600 font-medium py-2">Area Score</th>
+									<th class="text-left text-blue-600 font-medium py-2">Depth Score</th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each tableData as row}
-									<tr class="border-b border-blue-100 hover:bg-blue-50">
+									<tr class="border-b border-blue-100 hover:bg-blue-50 cursor-pointer" onclick={() => goto(`/detections/${row.id}`)}>
 										<td class="py-2 text-blue-900">{row.id}</td>
-										<td class="py-2 text-blue-900">{row.value}</td>
-										<td class="py-2">
-											<span class="px-2 py-1 rounded-full text-xs font-medium {
-												row.status === 'A' ? 'bg-blue-100 text-blue-600' :
-												row.status === 'B' ? 'bg-blue-200 text-blue-700' :
-												'bg-blue-300 text-blue-800'
-											}">{row.status}</span>
-										</td>
+										<td class="py-2 text-blue-900">{row.confidence != null ? row.confidence.toFixed(2) : 'N/A'}</td>
+										<td class="py-2 text-blue-900">{row.areaScore != null ? row.areaScore.toFixed(2) : 'N/A'}</td>
+										<td class="py-2 text-blue-900">{row.depthScore != null ? row.depthScore.toFixed(2) : 'N/A'}</td>
 									</tr>
 								{/each}
 							</tbody>
