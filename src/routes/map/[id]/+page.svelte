@@ -17,14 +17,6 @@
 	let showEndSuggestions = false;
 	let routeSelected = false;
 	let lastRoutes: any[] = [];
-	let userLocation: GeoLocation | null = null;
-	let currentCity = '';
-	let currentProvince = '';
-	let searchBounds: BoundingBox | null = null;
-	const suggestionCache = new Map<string, NominatimResult[]>();
-	let suggestionsController: AbortController | null = null;
-	let selectedStartCoords: GeoLocation | null = null;
-	let selectedEndCoords: GeoLocation | null = null;
 
 	// Type definitions for Nominatim results
 	interface NominatimAddress {
@@ -55,16 +47,8 @@
 		lng: number;
 	}
 
-	interface BoundingBox {
-		left: number;
-		right: number;
-		top: number;
-		bottom: number;
-	}
-
 	onMount(async () => {
-		const leafletModule = await import('leaflet');
-		const L = leafletModule.default;
+		const L = (await import('leaflet')).default;
 
 		// Load Leaflet CSS
 		if (!document.getElementById('leaflet-css')) {
@@ -92,8 +76,9 @@
 			maxZoom: 20
 		}).addTo(map);
 
-		// Import additional Leaflet components in parallel
-		await Promise.all([import('leaflet-routing-machine'), import('leaflet-control-geocoder')]);
+		// Import additional Leaflet components
+		await import('leaflet-routing-machine');
+		await import('leaflet-control-geocoder');
 
 		// Properly instantiate Nominatim geocoder
 		geocoder = new L.Control.Geocoder.Nominatim();
@@ -103,8 +88,6 @@
 			waypoints: [],
 			routeWhileDragging: true
 		}).addTo(map);
-
-		await initializeGeolocation();
 
 		// store routes when found so we can extract full geometry later
 		routingControl.on('routesfound', (e: any) => {
@@ -125,9 +108,8 @@
 		console.log(`Geocoding end: ${endAddress}`);
 
 		try {
-			const startCoords =
-				selectedStartCoords ?? (await geocodeAddress(startAddress));
-			const endCoords = selectedEndCoords ?? (await geocodeAddress(endAddress));
+			const startCoords = await geocodeAddress(startAddress);
+			const endCoords = await geocodeAddress(endAddress);
 
 			if (startCoords && endCoords) {
 				console.log('Geocoding successful!', { startCoords, endCoords });
@@ -205,8 +187,8 @@
 
 	async function geocodeAddress(address: string): Promise<GeoLocation> {
 		console.log(`Geocoding address: ${address}`);
-		const { params } = buildSearchParams(address, 5);
-		const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+		const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+		const response = await fetch(url);
 		const results: NominatimResult[] = await response.json();
 		console.log(`Geocode results for "${address}":`, results);
 		if (results.length > 0) {
@@ -224,27 +206,21 @@
 		if (!query) return [];
 
 		// Extract number from query if it exists (like "123 Main St")
-		const normalizedQuery = query.trim().toLowerCase();
-		const cacheKey = `${normalizedQuery}|${currentCity}|${currentProvince}`;
+		const numberMatch = query.match(/^\s*(\d+)\s+(.+)/);
+		let houseNumber: string | null = null;
+		let queryText = query;
 
-		if (suggestionCache.has(cacheKey)) {
-			return suggestionCache.get(cacheKey) ?? [];
+		if (numberMatch) {
+			houseNumber = numberMatch[1];
+			queryText = numberMatch[2]; // Use the street part for search
 		}
 
-		const { params, houseNumber } = buildSearchParams(query, 10);
-		params.set('dedupe', '1');
-		params.set('limit', '10');
+		// Restrict to Canada and prioritize structured addresses
+		const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&countrycodes=ca&limit=15`;
 
 		try {
-			if (suggestionsController) {
-				suggestionsController.abort();
-			}
-			suggestionsController = new AbortController();
-
-			const response = await fetch(
-				`https://nominatim.openstreetmap.org/search?${params.toString()}`,
-				{ signal: suggestionsController.signal }
-			);
+			console.log('Fetching from URL:', url);
+			const response = await fetch(url);
 
 			if (!response.ok) {
 				console.error('Nominatim API error:', response.status, response.statusText);
@@ -267,31 +243,27 @@
 			const seen = new Set<string>();
 			results = results.filter((r: NominatimResult) => {
 				const address = r.address || {};
+
+				// Accept results even without road/street for flexibility
 				const road = address.road || address.street || '';
 				const city = address.city || address.town || address.village || '';
 				const province = address.state || address.province || '';
-				const house = address.house_number || '';
+
+				// Include postal code in key if available for better uniqueness
 				const key = `${road}|${city}|${province}`;
 
 				if (seen.has(key)) return false;
 				seen.add(key);
-				return Boolean(house && road);
+				return true;
 			});
 
 			console.log('Filtered results:', results);
 
-			// Limit to 5 unique results and cache
-			const trimmedResults = results.slice(0, 5);
-			suggestionCache.set(cacheKey, trimmedResults);
-			return trimmedResults;
+			// Limit to 5 unique results
+			return results.slice(0, 5);
 		} catch (error) {
-			if ((error as Error).name === 'AbortError') {
-				return [];
-			}
 			console.error('Error fetching or processing suggestions:', error);
 			return [];
-		} finally {
-			suggestionsController = null;
 		}
 	}
 
@@ -301,7 +273,6 @@
 	async function handleStartInput(e: Event): Promise<void> {
 		const target = e.target as HTMLInputElement;
 		startAddress = target.value;
-			selectedStartCoords = null;
 
 		// Clear any existing timeout
 		if (startInputTimeout) clearTimeout(startInputTimeout);
@@ -353,10 +324,6 @@
 		startAddress = formatSuggestion(suggestion);
 		showStartSuggestions = false;
 		startSuggestions = [];
-		selectedStartCoords = {
-			lat: parseFloat(suggestion.lat),
-			lng: parseFloat(suggestion.lon)
-		};
 	}
 
 	// Add debounce for end input as well
@@ -365,7 +332,6 @@
 	async function handleEndInput(e: Event): Promise<void> {
 		const target = e.target as HTMLInputElement;
 		endAddress = target.value;
-		selectedEndCoords = null;
 
 		// Clear any existing timeout
 		if (endInputTimeout) clearTimeout(endInputTimeout);
@@ -394,119 +360,6 @@
 		endAddress = formatSuggestion(suggestion);
 		showEndSuggestions = false;
 		endSuggestions = [];
-		selectedEndCoords = {
-			lat: parseFloat(suggestion.lat),
-			lng: parseFloat(suggestion.lon)
-		};
-	}
-
-	function parseAddressQuery(query: string): { houseNumber: string | null; street: string } {
-		const trimmed = query.trim();
-		const numberMatch = trimmed.match(/^(\d+)\s+(.*)$/);
-		if (numberMatch) {
-			return {
-				houseNumber: numberMatch[1],
-				street: numberMatch[2]
-			};
-		}
-		return { houseNumber: null, street: trimmed };
-	}
-
-	function buildSearchParams(query: string, limit = 10): {
-		params: URLSearchParams;
-		houseNumber: string | null;
-	} {
-		const { houseNumber, street } = parseAddressQuery(query);
-		const params = new URLSearchParams({
-			format: 'jsonv2',
-			addressdetails: '1',
-			limit: String(limit),
-			countrycodes: 'ca'
-		});
-		if (houseNumber || street) {
-			const streetParam = [houseNumber, street].filter(Boolean).join(' ').trim();
-			if (streetParam) params.set('street', streetParam);
-		}
-		if (!params.has('street') || !params.get('street')) {
-			params.set('q', query);
-		}
-		if (currentCity) params.set('city', currentCity);
-		if (currentProvince) params.set('state', currentProvince);
-		if (searchBounds) {
-			params.set(
-				'viewbox',
-				`${searchBounds.left},${searchBounds.top},${searchBounds.right},${searchBounds.bottom}`
-			);
-			params.set('bounded', '1');
-		}
-		return { params, houseNumber };
-	}
-
-	async function initializeGeolocation(): Promise<void> {
-		if (typeof navigator === 'undefined' || !navigator.geolocation) {
-			return;
-		}
-
-		return new Promise((resolve) => {
-			navigator.geolocation.getCurrentPosition(
-				async (position) => {
-					const { latitude, longitude } = position.coords;
-					userLocation = { lat: latitude, lng: longitude };
-					searchBounds = computeBoundingBox(userLocation, 5);
-					map.setView([latitude, longitude], 14);
-
-					try {
-						const { city, province } = await reverseGeocode(latitude, longitude);
-						currentCity = city;
-						currentProvince = province;
-					} catch (err) {
-						console.warn('Reverse geocode failed', err);
-					}
-
-					resolve();
-				},
-				(error) => {
-					console.warn('Geolocation unavailable', error);
-					searchBounds = null;
-					resolve();
-				},
-				{ enableHighAccuracy: true, timeout: 5000 }
-			);
-		});
-	}
-
-	function computeBoundingBox(location: GeoLocation, radiusKm = 5): BoundingBox {
-		const earthRadiusKm = 6371;
-		const deltaLat = (radiusKm / earthRadiusKm) * (180 / Math.PI);
-		const deltaLng = deltaLat / Math.cos((location.lat * Math.PI) / 180);
-		return {
-			left: location.lng - deltaLng,
-			right: location.lng + deltaLng,
-			top: location.lat + deltaLat,
-			bottom: location.lat - deltaLat
-		};
-	}
-
-	async function reverseGeocode(lat: number, lon: number): Promise<{
-		city: string;
-		province: string;
-	}> {
-		const params = new URLSearchParams({
-			format: 'jsonv2',
-			lat: String(lat),
-			lon: String(lon),
-			addressdetails: '1'
-		});
-		const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`);
-		if (!response.ok) {
-			throw new Error('Reverse geocode failed');
-		}
-		const data = await response.json();
-		const address: NominatimAddress = data.address || {};
-		return {
-			city: address.city || address.town || address.village || '',
-			province: address.state || address.province || ''
-		};
 	}
 </script>
 
