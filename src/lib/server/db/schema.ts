@@ -99,6 +99,30 @@ export const detections = pgTable('detections', {
 });
 
 // -------------------
+// Logs Table
+// -------------------
+export const logs = pgTable(
+	'logs',
+	{
+		id: serial('id').primaryKey().notNull(),
+		roverId: integer('rover_id')
+			.notNull()
+			.references(() => rovers.id, { onDelete: 'cascade' }),
+		timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow(),
+		location: geometry('location', { type: 'point', srid: 4326 }).notNull(),
+		altitude: doublePrecision('altitude').notNull(),
+		roll: doublePrecision('roll').notNull(),
+		pitch: doublePrecision('pitch').notNull(),
+		yaw: doublePrecision('yaw').notNull(),
+		temperature: doublePrecision('temperature').notNull(),
+		voltage: doublePrecision('voltage').notNull()
+	},
+	(table) => [
+		index('idx_logs_location').using('gist', table.location.asc().nullsLast().op('gist_geometry_ops_2d'))
+	]
+);
+
+// -------------------
 // Infer Types
 // -------------------
 export type Session = typeof session.$inferSelect;
@@ -107,3 +131,4 @@ export type Rovers = typeof rovers.$inferSelect;
 export type Paths = typeof paths.$inferSelect;
 export type Images = typeof images.$inferSelect;
 export type Detections = typeof detections.$inferSelect;
+export type Logs = typeof logs.$inferSelect;
