@@ -49,6 +49,7 @@
 	// Remove direct lidar websocket variables, replace with controller
 	let lidarController: LidarMiniController | null = null;
 	let lidarCanvasEl: HTMLCanvasElement | null = null;
+	let imuUpdateInterval: ReturnType<typeof setInterval> | null = null;
 
 	// ROS2 Command Center client for sensor data and video
 	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null);
@@ -134,44 +135,60 @@
 				cleanupWebRTCListener?.();
 				cleanupWebRTCListener = commandCenterClient.onWebRTCStatusChange(updateWebRTCStatus);
 				
-				// Connect to ROS2 command center (handles both sensors and video)
-				commandCenterClient.connect().then(() => {
-					connectionStatus = 'Connected';
-					sensorData.isConnected = true;
-					
+				const setupCommandCenterClient = () => {
 					if (!commandCenterClient) return;
-					
-					// Set video element for WebRTC stream (camera 1 by default)
+
 					commandCenterClient.setVideoElement(`roverVideo${currentCamera}`);
-					
-					// Subscribe to lidar data updates and feed them to the controller
 					commandCenterClient.onLidarData((lidarData) => {
 						if (lidarController) {
 							lidarController.updateData(lidarData);
 						}
 					});
-					
-					// Subscribe to state changes
 					commandCenterClient.onStateChange((status) => {
 						connectionStatus = status.isConnected ? 'Connected' : 'Disconnected';
 						sensorData.isConnected = status.isConnected;
 					});
-					
-					// Subscribe to IMU data for sensor display
-					setInterval(() => {
-							const imuRaw = commandCenterClient?.imuRawData;
-							if (imuRaw) {
-								sensorData.roll = imuRaw.roll;
-								sensorData.pitch = imuRaw.pitch;
-								sensorData.yaw = imuRaw.yaw;
-								sensorData.temperature = imuRaw.temperature;
-								sensorData.batteryVoltage = imuRaw.voltage;
-							}
+
+					if (imuUpdateInterval) {
+						clearInterval(imuUpdateInterval);
+					}
+					imuUpdateInterval = setInterval(() => {
+						const imuRaw = commandCenterClient?.imuRawData;
+						if (imuRaw) {
+							sensorData.roll = imuRaw.roll;
+							sensorData.pitch = imuRaw.pitch;
+							sensorData.yaw = imuRaw.yaw;
+							sensorData.temperature = imuRaw.temperature;
+							sensorData.batteryVoltage = imuRaw.voltage;
+						}
 					}, 100);
-				}).catch((err) => {
-					console.error('Failed to connect to ROS2 Command Center:', err);
-					connectionStatus = 'Connection Failed';
-				});
+
+					const status = commandCenterClient.status;
+					connectionStatus = status.isConnected ? 'Connected' : 'Disconnected';
+					sensorData.isConnected = status.isConnected;
+
+					const imuRaw = commandCenterClient.imuRawData;
+					if (imuRaw) {
+						sensorData.roll = imuRaw.roll;
+						sensorData.pitch = imuRaw.pitch;
+						sensorData.yaw = imuRaw.yaw;
+						sensorData.temperature = imuRaw.temperature;
+						sensorData.batteryVoltage = imuRaw.voltage;
+					}
+				};
+
+				const ensureConnection = commandCenterClient.isConnected
+					? Promise.resolve()
+					: commandCenterClient.connect();
+
+				ensureConnection
+					.then(() => {
+						setupCommandCenterClient();
+					})
+					.catch((err) => {
+						console.error('Failed to connect to ROS2 Command Center:', err);
+						connectionStatus = 'Connection Failed';
+					});
 			}, 80);
 		}
 
@@ -183,14 +200,19 @@
 			cleanupWebRTCListener();
 			cleanupWebRTCListener = null;
 		}
+	if (imuUpdateInterval) {
+		clearInterval(imuUpdateInterval);
+		imuUpdateInterval = null;
+	}
 		isWebRTCReady = false;
 		webRTCStatusMessage = 'Connecting to rover...';
 		
-		// Clean up command center client (handles both sensors and video)
-		if (commandCenterClient) {
-			commandCenterClient.disconnect();
-			commandCenterClient = null;
-		}
+	if (commandCenterClient) {
+		commandCenterClient.setVideoElement(null);
+		commandCenterClient.onLidarData(null);
+		commandCenterClient.onStateChange(null);
+		commandCenterClient = null;
+	}
 	});
 
 	async function initializeMap() {

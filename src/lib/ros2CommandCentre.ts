@@ -513,9 +513,23 @@ export class ROS2CommandCentreClient {
 	 * Set video element for WebRTC stream
 	 * This will wait for WebRTC to be ready and retry binding if needed
 	 */
-	public setVideoElement(videoElementId: string): void {
+	public setVideoElement(videoElementId: string | null): void {
+		const previousElementId = this._currentVideoElementId;
 		this._currentVideoElementId = videoElementId;
-		console.log(`Setting video element '${videoElementId}' for rover ${this._roverId}`);
+		console.log(`Setting video element '${videoElementId ?? 'none'}' for rover ${this._roverId}`);
+
+		if (!videoElementId) {
+			if (previousElementId) {
+				const previousElement = document.getElementById(previousElementId) as HTMLVideoElement | null;
+				if (previousElement) {
+					previousElement.pause();
+					previousElement.srcObject = null;
+				}
+			}
+			this.emitWebRTCStatus();
+			return;
+		}
+
 		this.emitWebRTCStatus();
 
 		// If we already have a remote stream, try to apply immediately
@@ -554,17 +568,18 @@ export class ROS2CommandCentreClient {
 	 * Apply currently stored remote stream to the registered video element
 	 */
 	private applyStreamToVideo(): void {
-		if (!this._currentVideoElementId || !this._remoteStream) {
-			console.warn(`Cannot apply stream: elementId=${this._currentVideoElementId}, hasStream=${!!this._remoteStream}`);
+		const elementId = this._currentVideoElementId;
+		if (!elementId || !this._remoteStream) {
+			console.warn(`Cannot apply stream: elementId=${elementId}, hasStream=${!!this._remoteStream}`);
 			return;
 		}
 
-		const videoElement = document.getElementById(this._currentVideoElementId) as HTMLVideoElement | null;
+		const videoElement = document.getElementById(elementId) as HTMLVideoElement | null;
 		if (!videoElement) {
-			console.error(`Video element with id '${this._currentVideoElementId}' not found for rover ${this._roverId}`);
+			console.error(`Video element with id '${elementId}' not found for rover ${this._roverId}`);
 			// Retry after a delay in case the element isn't in DOM yet
 			setTimeout(() => {
-				const retryElement = document.getElementById(this._currentVideoElementId!) as HTMLVideoElement | null;
+				const retryElement = elementId ? (document.getElementById(elementId) as HTMLVideoElement | null) : null;
 				if (retryElement && this._remoteStream) {
 					console.log(`Video element found on retry, applying stream`);
 					retryElement.srcObject = this._remoteStream;
@@ -574,7 +589,7 @@ export class ROS2CommandCentreClient {
 			return;
 		}
 
-		console.log(`Applying WebRTC stream to video element '${this._currentVideoElementId}' for rover ${this._roverId}`);
+		console.log(`Applying WebRTC stream to video element '${elementId}' for rover ${this._roverId}`);
 		
 		// Set the stream
 		if (videoElement.srcObject !== this._remoteStream) {
@@ -667,8 +682,8 @@ export class ROS2CommandCentreClient {
 
 		console.log('Waiting for required nodes to start up...');
 		
-		// Wait for required nodes to be running (based on Python autonomous_nodes)
-		const requiredNodes = ['gps', 'csi_camera_1', 'obstacle_detection', 'motor_control', 'imu'];
+		// Wait for required nodes to be running (based on Python autonomous_nodes) 'imu'
+		const requiredNodes = ['gps', 'csi_camera_1', 'obstacle_detection', 'motor_control'];
 		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
 		
 		if (!nodesStarted) {
@@ -741,28 +756,28 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Set state change callback
 	 */
-	onStateChange(callback: (status: CommandCenterStatus) => void): void {
+	onStateChange(callback: ((status: CommandCenterStatus) => void) | null): void {
 		this._onStateChange = callback;
 	}
 
 	/**
 	 * Set rover state update callback
 	 */
-	onTimestampUpdate(callback: (state: number) => void): void {
+	onTimestampUpdate(callback: ((state: number) => void) | null): void {
 		this._onTimestampUpdate = callback;
 	}
 
 	/**
 	 * Set lidar data update callback
 	 */
-	onLidarData(callback: (data: LidarData) => void): void {
+	onLidarData(callback: ((data: LidarData) => void) | null): void {
 		this._onLidarDataUpdate = callback;
 	}
 
 	/**
 	 * Set node status update callback
 	 */
-	onNodeStatusUpdate(callback: (status: NodeStatus) => void): void {
+	onNodeStatusUpdate(callback: ((status: NodeStatus) => void) | null): void {
 		this._onNodeStatusUpdate = callback;
 	}
 
@@ -1122,7 +1137,7 @@ export class ROS2CommandCentreClient {
 	 */
 	private async writeLidarDataToDatabase(data: LidarData): Promise<void> {
 		// TODO: Implement database write for LIDAR data
-		console.log(`[DB Placeholder] Writing LIDAR data for rover ${this._roverId}:`, data);
+		//console.log(`[DB Placeholder] Writing LIDAR data for rover ${this._roverId}:`, data);
 		// Example: await db.insert(lidarTable).values({ rover_id: this._roverId, ...data });
 	}
 

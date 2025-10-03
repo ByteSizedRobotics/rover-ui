@@ -36,6 +36,7 @@
 	// Obstacle detection state
 	let obstacleDetected = $state(false);
 	let obstacleDistance = $state(0);
+	let obstacleInterval: ReturnType<typeof setInterval> | null = null;
 
 	// Controller state - updated via callback
 	let isConnected = $state(false);
@@ -74,41 +75,52 @@
 				cleanupWebRTCListener?.();
 				cleanupWebRTCListener = commandCenterClient.onWebRTCStatusChange(updateWebRTCStatus);
 				
-				// Connect to ROS2 command center for sensor data and video
-				commandCenterClient.connect().then(async () => {
-					console.log('Connected to ROS2 Command Center for sensor data and video');
-					
-					if (!commandCenterClient) return;
-					
-					// Enable manual control mode by sending command to ROS2 topic
-					try {
-						await commandCenterClient.enableManualControl();
-						console.log('Manual control mode enabled successfully');
-					} catch (error) {
-						console.error('Failed to enable manual control mode:', error);
+				const setupCommandCenter = async () => {
+					if (!commandCenterClient) {
+						return;
 					}
-					
-					// Set video element for WebRTC stream
-					commandCenterClient.setVideoElement('roverVideo');
-					
-					// Subscribe to lidar data updates and feed them to the controller
-					commandCenterClient.onLidarData((lidarData) => {
-						if (lidarController) {
-							lidarController.updateData(lidarData);
+
+					try {
+						if (!commandCenterClient.isConnected) {
+							await commandCenterClient.connect();
+							if (!commandCenterClient) {
+								return;
+							}
+							console.log('Connected to ROS2 Command Center for sensor data and video');
 						}
-					});
-					
-					// Subscribe to obstacle detection data
-					setInterval(() => {
-						const obstacleData = commandCenterClient?.obstacleData;
-						if (obstacleData) {
-							obstacleDetected = obstacleData.detected;
-							obstacleDistance = obstacleData.distance ?? 0;
+
+						commandCenterClient.setVideoElement('roverVideo');
+
+						// Enable manual control mode by sending command to ROS2 topic
+						try {
+							await commandCenterClient.enableManualControl();
+							console.log('Manual control mode enabled successfully');
+						} catch (error) {
+							console.error('Failed to enable manual control mode:', error);
 						}
-					}, 100);
-				}).catch((err) => {
-					console.error('Failed to connect to ROS2 Command Center:', err);
-				});
+
+						commandCenterClient.onLidarData((lidarData) => {
+							if (lidarController) {
+								lidarController.updateData(lidarData);
+							}
+						});
+
+						if (obstacleInterval) {
+							clearInterval(obstacleInterval);
+						}
+						obstacleInterval = setInterval(() => {
+							const obstacleData = commandCenterClient?.obstacleData;
+							if (obstacleData) {
+								obstacleDetected = obstacleData.detected;
+								obstacleDistance = obstacleData.distance ?? 0;
+							}
+						}, 100);
+					} catch (err) {
+						console.error('Failed to connect to ROS2 Command Center:', err);
+					}
+				};
+
+				setupCommandCenter();
 			}, 100);
 		}
 
@@ -124,8 +136,14 @@
 			
 			// Clean up command center client
 			if (commandCenterClient) {
-				commandCenterClient.disconnect();
+				commandCenterClient.setVideoElement(null);
+				commandCenterClient.onLidarData(null);
 				commandCenterClient = null;
+			}
+
+			if (obstacleInterval) {
+				clearInterval(obstacleInterval);
+				obstacleInterval = null;
 			}
 
 			if (cleanupWebRTCListener) {
