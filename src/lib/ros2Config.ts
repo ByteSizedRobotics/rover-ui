@@ -18,7 +18,7 @@ export const ROS2_CONFIG = {
 
 		// Sensor and Navigation Topics (data sent from ROVER -> SW)
 		GPS: '/fix', // GPS data (current rover location)
-		IMU_DATA: '/imu/data', // IMU data (Transformed to Quaternions)
+		// IMU_DATA: '/imu/data', // IMU data (Transformed to Quaternions)
 		IMU_RAW: '/imu/raw', // Raw sensor data [roll, pitch, yaw, temp, V]
 		LIDAR: '/scan', // Lidar scan data
 		// CMD_VEL: '/cmd_vel', // Nav2 output movements

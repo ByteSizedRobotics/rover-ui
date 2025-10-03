@@ -21,7 +21,7 @@ class ROS2Bridge {
 					// Send waypoints to ROS2 navigation topic
 					const message = {
 						op: 'publish',
-						topic: ROS2_CONFIG.TOPICS.WAYPOINTS,
+						topic: ROS2_CONFIG.TOPICS.ROVER_SWDATA,
 						msg: {
 							rover_id: roverId,
 							waypoints: waypoints.map((wp, index) => ({

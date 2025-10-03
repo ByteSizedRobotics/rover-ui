@@ -62,7 +62,7 @@
 				connecting = true;
 
 				try {
-					await commandCenterClient.connect();
+					await commandCenterClient.connect({ enableVideo: false });
 					addLog('Successfully connected to ROS2 Command Center', 'success');
 				} catch (error) {
 					const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -125,7 +125,7 @@
 					addLog('Redirecting to rover control panel...', 'success');
 
 					// add wait for 10 seconds before redirecting
-					await new Promise((resolve) => setTimeout(resolve, 10000));
+					await new Promise((resolve) => setTimeout(resolve, 1000));
 
 					// Redirect to rover page after a short delay to show the success message
 					setTimeout(() => {
@@ -364,25 +364,6 @@
 		flex-direction: column;
 	}
 
-	.subsection-title {
-		font-size: 1rem;
-		font-weight: 600;
-		color: #374151;
-		margin: 0 0 12px 0;
-		display: flex;
-		align-items: center;
-	}
-
-	.subsection-title::before {
-		content: '';
-		display: inline-block;
-		width: 3px;
-		height: 16px;
-		background: #8b5cf6;
-		margin-right: 8px;
-		border-radius: 2px;
-	}
-
 	.log-section {
 		margin-bottom: 80px;
 	}
@@ -395,34 +376,6 @@
 		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
 		overflow-y: auto;
 		max-height: 300px;
-	}
-
-	.log-entry {
-		display: flex;
-		align-items: flex-start;
-		gap: 12px;
-		margin-bottom: 8px;
-		padding: 8px 12px;
-		border-radius: 6px;
-		font-size: 0.875rem;
-	}
-
-	.log-entry.info {
-		background: rgba(59, 130, 246, 0.1);
-		color: #93c5fd;
-		border-left: 3px solid #3b82f6;
-	}
-
-	.log-entry.success {
-		background: rgba(34, 197, 94, 0.1);
-		color: #86efac;
-		border-left: 3px solid #22c55e;
-	}
-
-	.log-entry.error {
-		background: rgba(239, 68, 68, 0.1);
-		color: #fca5a5;
-		border-left: 3px solid #ef4444;
 	}
 
 	.timestamp {
@@ -610,26 +563,6 @@
 	.btn-text {
 		position: relative;
 		z-index: 1;
-	}
-
-	.status {
-		margin: 16px 0 0 0;
-		font-weight: 500;
-		padding: 8px 16px;
-		border-radius: 6px;
-		display: inline-block;
-	}
-
-	.status.success {
-		background: #d1fae5;
-		color: #065f46;
-		border: 1px solid #a7f3d0;
-	}
-
-	.status.error {
-		background: #fee2e2;
-		color: #991b1b;
-		border: 1px solid #fca5a5;
 	}
 
 	.bottom-left {

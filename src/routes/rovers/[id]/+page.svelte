@@ -4,9 +4,8 @@
 	import { get } from 'svelte/store';
 	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
-	import { createAndConnectMiniLidar, LidarMiniController } from './lidarController';
-	import { commandCenterManager, type ROS2CommandCentreClient } from '$lib/ros2CommandCentre';
-	import { getWebRTCWebSocketURL } from '$lib/ros2Config';
+	import { createMiniLidar, LidarMiniController } from './lidarController';
+	import { commandCenterManager, type ROS2CommandCentreClient, type WebRTCStatus } from '$lib/ros2CommandCentre';
 
 	let { data }: { data: PageServerData } = $props();
 
@@ -18,7 +17,7 @@
 	} | null>(null);
 
 	const params = get(page).params;
-	const roverId = params.id;
+	const roverId: string = params.id ?? '';
 
 	// Live metrics state
 	let currentCamera = $state(1);
@@ -50,79 +49,33 @@
 	// Remove direct lidar websocket variables, replace with controller
 	let lidarController: LidarMiniController | null = null;
 	let lidarCanvasEl: HTMLCanvasElement | null = null;
+	let imuUpdateInterval: ReturnType<typeof setInterval> | null = null;
 
-	// ROS2 Command Center client for camera feed
-	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null); // retained for future sensor integration
+	// ROS2 Command Center client for sensor data and video
+	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null);
+	let isWebRTCReady = $state(false);
+	let webRTCStatusMessage = $state('Connecting to rover...');
+	let cleanupWebRTCListener: (() => void) | null = null;
 
-	// Direct WebRTC (manual-control style) state
-	let webrtcSocket: WebSocket | null = null;
-	let peerConnection: RTCPeerConnection | null = null;
-	let remoteStream: MediaStream | null = null;
-	let webrtcConnected = $state(false);
+	function updateWebRTCStatus(status: WebRTCStatus) {
+		const activeElementId = `roverVideo${currentCamera}`;
+		const matchesCurrentCamera = status.videoElementId === activeElementId;
+		const hasStreamForActiveCamera = status.hasRemoteStream && matchesCurrentCamera;
 
-	function bindStreamToCurrentCamera() {
-		if (!remoteStream) return;
-		const videoEl = document.getElementById(`roverVideo${currentCamera}`) as HTMLVideoElement | null;
-		if (videoEl && videoEl.srcObject !== remoteStream) {
-			videoEl.srcObject = remoteStream;
-			videoEl.play().catch((e) => console.error('Video play error:', e));
-		}
+		isWebRTCReady = hasStreamForActiveCamera;
+		webRTCStatusMessage = status.isConnected
+			? status.hasRemoteStream
+				? (hasStreamForActiveCamera ? 'Camera feed connected' : 'Switching camera...')
+				: 'Connecting to camera...'
+			: 'Connecting to rover...';
 	}
 
-	async function startWebRTC() {
-		// Initialize RTCPeerConnection
-		peerConnection = new RTCPeerConnection({
-			iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }]
-		});
-
-		peerConnection.addTransceiver('video', { direction: 'recvonly' });
-
-		peerConnection.ontrack = (event) => {
-			remoteStream = event.streams[0];
-			webrtcConnected = true;
-			bindStreamToCurrentCamera();
-		};
-
-		peerConnection.onicecandidate = (event) => {
-			if (event.candidate && webrtcSocket) {
-				webrtcSocket.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
-			}
-		};
-
-		const offer = await peerConnection.createOffer();
-		await peerConnection.setLocalDescription(offer);
-		if (webrtcSocket) {
-			webrtcSocket.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
-		}
-	}
-
-	function connectWebRTC() {
-		try {
-			const wsUrl = getWebRTCWebSocketURL();
-			webrtcSocket = new WebSocket(wsUrl);
-			webrtcSocket.onopen = () => {
-				startWebRTC().catch((e) => console.error('Failed to start WebRTC:', e));
-			};
-			webrtcSocket.onerror = (e) => {
-				console.error('WebRTC signaling error:', e);
-			};
-			webrtcSocket.onclose = () => {
-				webrtcConnected = false;
-			};
-			webrtcSocket.onmessage = (event) => {
-				try {
-					const msg = JSON.parse(event.data);
-					if (msg.type === 'answer' && peerConnection) {
-						peerConnection.setRemoteDescription(new RTCSessionDescription(msg));
-					} else if (msg.type === 'ice-candidate' && peerConnection) {
-						peerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate));
-					}
-				} catch (err) {
-					console.error('Error parsing WebRTC message:', err);
-				}
-			};
-		} catch (err) {
-			console.error('Failed to open WebRTC socket:', err);
+	function switchCamera(cameraNum: number) {
+		currentCamera = cameraNum;
+		if (commandCenterClient) {
+			isWebRTCReady = false;
+			webRTCStatusMessage = 'Switching camera...';
+			commandCenterClient.setVideoElement(`roverVideo${cameraNum}`);
 		}
 	}
 
@@ -171,39 +124,95 @@
 			// A short delay can help ensure the container is rendered and sized
 			setTimeout(initializeMap, 50);
 		}
-		// Create and connect lidar controller (no inline websocket logic remains)
+		// Create lidar controller and connect to ROS2 Command Center for data
 		if (browser) {
 			setTimeout(() => {
-				lidarController = createAndConnectMiniLidar({ canvas: 'lidarMiniCanvas' });
-			}, 80);
-		}
+				// Create lidar visualization controller
+				lidarController = createMiniLidar({ canvas: 'lidarMiniCanvas' });
+				
+				// Get command center client for this rover
+				commandCenterClient = commandCenterManager.getClient(roverId);
+				cleanupWebRTCListener?.();
+				cleanupWebRTCListener = commandCenterClient.onWebRTCStatusChange(updateWebRTCStatus);
+				
+				const setupCommandCenterClient = () => {
+					if (!commandCenterClient) return;
 
-		// Direct WebRTC setup for camera feed (manual-control style)
-		if (browser) {
-			setTimeout(connectWebRTC, 120);
+					commandCenterClient.setVideoElement(`roverVideo${currentCamera}`);
+					commandCenterClient.onLidarData((lidarData) => {
+						if (lidarController) {
+							lidarController.updateData(lidarData);
+						}
+					});
+					commandCenterClient.onStateChange((status) => {
+						connectionStatus = status.isConnected ? 'Connected' : 'Disconnected';
+						sensorData.isConnected = status.isConnected;
+					});
+
+					if (imuUpdateInterval) {
+						clearInterval(imuUpdateInterval);
+					}
+					imuUpdateInterval = setInterval(() => {
+						const imuRaw = commandCenterClient?.imuRawData;
+						if (imuRaw) {
+							sensorData.roll = imuRaw.roll;
+							sensorData.pitch = imuRaw.pitch;
+							sensorData.yaw = imuRaw.yaw;
+							sensorData.temperature = imuRaw.temperature;
+							sensorData.batteryVoltage = imuRaw.voltage;
+						}
+					}, 100);
+
+					const status = commandCenterClient.status;
+					connectionStatus = status.isConnected ? 'Connected' : 'Disconnected';
+					sensorData.isConnected = status.isConnected;
+
+					const imuRaw = commandCenterClient.imuRawData;
+					if (imuRaw) {
+						sensorData.roll = imuRaw.roll;
+						sensorData.pitch = imuRaw.pitch;
+						sensorData.yaw = imuRaw.yaw;
+						sensorData.temperature = imuRaw.temperature;
+						sensorData.batteryVoltage = imuRaw.voltage;
+					}
+				};
+
+				const ensureConnection = commandCenterClient.isConnected
+					? Promise.resolve()
+					: commandCenterClient.connect();
+
+				ensureConnection
+					.then(() => {
+						setupCommandCenterClient();
+					})
+					.catch((err) => {
+						console.error('Failed to connect to ROS2 Command Center:', err);
+						connectionStatus = 'Connection Failed';
+					});
+			}, 80);
 		}
 
 	});
 
 	onDestroy(() => {
-		lidarController?.disconnect();
 		lidarController = null;
+		if (cleanupWebRTCListener) {
+			cleanupWebRTCListener();
+			cleanupWebRTCListener = null;
+		}
+	if (imuUpdateInterval) {
+		clearInterval(imuUpdateInterval);
+		imuUpdateInterval = null;
+	}
+		isWebRTCReady = false;
+		webRTCStatusMessage = 'Connecting to rover...';
 		
-		// Clean up command center client if used (not needed for video feed now)
-		if (commandCenterClient) {
-			commandCenterClient.disconnect();
-			commandCenterClient = null;
-		}
-
-		// Clean up WebRTC
-		if (peerConnection) {
-			peerConnection.close();
-			peerConnection = null;
-		}
-		if (webrtcSocket) {
-			webrtcSocket.close();
-			webrtcSocket = null;
-		}
+	if (commandCenterClient) {
+		commandCenterClient.setVideoElement(null);
+		commandCenterClient.onLidarData(null);
+		commandCenterClient.onStateChange(null);
+		commandCenterClient = null;
+	}
 	});
 
 	async function initializeMap() {
@@ -244,13 +253,6 @@
 		if (notification) {
 			notification.show = false;
 		}
-	}
-
-	function switchCamera(cameraNumber: number) {
-		if (currentCamera === cameraNumber) return; // No change needed
-		currentCamera = cameraNumber;
-		// Re-bind remote stream (if already received) to new visible element
-		bindStreamToCurrentCamera();
 	}
 
 	function emergencyStop() {
@@ -336,7 +338,7 @@
 							</video>
 						
 							<!-- Fallback when no stream is available -->
-							{#if !webrtcConnected}
+							{#if !isWebRTCReady}
 								<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
 									<div>
 										<svg
@@ -353,7 +355,7 @@
 											></path>
 										</svg>
 										<p class="font-medium">Camera {currentCamera} Feed</p>
-										<p class="text-sm text-blue-500">{webrtcSocket ? 'Connecting to camera...' : 'Connecting to rover...'}</p>
+										<p class="text-sm text-blue-500">{webRTCStatusMessage}</p>
 									</div>
 								</div>
 							{/if}
@@ -397,8 +399,8 @@
 			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 lg:col-span-4">
 				<div class="p-6">
 					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Metrics</h2>
-					<div class="mb-4 grid grid-cols-1 gap-2">
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+					<div class="mb-4 grid grid-cols-2 gap-2">
+						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200 col-span-2">
 							<div class="text-sm text-blue-600 font-medium">Roll/Pitch/Yaw</div>
 							<div class="text-sm font-bold text-blue-900">
 								{sensorData.isConnected ? 
@@ -419,7 +421,7 @@
 								{sensorData.isConnected ? `${sensorData.batteryVoltage.toFixed(1)}V` : 'N/A'}
 							</div>
 						</div>
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+						<!-- <div class="bg-blue-50 p-3 rounded-lg border border-blue-200 col-span-2">
 							<div class="text-sm text-blue-600 font-medium">Movement</div>
 							<div class="text-sm font-bold text-blue-900">
 								{sensorData.isConnected ? 
@@ -427,8 +429,8 @@
 									'L: N/A  A: N/A'
 								}
 							</div>
-						</div>
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+						</div> -->
+						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200 col-span-2">
 							<div class="text-sm text-blue-600 font-medium">ROS Status</div>
 							<div class="text-sm font-bold {sensorData.isConnected ? 'text-green-600' : 'text-red-600'}">
 								{connectionStatus}

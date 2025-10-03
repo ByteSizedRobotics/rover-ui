@@ -8,7 +8,7 @@
 
 	let map: L.Map;
 	let geocoder: any;
-	let routingControl: L.Routing.Control;
+	let routingControl: any;
 	let startAddress = '';
 	let endAddress = '';
 	let startSuggestions: NominatimResult[] = [];

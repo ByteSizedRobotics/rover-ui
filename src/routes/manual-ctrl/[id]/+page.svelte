@@ -1,42 +1,128 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { RoverController } from './manualControl';
+	import { page } from '$app/stores';
+	import { get } from 'svelte/store';
+	import { browser } from '$app/environment';
+	import { RoverController, type LogEntry } from './manualControl';
+	import { createMiniLidar, type LidarMiniController } from '../../rovers/[id]/lidarController';
+	import { commandCenterManager, type ROS2CommandCentreClient, type WebRTCStatus } from '$lib/ros2CommandCentre';
 
 	// Create controller with update callback
-	let controller: RoverController;
+	const params = get(page).params;
+	const roverId = params.id;
+	
+	let controller = $state<RoverController | undefined>(undefined);
 	let component: any;
-	let connecting = false;
+	let connecting = $state(false);
+	
+	// Lidar visualization
+	let lidarController: LidarMiniController | null = null;
+	let commandCenterClient: ROS2CommandCentreClient | null = null;
+	let isWebRTCReady = $state(false);
+	let webRTCStatusMessage = $state('Connecting to rover...');
+	let cleanupWebRTCListener: (() => void) | null = null;
 
-	// Use reactive statements to access controller state
-	$: isConnected = controller?.isConnected || false;
-	$: connectionStatus = controller?.connectionStatus || 'Disconnected';
-	$: statusColor = controller?.statusColor || 'text-red-500';
-	$: logs = controller?.logs || [];
-	$: obstacleDetected = controller?.obstacleDetected || false;
-	$: obstacleDistance = controller?.obstacleDistance || 0; // Ensure obstacleDistance is treated as a number
+	function updateWebRTCStatus(status: WebRTCStatus) {
+		const boundToVideo = status.videoElementId === 'roverVideo';
+		const hasStream = status.hasRemoteStream && boundToVideo;
+		isWebRTCReady = hasStream;
+		webRTCStatusMessage = status.isConnected
+			? status.hasRemoteStream
+				? (hasStream ? 'Camera feed connected' : 'Switching camera...')
+				: 'Connecting to camera...'
+			: 'Connecting to rover...';
+	}
+	
+	// Obstacle detection state
+	let obstacleDetected = $state(false);
+	let obstacleDistance = $state(0);
+	let obstacleInterval: ReturnType<typeof setInterval> | null = null;
+
+	// Controller state - updated via callback
+	let isConnected = $state(false);
+	let connectionStatus = $state('Disconnected');
+	let statusColor = $state('text-red-500');
+	let logs = $state<LogEntry[]>([]);
 
 	// Initialize the controller when component mounts
 	onMount(() => {
 		// Create controller with callback and custom ROS config if needed
 		controller = new RoverController(() => {
 			// This callback forces Svelte to update when controller state changes
-			component = component;
-
-			// Force update of reactive variables when controller state changes
-			obstacleDetected = controller.obstacleDetected;
-			obstacleDistance = controller.obstacleDistance;
-			logs = controller.logs;
-			isConnected = controller.isConnected;
-			connectionStatus = controller.connectionStatus;
-			statusColor = controller.statusColor;
+			if (controller) {
+				isConnected = controller.isConnected;
+				connectionStatus = controller.connectionStatus;
+				statusColor = controller.statusColor;
+				logs = controller.logs;
+			}
 		});
 
 		// Add keyboard event listeners for both arrow keys and WASD
 		window.addEventListener('keydown', handleKeyDown);
 		window.addEventListener('keyup', handleKeyUp);
 
-		// Auto-connect to ROS node
-		connectToRover();
+	// Auto-connect to ROS node
+	connectToRover();
+	
+		// Initialize lidar visualization and video with command center
+		if (browser) {
+			setTimeout(() => {
+				// Create lidar visualization controller
+				lidarController = createMiniLidar({ canvas: 'lidarCanvas' });
+				
+				// Get command center client for this rover
+				commandCenterClient = commandCenterManager.getClient(roverId);
+				cleanupWebRTCListener?.();
+				cleanupWebRTCListener = commandCenterClient.onWebRTCStatusChange(updateWebRTCStatus);
+				
+				const setupCommandCenter = async () => {
+					if (!commandCenterClient) {
+						return;
+					}
+
+					try {
+						if (!commandCenterClient.isConnected) {
+							await commandCenterClient.connect();
+							if (!commandCenterClient) {
+								return;
+							}
+							console.log('Connected to ROS2 Command Center for sensor data and video');
+						}
+
+						commandCenterClient.setVideoElement('roverVideo');
+
+						// Enable manual control mode by sending command to ROS2 topic
+						try {
+							await commandCenterClient.enableManualControl();
+							console.log('Manual control mode enabled successfully');
+						} catch (error) {
+							console.error('Failed to enable manual control mode:', error);
+						}
+
+						commandCenterClient.onLidarData((lidarData) => {
+							if (lidarController) {
+								lidarController.updateData(lidarData);
+							}
+						});
+
+						if (obstacleInterval) {
+							clearInterval(obstacleInterval);
+						}
+						obstacleInterval = setInterval(() => {
+							const obstacleData = commandCenterClient?.obstacleData;
+							if (obstacleData) {
+								obstacleDetected = obstacleData.detected;
+								obstacleDistance = obstacleData.distance ?? 0;
+							}
+						}, 100);
+					} catch (err) {
+						console.error('Failed to connect to ROS2 Command Center:', err);
+					}
+				};
+
+				setupCommandCenter();
+			}, 100);
+		}
 
 		return () => {
 			// CLEANUP AFTER MOVING AWAY FROM THIS PAGE
@@ -47,12 +133,33 @@
 			if (controller?.isConnected) {
 				controller.disconnectFromRover();
 			}
+			
+			// Clean up command center client
+			if (commandCenterClient) {
+				commandCenterClient.setVideoElement(null);
+				commandCenterClient.onLidarData(null);
+				commandCenterClient = null;
+			}
+
+			if (obstacleInterval) {
+				clearInterval(obstacleInterval);
+				obstacleInterval = null;
+			}
+
+			if (cleanupWebRTCListener) {
+				cleanupWebRTCListener();
+				cleanupWebRTCListener = null;
+			}
+			isWebRTCReady = false;
+			webRTCStatusMessage = 'Connecting to rover...';
+			
+			lidarController = null;
 		};
 	});
 
 	// Helper functions to delegate to controller
-	const handleKeyDown = (event: KeyboardEvent) => controller.handleKeyDown(event);
-	const handleKeyUp = (event: KeyboardEvent) => controller.handleKeyUp(event);
+	const handleKeyDown = (event: KeyboardEvent) => controller?.handleKeyDown(event);
+	const handleKeyUp = (event: KeyboardEvent) => controller?.handleKeyUp(event);
 
 	// Updated UI button handlers - directly call movement functions
 	const handleDirectionPress = (direction: string) => {
@@ -84,6 +191,8 @@
 	};
 
 	const connectToRover = async () => {
+		if (!controller) return;
+		
 		connecting = true;
 
 		// Force immediate UI update to show "Connecting..." state
@@ -91,8 +200,6 @@
 		statusColor = 'text-yellow-500';
 		try {
 			await controller.connectToRover();
-			// Initialize lidar visualization once connected
-			controller.initLidarVisualization('lidarCanvas');
 		} catch (error) {
 			console.error('Failed to connect to ROS:', error);
 			connectionStatus = 'Disconnected';
@@ -118,6 +225,8 @@
 	};
 
 	const disconnectFromRover = async () => {
+		if (!controller) return;
+		
 		try {
 			await controller.disconnectFromRover();
 		} catch (error) {
@@ -129,7 +238,7 @@
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4" bind:this={component}>
 	<div class="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-lg border border-blue-100">
 		<div class="p-6">
-			<h1 class="mb-6 text-center text-2xl font-bold text-blue-900">ROS Rover Control</h1>
+			<h1 class="mb-6 text-center text-2xl font-bold text-blue-900">Manual Control</h1>
 
 			<!-- Connection status -->
 			<div class="mb-6 flex items-center justify-between rounded-lg bg-blue-50 border border-blue-200 p-4">
@@ -221,20 +330,42 @@
 					</div>
 
 					<!-- Video Stream Section (Right side) -->
-					<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200">
-						<video
-							id="roverVideo"
-							autoplay
-							playsinline
-							class="h-full w-full object-cover"
-							style="max-height: 720px;"
+					<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200 relative">
+			<video
+				id="roverVideo"
+				autoplay
+				playsinline
+				muted
+				class="h-full w-full object-cover"
+				style="max-height: 720px;"
+			>
+				Your browser does not support the video tag.
+			</video>
+			
+			<!-- Fallback when no stream is available -->
+			{#if !isWebRTCReady}
+				<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
+					<div>
+						<svg
+							class="mx-auto mb-2 h-16 w-16"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
 						>
-							Your browser does not support the video tag.
-						</video>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2z"
+							></path>
+						</svg>
+						<p class="font-medium">Rover Camera Feed</p>
+						<p class="text-sm text-blue-500">{webRTCStatusMessage}</p>
 					</div>
 				</div>
-
-				<!-- Lidar Visualization and Obstacle Detection Information -->
+			{/if}
+		</div>
+	</div>				<!-- Lidar Visualization and Obstacle Detection Information -->
 				<div class="flex space-x-6">
 					<!-- Obstacle Detection Information (Left side) -->
 					<div class="w-1/3 rounded-lg bg-blue-50 border border-blue-200 p-4">
