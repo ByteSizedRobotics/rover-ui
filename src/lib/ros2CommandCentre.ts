@@ -137,6 +137,7 @@ export class ROS2CommandCentreClient {
 	private _isWebRTCConnected: boolean = false;
 	private _remoteStream: MediaStream | null = null; // store last received remote stream
 	private _currentVideoElementId: string | null = null; // currently bound video element id
+	private _autoStartWebRTC: boolean = true;
 
 	// Topic data storage
 	private _gpsData: GPSData | null = null;
@@ -219,10 +220,19 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Connect to the ROS2 Command Center
 	 */
-	async connect(): Promise<void> {
+	async connect(options: { enableVideo?: boolean } = {}): Promise<void> {
+		const { enableVideo = true } = options;
+		this._autoStartWebRTC = enableVideo;
+		if (!enableVideo) {
+			this.disconnectWebRTC();
+		}
+
 		// Check if already connected with valid socket
 		if (this._isConnected && this._socket?.readyState === WebSocket.OPEN) {
 			console.log(`Already connected to ROS2 Command Center for rover ${this._roverId}`);
+			if (enableVideo && !this._isWebRTCConnected) {
+				this.connectWebRTC();
+			}
 			return;
 		}
 
@@ -269,8 +279,12 @@ export class ROS2CommandCentreClient {
 					// Start heartbeat
 					this.startHeartbeat();
 
-					// Initialize WebRTC connection for camera stream
-					this.connectWebRTC();
+					// Initialize WebRTC connection for camera stream if enabled
+					if (this._autoStartWebRTC) {
+						this.connectWebRTC();
+					} else {
+						this.setWebRTCConnected(false);
+					}
 
 					this.notifyStateChange();
 					resolve();
