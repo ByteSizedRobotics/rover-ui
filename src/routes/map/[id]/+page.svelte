@@ -203,98 +203,91 @@
 	}
 
 	async function fetchSuggestions(query: string): Promise<NominatimResult[]> {
-		if (!query) return [];
-
-		// Extract number from query if it exists (like "123 Main St")
-		const numberMatch = query.match(/^\s*(\d+)\s+(.+)/);
-		let houseNumber: string | null = null;
-		let queryText = query;
-
-		if (numberMatch) {
-			houseNumber = numberMatch[1];
-			queryText = numberMatch[2]; // Use the street part for search
-		}
-
-		// Restrict to Canada and prioritize structured addresses
-		const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&countrycodes=ca&limit=15`;
+		if (!query || query.trim().length < 2) return [];
 
 		try {
-			console.log('Fetching from URL:', url);
-			const response = await fetch(url);
+			// Use Nominatim's search endpoint with optimized parameters
+			// Key improvements:
+			// - Higher limit (50) to get more diverse results before filtering
+			// - dedupe=1 for server-side deduplication
+			// - addressdetails=1 for structured address data
+			// - countrycodes=ca to restrict to Canada
+			const params = new URLSearchParams({
+				format: 'json',
+				q: query.trim(),
+				addressdetails: '1',
+				countrycodes: 'ca',
+				limit: '50',
+				dedupe: '1'
+			});
+
+			const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+			console.log('Fetching suggestions:', query);
+
+			const response = await fetch(url, {
+				headers: {
+					'Accept-Language': 'en'
+				}
+			});
 
 			if (!response.ok) {
-				console.error('Nominatim API error:', response.status, response.statusText);
+				console.error('Nominatim API error:', response.status);
 				return [];
 			}
 
 			let results: NominatimResult[] = await response.json();
-			console.log('Raw results:', results);
 
-			// If user entered a house number, prioritize matches with that number
-			if (houseNumber) {
-				results.sort((a: NominatimResult, b: NominatimResult) => {
-					const aMatch = a.address?.house_number === houseNumber ? 1 : 0;
-					const bMatch = b.address?.house_number === houseNumber ? 1 : 0;
-					return bMatch - aMatch;
-				});
+			// Fast lightweight filtering - only keep diverse, relevant results
+			const seen = new Set<string>();
+			const filtered: NominatimResult[] = [];
+
+			for (const result of results) {
+				if (filtered.length >= 8) break; // Stop after getting 8 good results
+
+				const addr = result.address || {};
+				
+				// Create a lightweight key for deduplication
+				const road = addr.road || addr.street || '';
+				const num = addr.house_number || '';
+				const city = addr.city || addr.town || addr.village || '';
+				
+				// More flexible key - prioritize exact matches with house numbers
+				const key = num ? `${num}|${road}|${city}` : `${road}|${city}`;
+
+				if (!seen.has(key)) {
+					seen.add(key);
+					filtered.push(result);
+				}
 			}
 
-			// Filter for unique street/road/city combinations
-			const seen = new Set<string>();
-			results = results.filter((r: NominatimResult) => {
-				const address = r.address || {};
+			console.log(`Got ${filtered.length} suggestions`);
+			return filtered;
 
-				// Accept results even without road/street for flexibility
-				const road = address.road || address.street || '';
-				const city = address.city || address.town || address.village || '';
-				const province = address.state || address.province || '';
-
-				// Include postal code in key if available for better uniqueness
-				const key = `${road}|${city}|${province}`;
-
-				if (seen.has(key)) return false;
-				seen.add(key);
-				return true;
-			});
-
-			console.log('Filtered results:', results);
-
-			// Limit to 5 unique results
-			return results.slice(0, 5);
 		} catch (error) {
-			console.error('Error fetching or processing suggestions:', error);
+			console.error('Error fetching suggestions:', error);
 			return [];
 		}
 	}
 
-	// Add debounce to avoid too many API calls
+	// Debounce to avoid excessive API calls while maintaining responsiveness
 	let startInputTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	async function handleStartInput(e: Event): Promise<void> {
 		const target = e.target as HTMLInputElement;
 		startAddress = target.value;
 
-		// Clear any existing timeout
 		if (startInputTimeout) clearTimeout(startInputTimeout);
 
-		// Set a new timeout to delay the API call
+		if (startAddress.trim().length < 2) {
+			startSuggestions = [];
+			showStartSuggestions = false;
+			return;
+		}
+
 		startInputTimeout = setTimeout(async () => {
-			if (startAddress.length > 2) {
-				try {
-					console.log('Fetching suggestions for:', startAddress);
-					startSuggestions = await fetchSuggestions(startAddress);
-					console.log('Got suggestions:', startSuggestions);
-					showStartSuggestions = startSuggestions.length > 0;
-				} catch (error) {
-					console.error('Error fetching suggestions:', error);
-					startSuggestions = [];
-					showStartSuggestions = false;
-				}
-			} else {
-				startSuggestions = [];
-				showStartSuggestions = false;
-			}
-		}, 300); // 300ms debounce
+			startSuggestions = await fetchSuggestions(startAddress);
+			showStartSuggestions = startSuggestions.length > 0;
+		}, 200); // 200ms debounce - faster response
 	}
 
 	function formatSuggestion(suggestion: NominatimResult): string {
@@ -326,34 +319,25 @@
 		startSuggestions = [];
 	}
 
-	// Add debounce for end input as well
+	// Debounce for end input
 	let endInputTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	async function handleEndInput(e: Event): Promise<void> {
 		const target = e.target as HTMLInputElement;
 		endAddress = target.value;
 
-		// Clear any existing timeout
 		if (endInputTimeout) clearTimeout(endInputTimeout);
 
-		// Set a new timeout to delay the API call
+		if (endAddress.trim().length < 2) {
+			endSuggestions = [];
+			showEndSuggestions = false;
+			return;
+		}
+
 		endInputTimeout = setTimeout(async () => {
-			if (endAddress.length > 2) {
-				try {
-					console.log('Fetching suggestions for:', endAddress);
-					endSuggestions = await fetchSuggestions(endAddress);
-					console.log('Got suggestions:', endSuggestions);
-					showEndSuggestions = endSuggestions.length > 0;
-				} catch (error) {
-					console.error('Error fetching suggestions:', error);
-					endSuggestions = [];
-					showEndSuggestions = false;
-				}
-			} else {
-				endSuggestions = [];
-				showEndSuggestions = false;
-			}
-		}, 300); // 300ms debounce
+			endSuggestions = await fetchSuggestions(endAddress);
+			showEndSuggestions = endSuggestions.length > 0;
+		}, 200); // 200ms debounce - faster response
 	}
 
 	function selectEndSuggestion(suggestion: NominatimResult): void {
