@@ -32,7 +32,14 @@
 		angularVelocity: 0,
 		isConnected: false
 	});
-	let tableData = $state([]); // Will be filled with pothole data
+	type DetectionRow = {
+		id: string | number;
+		confidence?: number;
+		areaScore?: number;
+		depthScore?: number;
+	};
+
+	let tableData = $state<DetectionRow[]>([]); // Will be filled with pothole data
 	let roverPosition = $state({ x: 50, y: 40 }); // Percentage position on map
 	let roverGpsPosition = $state({ lat: 45.4215, lng: -75.6972 }); // GPS coordinates (Ottawa default)
 	let connectionStatus = $state('Disconnected');
