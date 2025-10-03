@@ -17,7 +17,7 @@
 	} | null>(null);
 
 	const params = get(page).params;
-	const roverId = params.id;
+	const roverId: string = params.id ?? '';
 
 	// Live metrics state
 	let currentCamera = $state(1);

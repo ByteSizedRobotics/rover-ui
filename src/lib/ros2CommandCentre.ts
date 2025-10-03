@@ -42,25 +42,25 @@ export interface GPSData { // TODO: NATHAN Update this
 	timestamp: number;
 }
 
-export interface IMUData { // TODO: NATHAN Update this
-	orientation: {
-		x: number;
-		y: number;
-		z: number;
-		w: number;
-	};
-	angular_velocity: {
-		x: number;
-		y: number;
-		z: number;
-	};
-	linear_acceleration: {
-		x: number;
-		y: number;
-		z: number;
-	};
-	timestamp: number;
-}
+// export interface IMUData { // TODO: NATHAN Update this
+// 	orientation: {
+// 		x: number;
+// 		y: number;
+// 		z: number;
+// 		w: number;
+// 	};
+// 	angular_velocity: {
+// 		x: number;
+// 		y: number;
+// 		z: number;
+// 	};
+// 	linear_acceleration: {
+// 		x: number;
+// 		y: number;
+// 		z: number;
+// 	};
+// 	timestamp: number;
+// }
 
 export interface IMURawData { // TODO: NATHAN Update this
 	roll: number;
@@ -140,7 +140,7 @@ export class ROS2CommandCentreClient {
 
 	// Topic data storage
 	private _gpsData: GPSData | null = null;
-	private _imuData: IMUData | null = null;
+	// private _imuData: IMUData | null = null;
 	private _imuRawData: IMURawData | null = null;
 	private _lidarData: LidarData | null = null;
 	private _cmdVelData: CmdVelData | null = null;
@@ -172,9 +172,9 @@ export class ROS2CommandCentreClient {
 	get gpsData(): GPSData | null {
 		return this._gpsData;
 	}
-	get imuData(): IMUData | null {
-		return this._imuData;
-	}
+	// get imuData(): IMUData | null {
+	// 	return this._imuData;
+	// }
 	get imuRawData(): IMURawData | null {
 		return this._imuRawData;
 	}
@@ -257,7 +257,7 @@ export class ROS2CommandCentreClient {
 
 					// Subscribe to all sensor and command topics
 					this.subscribeToGPS();
-					this.subscribeToIMUData();
+					// this.subscribeToIMUData();
 					this.subscribeToIMURaw();
 					this.subscribeToLidar();
 					// this.subscribeToCmdVel();
@@ -848,17 +848,17 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Subscribe to IMU data (quaternions)
 	 */
-	private subscribeToIMUData(): void {
-		if (!this._socket) return;
+	// private subscribeToIMUData(): void {
+	// 	if (!this._socket) return;
 
-		const subscribeMsg = {
-			op: 'subscribe',
-			topic: ROS2_CONFIG.TOPICS.IMU_DATA,
-			type: 'sensor_msgs/Imu'
-		};
+	// 	const subscribeMsg = {
+	// 		op: 'subscribe',
+	// 		topic: ROS2_CONFIG.TOPICS.IMU_DATA,
+	// 		type: 'sensor_msgs/Imu'
+	// 	};
 
-		this._socket.send(JSON.stringify(subscribeMsg));
-	}
+	// 	this._socket.send(JSON.stringify(subscribeMsg));
+	// }
 
 	/**
 	 * Subscribe to raw IMU data
@@ -973,7 +973,7 @@ export class ROS2CommandCentreClient {
 		const topics = [
 			// ROS2_CONFIG.TOPICS.ROVER_STATE,
 			ROS2_CONFIG.TOPICS.GPS,
-			ROS2_CONFIG.TOPICS.IMU_DATA,
+			// ROS2_CONFIG.TOPICS.IMU_DATA,
 			ROS2_CONFIG.TOPICS.IMU_RAW,
 			ROS2_CONFIG.TOPICS.LIDAR,
 			ROS2_CONFIG.TOPICS.OBSTACLE_DETECTED,
@@ -1088,11 +1088,11 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Write IMU data to database
 	 */
-	private async writeIMUDataToDatabase(data: IMUData): Promise<void> {
-		// TODO: Implement database write for IMU data
-		console.log(`[DB Placeholder] Writing IMU data for rover ${this._roverId}:`, data);
-		// Example: await db.insert(imuTable).values({ rover_id: this._roverId, ...data });
-	}
+	// private async writeIMUDataToDatabase(data: IMUData): Promise<void> {
+	// 	// TODO: Implement database write for IMU data
+	// 	console.log(`[DB Placeholder] Writing IMU data for rover ${this._roverId}:`, data);
+	// 	// Example: await db.insert(imuTable).values({ rover_id: this._roverId, ...data });
+	// }
 
 	/**
 	 * Write raw IMU data to database
@@ -1143,9 +1143,9 @@ export class ROS2CommandCentreClient {
 					this.handleGPSMessage(data);
 					break;
 
-				case ROS2_CONFIG.TOPICS.IMU_DATA:
-					this.handleIMUDataMessage(data);
-					break;
+				// case ROS2_CONFIG.TOPICS.IMU_DATA:
+				// 	this.handleIMUDataMessage(data);
+				// 	break;
 
 				case ROS2_CONFIG.TOPICS.IMU_RAW:
 					this.handleIMURawMessage(data);
@@ -1328,30 +1328,30 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Handle IMU data message
 	 */
-	private handleIMUDataMessage(data: any): void {
-		const imuData: IMUData = {
-			orientation: {
-				x: data.msg.orientation?.x || 0,
-				y: data.msg.orientation?.y || 0,
-				z: data.msg.orientation?.z || 0,
-				w: data.msg.orientation?.w || 1
-			},
-			angular_velocity: {
-				x: data.msg.angular_velocity?.x || 0,
-				y: data.msg.angular_velocity?.y || 0,
-				z: data.msg.angular_velocity?.z || 0
-			},
-			linear_acceleration: {
-				x: data.msg.linear_acceleration?.x || 0,
-				y: data.msg.linear_acceleration?.y || 0,
-				z: data.msg.linear_acceleration?.z || 0
-			},
-			timestamp: Date.now()
-		};
+	// private handleIMUDataMessage(data: any): void {
+	// 	const imuData: IMUData = {
+	// 		orientation: {
+	// 			x: data.msg.orientation?.x || 0,
+	// 			y: data.msg.orientation?.y || 0,
+	// 			z: data.msg.orientation?.z || 0,
+	// 			w: data.msg.orientation?.w || 1
+	// 		},
+	// 		angular_velocity: {
+	// 			x: data.msg.angular_velocity?.x || 0,
+	// 			y: data.msg.angular_velocity?.y || 0,
+	// 			z: data.msg.angular_velocity?.z || 0
+	// 		},
+	// 		linear_acceleration: {
+	// 			x: data.msg.linear_acceleration?.x || 0,
+	// 			y: data.msg.linear_acceleration?.y || 0,
+	// 			z: data.msg.linear_acceleration?.z || 0
+	// 		},
+	// 		timestamp: Date.now()
+	// 	};
 
-		this._imuData = imuData;
-		this.writeIMUDataToDatabase(imuData);
-	}
+	// 	this._imuData = imuData;
+	// 	this.writeIMUDataToDatabase(imuData);
+	// }
 
 	/**
 	 * Handle raw IMU message
