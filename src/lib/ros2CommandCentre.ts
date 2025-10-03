@@ -889,14 +889,17 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
-	 * Database write functions (placeholder implementations)
+	 * Database update functions
 	 */
-
-	// TODO: NATHAN need write timestamp to database function
 	private async writeTimestampToDatabase(timestamp: number): Promise<void> {
-		// TODO: Implement database write for timestamp
 		console.log(`[DB Placeholder] Writing timestamp for rover ${this._roverId}:`, timestamp);
-		// Example: await db.insert(timestampTable).values({ rover_id: this._roverId, timestamp });
+		await fetch(`/api/rovers/${this._roverId}/heartbeat`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ timestamp })
+		});
 	}
 
 	/**
