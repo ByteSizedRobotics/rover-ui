@@ -1,7 +1,28 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { logs, rovers } from '$lib/server/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
+
+
+export const GET: RequestHandler = async ({ params }) => {
+    const roverId = params.id;
+
+    if (!roverId) {
+        return new Response(JSON.stringify({ error: 'Rover ID is required' }), { status: 400 });
+    }
+
+    try {
+        const roverLogs = await db.select().from(logs).where(eq(logs.roverId, Number(roverId))).orderBy(desc(logs.timestamp));
+
+        return new Response(JSON.stringify({ logs: roverLogs }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (err) {
+        console.error('Error fetching logs:', err);
+        return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
+    }
+};
 
 
 // Handler to add a new log entry for a specific rover
