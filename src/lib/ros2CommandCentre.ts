@@ -279,6 +279,9 @@ export class ROS2CommandCentreClient {
 					// Start heartbeat
 					this.startHeartbeat();
 
+					// Start periodic logging
+					this.startPeriodicLogging();
+
 					// Initialize WebRTC connection for camera stream if enabled
 					if (this._autoStartWebRTC) {
 						this.connectWebRTC();
@@ -343,6 +346,7 @@ export class ROS2CommandCentreClient {
 		this.stopHeartbeat();
 		this.disconnectWebRTC();
 		this.resetSensorData();
+		this.stopPeriodicLogging();
 
 		if (this._socket) {
 			// Remove event handlers to prevent them from firing during close
@@ -1127,10 +1131,66 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
-	 * Database write functions (placeholder implementations)
+	 * Send log entry to API every 15 seconds if data is available
 	 */
+	private async sendLogToApi(): Promise<void> {
+		if (!this._gpsData || !this._imuRawData) {
+			console.warn(`[Log] Missing GPS or IMU data, not sending log for rover ${this._roverId}`);
+			return;
+		}
+		try {
+			const payload = {
+				latitude: this._gpsData.latitude,
+				longitude: this._gpsData.longitude,
+				altitude: this._gpsData.altitude,
+				roll: this._imuRawData.roll,
+				pitch: this._imuRawData.pitch,
+				yaw: this._imuRawData.yaw,
+				temperature: this._imuRawData.temperature,
+				voltage: this._imuRawData.voltage
+			};
+			const res = await fetch(`/api/rovers/${this._roverId}/logs`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (!res.ok) {
+				console.error(`[Log] Failed to send log for rover ${this._roverId}:`, await res.text());
+			} else {
+				console.log(`[Log] Log entry sent for rover ${this._roverId}`);
+			}
+		} catch (err) {
+			console.error(`[Log] Error sending log for rover ${this._roverId}:`, err);
+		}
+	}
 
-	// TODO: NATHAN need write timestamp to database function
+	private _logInterval: NodeJS.Timeout | null = null;
+
+	/**
+	 * Start periodic logging to API every 15 seconds
+	 */
+	public startPeriodicLogging(): void {
+		if (this._logInterval) return;
+		this._logInterval = setInterval(() => {
+			this.sendLogToApi();
+		}, 15000);
+		// Optionally send one immediately
+		this.sendLogToApi();
+	}
+
+	/**
+	 * Stop periodic logging
+	 */
+	public stopPeriodicLogging(): void {
+		if (this._logInterval) {
+			clearInterval(this._logInterval);
+			this._logInterval = null;
+		}
+	}
+
+	/**
+	 * Database update functions
+	 */
 	private async writeTimestampToDatabase(timestamp: number): Promise<void> {
 		// TODO: Implement database write for timestamp
 		// console.log(`[DB Placeholder] Writing timestamp for rover ${this._roverId}:`, timestamp);
@@ -1249,7 +1309,9 @@ export class ROS2CommandCentreClient {
 			const fifteenSeconds = 15 * 1000; // 15 seconds in milliseconds
 			
 			if (timeSinceLastWrite >= fifteenSeconds) {
-				this.writeTimestampToDatabase(this._timestamp);
+				// Create log entry
+				// this.writeTimestampToDatabase(this._timestamp);
+				
 				this._lastTimestampDbWrite = now;
 			}
 

@@ -19,6 +19,22 @@ Table images {
   }
 }
 
+Table logs {
+  id serial [pk, not null, increment]
+  rover_id integer [not null, ref: > rovers.id]
+  timestamp "timestamp with time zone" [default: `now()`]
+  location geometry [note: 'POINT, SRID 4326']
+  altitude "double precision" [not null]
+  roll "double precision" [not null]
+  pitch "double precision" [not null]
+  yaw "double precision" [not null]
+  temperature "double precision" [not null]
+  voltage "double precision" [not null]
+  Indexes {
+    (location) [name: 'idx_logs_location', type: gist]
+  }
+}
+
 Table paths {
   id serial [pk, not null, increment]
   rover_id integer [not null, ref: > rovers.id]
