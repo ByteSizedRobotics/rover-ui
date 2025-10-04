@@ -297,6 +297,8 @@ export class ROS2CommandCentreClient {
 					
 					// Clean up socket and stop heartbeat
 					this.stopHeartbeat();
+					this.disconnectWebRTC();
+					this.resetSensorData();
 					if (this._socket) {
 						this._socket.onclose = null;  // Prevent onclose from firing after error
 						this._socket.onerror = null;
@@ -311,6 +313,8 @@ export class ROS2CommandCentreClient {
 				this._socket.onclose = () => {
 					this._isConnected = false;
 					this.stopHeartbeat();
+					this.disconnectWebRTC();
+					this.resetSensorData();
 					console.log('ROS2 Command Center connection closed');
 					this.notifyStateChange();
 				};
@@ -338,6 +342,7 @@ export class ROS2CommandCentreClient {
 		
 		this.stopHeartbeat();
 		this.disconnectWebRTC();
+		this.resetSensorData();
 
 		if (this._socket) {
 			// Remove event handlers to prevent them from firing during close
@@ -409,6 +414,16 @@ export class ROS2CommandCentreClient {
 	 * Disconnect WebRTC
 	 */
 	private disconnectWebRTC(): void {
+		// Clear video element before disconnecting
+		if (this._currentVideoElementId) {
+			const videoElement = document.getElementById(this._currentVideoElementId) as HTMLVideoElement | null;
+			if (videoElement) {
+				videoElement.pause();
+				videoElement.srcObject = null;
+				console.log(`Cleared video element '${this._currentVideoElementId}' for rover ${this._roverId}`);
+			}
+		}
+
 		if (this._peerConnection) {
 			this._peerConnection.close();
 			this._peerConnection = null;
@@ -434,6 +449,15 @@ export class ROS2CommandCentreClient {
 			this._peerConnection = new RTCPeerConnection({
 				iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }]
 			});
+
+			// Monitor connection state changes
+			this._peerConnection.onconnectionstatechange = () => {
+				console.log(`WebRTC connection state changed to: ${this._peerConnection?.connectionState} for rover ${this._roverId}`);
+			};
+
+			this._peerConnection.oniceconnectionstatechange = () => {
+				console.log(`WebRTC ICE connection state changed to: ${this._peerConnection?.iceConnectionState} for rover ${this._roverId}`);
+			};
 
 			// Ensure the WebRTC offer requests a video stream (without adding a local camera)
 			this._peerConnection.addTransceiver('video', { direction: 'recvonly' });
@@ -549,18 +573,24 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Wait for WebRTC connection to be ready, then apply stream
 	 */
-	private waitForWebRTCAndApply(retries = 0, maxRetries = 50): void {
+	private waitForWebRTCAndApply(retries = 0, maxRetries = 100): void {
 		if (retries >= maxRetries) {
 			console.error(`WebRTC failed to initialize after ${maxRetries} retries for rover ${this._roverId}`);
+			console.error(`Connection state: peer=${this._peerConnection?.connectionState}, ice=${this._peerConnection?.iceConnectionState}, hasStream=${!!this._remoteStream}`);
 			return;
 		}
 
+		// Log progress every 10 retries
+		if (retries > 0 && retries % 10 === 0) {
+			console.log(`WebRTC waiting... retry ${retries}/${maxRetries} - peer=${this._peerConnection?.connectionState}, ice=${this._peerConnection?.iceConnectionState}, hasStream=${!!this._remoteStream}`);
+		}
+
 		if (this._remoteStream && this._currentVideoElementId) {
-			console.log(`WebRTC ready after ${retries} retries, applying stream`);
+			console.log(`WebRTC ready after ${retries} retries (${retries * 200}ms), applying stream`);
 			this.applyStreamToVideo();
 		} else {
-			// Retry after 100ms
-			setTimeout(() => this.waitForWebRTCAndApply(retries + 1, maxRetries), 100);
+			// Retry after 200ms (increased from 100ms for more stable connection)
+			setTimeout(() => this.waitForWebRTCAndApply(retries + 1, maxRetries), 200);
 		}
 	}
 
@@ -576,16 +606,20 @@ export class ROS2CommandCentreClient {
 
 		const videoElement = document.getElementById(elementId) as HTMLVideoElement | null;
 		if (!videoElement) {
-			console.error(`Video element with id '${elementId}' not found for rover ${this._roverId}`);
+			console.error(`Video element with id '${elementId}' not found for rover ${this._roverId}, will retry...`);
 			// Retry after a delay in case the element isn't in DOM yet
 			setTimeout(() => {
 				const retryElement = elementId ? (document.getElementById(elementId) as HTMLVideoElement | null) : null;
 				if (retryElement && this._remoteStream) {
 					console.log(`Video element found on retry, applying stream`);
 					retryElement.srcObject = this._remoteStream;
+					retryElement.muted = true; // Auto-mute to help with autoplay
 					retryElement.play().catch(e => console.error(`Error playing video:`, e));
+					this.emitWebRTCStatus();
+				} else {
+					console.error(`Video element still not found after retry`);
 				}
-			}, 500);
+			}, 1000);
 			return;
 		}
 
@@ -594,6 +628,7 @@ export class ROS2CommandCentreClient {
 		// Set the stream
 		if (videoElement.srcObject !== this._remoteStream) {
 			videoElement.srcObject = this._remoteStream;
+			videoElement.muted = true; // Auto-mute to help with autoplay policies
 			console.log(`Stream source set for video element`);
 		}
 		this.emitWebRTCStatus();
@@ -606,11 +641,8 @@ export class ROS2CommandCentreClient {
 			})
 			.catch(e => {
 				console.error(`❌ Error playing video for rover ${this._roverId}:`, e);
-				// Try unmuting if autoplay was blocked
-				videoElement.muted = true;
-				videoElement.play().catch(e2 => {
-					console.error(`Failed to play even when muted:`, e2);
-				});
+				// Already muted above, log the specific error
+				console.error(`Autoplay error details:`, e.message);
 			});
 	}
 
@@ -682,8 +714,8 @@ export class ROS2CommandCentreClient {
 
 		console.log('Waiting for required nodes to start up...');
 		
-		// Wait for required nodes to be running (based on Python autonomous_nodes) 'imu'
-		const requiredNodes = ['gps', 'csi_camera_1', 'obstacle_detection', 'motor_control'];
+		// Wait for required nodes to be running (based on Python autonomous_nodes)
+		const requiredNodes = ['gps', 'csi_camera_1', 'obstacle_detection']; //'imu' , 'motor_control'
 		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
 		
 		if (!nodesStarted) {
@@ -1101,7 +1133,7 @@ export class ROS2CommandCentreClient {
 	// TODO: NATHAN need write timestamp to database function
 	private async writeTimestampToDatabase(timestamp: number): Promise<void> {
 		// TODO: Implement database write for timestamp
-		console.log(`[DB Placeholder] Writing timestamp for rover ${this._roverId}:`, timestamp);
+		// console.log(`[DB Placeholder] Writing timestamp for rover ${this._roverId}:`, timestamp);
 		// Example: await db.insert(timestampTable).values({ rover_id: this._roverId, timestamp });
 	}
 
@@ -1110,7 +1142,7 @@ export class ROS2CommandCentreClient {
 	 */
 	private async writeGPSDataToDatabase(data: GPSData): Promise<void> {
 		// TODO: Implement database write for GPS data
-		console.log(`[DB Placeholder] Writing GPS data for rover ${this._roverId}:`, data);
+		// console.log(`[DB Placeholder] Writing GPS data for rover ${this._roverId}:`, data);
 		// Example: await db.insert(gpsTable).values({ rover_id: this._roverId, ...data });
 	}
 
@@ -1128,7 +1160,7 @@ export class ROS2CommandCentreClient {
 	 */
 	private async writeIMURawDataToDatabase(data: IMURawData): Promise<void> {
 		// TODO: Implement database write for raw IMU data
-		console.log(`[DB Placeholder] Writing raw IMU data for rover ${this._roverId}:`, data);
+		// console.log(`[DB Placeholder] Writing raw IMU data for rover ${this._roverId}:`, data);
 		// Example: await db.insert(imuRawTable).values({ rover_id: this._roverId, ...data });
 	}
 
@@ -1146,7 +1178,7 @@ export class ROS2CommandCentreClient {
 	 */
 	private async writeObstacleDataToDatabase(data: ObstacleData): Promise<void> {
 		// TODO: Implement database write for obstacle data
-		console.log(`[DB Placeholder] Writing obstacle data for rover ${this._roverId}:`, data);
+		// console.log(`[DB Placeholder] Writing obstacle data for rover ${this._roverId}:`, data);
 		// Example: await db.insert(obstacleTable).values({ rover_id: this._roverId, ...data });
 	}
 
@@ -1459,6 +1491,39 @@ export class ROS2CommandCentreClient {
 		};
 
 		this.writeObstacleDataToDatabase(this._obstacleData);
+	}
+
+	/**
+	 * Reset all sensor data to null (called on disconnect/error)
+	 */
+	private resetSensorData(): void {
+		this._gpsData = null;
+		this._imuRawData = null;
+		this._lidarData = null;
+		this._cmdVelData = null;
+		this._jsonCommands = null;
+		this._legacyCommands = null;
+		this._obstacleData = null;
+		this._nodeStatus = null;
+		this._isNavigating = false;
+		this._totalWaypoints = 0;
+		
+		// Notify lidar callback with null to clear display
+		if (this._onLidarDataUpdate) {
+			// We can't pass null, but we can pass empty lidar data to clear the display
+			const emptyLidar: LidarData = {
+				ranges: [],
+				angle_min: 0,
+				angle_max: 0,
+				angle_increment: 0,
+				range_min: 0,
+				range_max: 0,
+				timestamp: Date.now()
+			};
+			this._onLidarDataUpdate(emptyLidar);
+		}
+		
+		console.log(`Reset sensor data for rover ${this._roverId}`);
 	}
 
 	/**
