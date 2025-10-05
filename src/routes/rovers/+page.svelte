@@ -122,7 +122,7 @@
 		<!-- Rovers Grid -->
 		<main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each filteredRovers as rover (rover.id)}
-				{@const health = getSimulatedHealth(rover)}
+				<!-- {@const health = getSimulatedHealth(rover)} -->
 				{@const heartbeatMins = minutesFromNow(rover.lastHeartbeat ?? new Date(0))}
 				
 				<article 

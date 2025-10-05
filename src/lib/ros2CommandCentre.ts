@@ -62,7 +62,7 @@ export interface GPSData { // TODO: NATHAN Update this
 // 	timestamp: number;
 // }
 
-export interface IMURawData { // TODO: NATHAN Update this
+export interface IMURawData {
 	roll: number;
 	pitch: number;
 	yaw: number;
@@ -722,7 +722,7 @@ export class ROS2CommandCentreClient {
 		console.log('Waiting for required nodes to start up...');
 		
 		// Wait for required nodes to be running (based on Python autonomous_nodes)
-		const requiredNodes = ['gps', 'csi_camera_1', 'obstacle_detection']; //'imu' , 'motor_control'
+		const requiredNodes = ['gps', 'csi_camera_1', 'obstacle_detection']; // TODO: NATHAN add this back'imu' , 'motor_control'
 		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
 		
 		if (!nodesStarted) {
@@ -1283,9 +1283,21 @@ export class ROS2CommandCentreClient {
 	 * Database update functions
 	 */
 	private async writeTimestampToDatabase(timestamp: number): Promise<void> {
-		// TODO: Implement database write for timestamp
-		// console.log(`[DB Placeholder] Writing timestamp for rover ${this._roverId}:`, timestamp);
-		// Example: await db.insert(timestampTable).values({ rover_id: this._roverId, timestamp });
+		try {
+			const response = await fetch(`/api/rovers/${this._roverId}/heartbeat`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ timestamp })
+			});
+
+			if (!response.ok) {
+				console.error(`[DB] Failed to write timestamp for rover ${this._roverId}:`, await response.text());
+			} else {
+				console.log(`[DB] Timestamp written to database for rover ${this._roverId}`);
+			}
+		} catch (err) {
+			console.error(`[DB] Error writing timestamp for rover ${this._roverId}:`, err);
+		}
 	}
 
 	/**
@@ -1298,39 +1310,12 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
-	 * Write IMU data to database
-	 */
-	// private async writeIMUDataToDatabase(data: IMUData): Promise<void> {
-	// 	// TODO: Implement database write for IMU data
-	// 	console.log(`[DB Placeholder] Writing IMU data for rover ${this._roverId}:`, data);
-	// 	// Example: await db.insert(imuTable).values({ rover_id: this._roverId, ...data });
-	// }
-
-	/**
 	 * Write raw IMU data to database
 	 */
 	private async writeIMURawDataToDatabase(data: IMURawData): Promise<void> {
 		// TODO: Implement database write for raw IMU data
 		// console.log(`[DB Placeholder] Writing raw IMU data for rover ${this._roverId}:`, data);
 		// Example: await db.insert(imuRawTable).values({ rover_id: this._roverId, ...data });
-	}
-
-	/**
-	 * Write LIDAR data to database
-	 */
-	private async writeLidarDataToDatabase(data: LidarData): Promise<void> {
-		// TODO: Implement database write for LIDAR data
-		//console.log(`[DB Placeholder] Writing LIDAR data for rover ${this._roverId}:`, data);
-		// Example: await db.insert(lidarTable).values({ rover_id: this._roverId, ...data });
-	}
-
-	/**
-	 * Write obstacle data to database
-	 */
-	private async writeObstacleDataToDatabase(data: ObstacleData): Promise<void> {
-		// TODO: Implement database write for obstacle data
-		// console.log(`[DB Placeholder] Writing obstacle data for rover ${this._roverId}:`, data);
-		// Example: await db.insert(obstacleTable).values({ rover_id: this._roverId, ...data });
 	}
 
 	/**
@@ -1392,7 +1377,15 @@ export class ROS2CommandCentreClient {
 			const timestampData = typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
 			
 			// Update the timestamp from the rover
-			this._timestamp = timestampData.timestamp || timestampData || Date.now();
+			// ROS2 timestamps are typically in seconds, so convert to milliseconds
+			let rawTimestamp = timestampData.timestamp || timestampData || Date.now();
+			
+			// If timestamp looks like it's in seconds (smaller than year 2000 in milliseconds), convert it
+			if (rawTimestamp < 946684800000) { // Jan 1, 2000 in milliseconds
+				rawTimestamp = rawTimestamp * 1000;
+			}
+			
+			this._timestamp = rawTimestamp;
 			
 			// Check if 15 seconds have passed since last database write
 			const now = Date.now();
@@ -1401,7 +1394,7 @@ export class ROS2CommandCentreClient {
 			
 			if (timeSinceLastWrite >= fifteenSeconds) {
 				// Create log entry
-				// this.writeTimestampToDatabase(this._timestamp);
+				this.writeTimestampToDatabase(this._timestamp);
 				
 				this._lastTimestampDbWrite = now;
 			}
@@ -1604,7 +1597,6 @@ export class ROS2CommandCentreClient {
 		};
 
 		this._lidarData = lidarData;
-		this.writeLidarDataToDatabase(lidarData);
 		
 		// Call lidar callback if set
 		if (this._onLidarDataUpdate) {
@@ -1626,7 +1618,6 @@ export class ROS2CommandCentreClient {
 				timestamp: Date.now()
 			};
 
-			this.writeObstacleDataToDatabase(this._obstacleData);
 		}
 	}
 
@@ -1643,7 +1634,6 @@ export class ROS2CommandCentreClient {
 			timestamp: Date.now()
 		};
 
-		this.writeObstacleDataToDatabase(this._obstacleData);
 	}
 
 	/**
