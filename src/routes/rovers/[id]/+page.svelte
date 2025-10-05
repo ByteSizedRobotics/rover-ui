@@ -271,9 +271,33 @@
 		}
 	}
 
-	function emergencyStop() {
-		// TODO: Implement emergency stop
-		console.log('Emergency stop triggered');
+	async function emergencyStop() {
+		if (!commandCenterClient) {
+			console.error('Command Center client not available');
+			return;
+		}
+
+		try {
+			console.log('Emergency stop triggered');
+			await commandCenterClient.stopRover();
+			console.log('Emergency stop command sent successfully');
+			
+			// Optionally show a notification to user
+			notification = {
+				message: 'Emergency stop activated',
+				waypointCount: 0,
+				show: true
+			};
+			
+			// Auto-hide notification after 5 seconds
+			setTimeout(() => {
+				if (notification) {
+					notification.show = false;
+				}
+			}, 5000);
+		} catch (error) {
+			console.error('Failed to send emergency stop command:', error);
+		}
 	}
 </script>
 
@@ -390,14 +414,19 @@
 			</div>
 
 			<!-- Map Section -->
-			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 h-full">
-				<div class="p-6 flex h-full flex-col">
+			<div class="bg-white rounded-2xl shadow-lg border border-blue-100">
+				<div class="p-6">
 					<h2 class="text-xl font-bold text-blue-900 mb-4">Map</h2>
 
 					<!-- Leaflet Map Display -->
-					<div class="relative mb-4 aspect-video flex-grow overflow-hidden rounded-lg border border-blue-200">
-						<div bind:this={mapContainer} class="z-0 h-full w-full"></div>
+					<div class="mb-4 w-full max-w-2xl mx-auto" style="aspect-ratio: 820/616;">
+						<div class="relative w-full h-full overflow-hidden rounded-lg border border-blue-200">
+							<div bind:this={mapContainer} class="z-0 h-full w-full"></div>
+						</div>
 					</div>
+					
+					<!-- Spacer to match camera buttons height -->
+					<div class="h-10"></div>
 				</div>
 			</div>
 		</div>

@@ -149,6 +149,8 @@ export class ROS2CommandCentreClient {
 	private _legacyCommands: any | null = null;
 	private _obstacleData: ObstacleData | null = null;
 	private _nodeStatus: NodeStatus | null = null;
+	private _requiredNodes: string[] = [];
+	private _nodeHealthCheckInterval: NodeJS.Timeout | null = null;
 
 	constructor(roverId: string) {
 		this._roverId = roverId;
@@ -344,6 +346,7 @@ export class ROS2CommandCentreClient {
 		this._isConnected = false;
 		
 		this.stopHeartbeat();
+		this.stopNodeHealthCheck();
 		this.disconnectWebRTC();
 		this.resetSensorData();
 		this.stopPeriodicLogging();
@@ -730,6 +733,10 @@ export class ROS2CommandCentreClient {
 		}
 
 		console.log('All required nodes are running, sending waypoints...');
+		
+		// Store required nodes and start health monitoring
+		this._requiredNodes = requiredNodes;
+		this.startNodeHealthCheck();
 
 		// Then send the waypoints data
 		await this.sendSoftwareData({
@@ -770,6 +777,10 @@ export class ROS2CommandCentreClient {
 		}
 
 		console.log('Manual control setup completed successfully');
+		
+		// Store required nodes and start health monitoring
+		this._requiredNodes = requiredNodes;
+		this.startNodeHealthCheck();
 	}
 
 	/**
@@ -786,6 +797,8 @@ export class ROS2CommandCentreClient {
 		// Update navigation state
 		this._isNavigating = false;
 		this._totalWaypoints = 0;
+		this._requiredNodes = [];
+		this.stopNodeHealthCheck();
 		this.notifyStateChange();
 	}
 
@@ -1080,6 +1093,84 @@ export class ROS2CommandCentreClient {
 			console.log(`[Heartbeat] Stopping heartbeat for rover ${this._roverId}`);
 			clearInterval(this._heartbeatInterval);
 			this._heartbeatInterval = null;
+		}
+	}
+
+	/**
+	 * Start periodic node health check
+	 */
+	private startNodeHealthCheck(): void {
+		this.stopNodeHealthCheck(); // Clear any existing health check
+
+		if (this._requiredNodes.length === 0) {
+			console.log(`[NodeHealth] No required nodes to monitor for rover ${this._roverId}`);
+			return;
+		}
+
+		console.log(`[NodeHealth] Starting node health check for rover ${this._roverId}`);
+		console.log(`[NodeHealth] Monitoring nodes: ${this._requiredNodes.join(', ')}`);
+		
+		this._nodeHealthCheckInterval = setInterval(() => {
+			this.checkNodeHealth();
+		}, 15000); // Check every 15 seconds
+
+		// Perform initial health check after a short delay
+		setTimeout(() => {
+			this.checkNodeHealth();
+		}, 5000);
+	}
+
+	/**
+	 * Stop periodic node health check
+	 */
+	private stopNodeHealthCheck(): void {
+		if (this._nodeHealthCheckInterval) {
+			console.log(`[NodeHealth] Stopping node health check for rover ${this._roverId}`);
+			clearInterval(this._nodeHealthCheckInterval);
+			this._nodeHealthCheckInterval = null;
+		}
+	}
+
+	/**
+	 * Check if all required nodes are still running
+	 */
+	private checkNodeHealth(): void {
+		if (this._requiredNodes.length === 0) {
+			return;
+		}
+
+		if (!this._nodeStatus) {
+			console.warn(`[NodeHealth] No node status available yet for rover ${this._roverId}`);
+			return;
+		}
+
+		// Check each required node
+		const failedNodes: string[] = [];
+		const offlineNodes: string[] = [];
+		const errorNodes: string[] = [];
+
+		for (const node of this._requiredNodes) {
+			const status = this._nodeStatus.nodes[node];
+			if (status !== 'running') {
+				failedNodes.push(node);
+				if (status === 'offline') {
+					offlineNodes.push(node);
+				} else if (status === 'error') {
+					errorNodes.push(node);
+				}
+			}
+		}
+
+		if (failedNodes.length > 0) {
+			console.error(`[NodeHealth] ❌ Critical nodes not running for rover ${this._roverId}:`);
+			console.error(`[NodeHealth]   - Offline: ${offlineNodes.length > 0 ? offlineNodes.join(', ') : 'none'}`);
+			console.error(`[NodeHealth]   - Error: ${errorNodes.length > 0 ? errorNodes.join(', ') : 'none'}`);
+			console.error(`[NodeHealth] Disconnecting due to node failure...`);
+			
+			// Disconnect from rover due to node failure
+			this.disconnect();
+		} else {
+			console.log(`[NodeHealth] ✓ All required nodes healthy for rover ${this._roverId}`);
 		}
 	}
 
