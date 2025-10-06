@@ -115,7 +115,7 @@
 					sessionStorage.setItem(
 						`rover_launch_success_${roverId}`,
 						JSON.stringify({
-							message: `Launch successful! Rover ${roverId} is now navigating along its planned path with ${waypoints.length} waypoints.`,
+							message: `Rover ${roverId} is now navigating along its planned path with ${waypoints.length} waypoints.`,
 							timestamp: Date.now(),
 							waypointCount: waypoints.length
 						})

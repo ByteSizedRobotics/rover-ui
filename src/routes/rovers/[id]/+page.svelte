@@ -279,22 +279,78 @@
 
 		try {
 			console.log('Emergency stop triggered');
+			
+			// Send stop command first
 			await commandCenterClient.stopRover();
 			console.log('Emergency stop command sent successfully');
 			
-			// Optionally show a notification to user
-			notification = {
-				message: 'Emergency stop activated',
-				waypointCount: 0,
-				show: true
-			};
+			// Show initial notification
+			// notification = {
+			// 	message: 'Emergency stop activated - Shutting down nodes...',
+			// 	waypointCount: 0,
+			// 	show: true
+			// };
 			
-			// Auto-hide notification after 5 seconds
-			setTimeout(() => {
-				if (notification) {
-					notification.show = false;
+			// Monitor node status to confirm all nodes are offline
+			let checkCount = 0;
+			const maxChecks = 20; // 20 seconds max wait
+			const checkInterval = setInterval(() => {
+				checkCount++;
+				const nodeStatus = commandCenterClient?.nodeStatus;
+				
+				if (nodeStatus) {
+					// Check if all nodes are offline
+					const allOffline = Object.values(nodeStatus.nodes).every(
+						status => status === 'offline' || status === undefined
+					);
+					
+					if (allOffline) {
+						clearInterval(checkInterval);
+						
+						// Disconnect from ROS2
+						commandCenterClient?.disconnect();
+						
+						// Show success notification
+						notification = {
+							message: 'Emergency Stop Completed Successfully',
+							waypointCount: 0,
+							show: true
+						};
+						
+						// Auto-hide notification after 5 seconds
+						setTimeout(() => {
+							if (notification) {
+								notification.show = false;
+							}
+						}, 5000);
+						
+						console.log('Emergency stop completed - all nodes offline');
+					}
 				}
-			}, 5000);
+				
+				// Timeout after maxChecks
+				if (checkCount >= maxChecks) {
+					clearInterval(checkInterval);
+					
+					// Force disconnect even if nodes didn't report offline
+					commandCenterClient?.disconnect();
+					
+					notification = {
+						message: 'Emergency stop completed (timeout)',
+						waypointCount: 0,
+						show: true
+					};
+					
+					setTimeout(() => {
+						if (notification) {
+							notification.show = false;
+						}
+					}, 5000);
+					
+					console.warn('Emergency stop timeout - forcing disconnect');
+				}
+			}, 1000); // Check every second
+			
 		} catch (error) {
 			console.error('Failed to send emergency stop command:', error);
 		}
@@ -317,11 +373,8 @@
 					</svg>
 				</div>
 				<div class="notification-text">
-					<h3 class="notification-title">🚀 Launch Successful!</h3>
+					<h3 class="notification-title">{notification.message.includes('Emergency') ? 'Emergency Stop' : 'Launch Successful'}</h3>
 					<p class="notification-message">{notification.message}</p>
-					<p class="notification-details">
-						The rover is now autonomously navigating to its destination.
-					</p>
 				</div>
 				<button
 					class="notification-close"

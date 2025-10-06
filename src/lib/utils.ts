@@ -7,5 +7,5 @@ export function minutesFromNow(timestamp: number | string | Date): number {
 
 export function getRoverStatus(rover: any) {
     const mins = minutesFromNow(rover.lastHeartbeat);
-    return mins <= 10 ? 'active' : 'inactive';
+    return mins <= 1 ? 'active' : 'inactive';
 }
