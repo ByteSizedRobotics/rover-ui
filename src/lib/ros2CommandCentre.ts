@@ -1324,7 +1324,6 @@ export class ROS2CommandCentreClient {
 	private handleMessage(event: MessageEvent): void {
 		try {
 			const data = JSON.parse(event.data);
-			console.log(`Received message on topic '${data.topic}' for rover ${this._roverId}`);
 
 			if (!data.topic || !data.msg) return;
 
@@ -1338,6 +1337,7 @@ export class ROS2CommandCentreClient {
 					break;
 
 				case ROS2_CONFIG.TOPICS.GPS:
+					console.log(`Received message on topic '${data.topic}' for rover ${this._roverId}`);
 					this.handleGPSMessage(data);
 					break;
 
@@ -1346,6 +1346,7 @@ export class ROS2CommandCentreClient {
 				// 	break;
 
 				case ROS2_CONFIG.TOPICS.IMU_RAW:
+					console.log(`Received message on topic '${data.topic}' for rover ${this._roverId}`);
 					this.handleIMURawMessage(data);
 					break;
 
