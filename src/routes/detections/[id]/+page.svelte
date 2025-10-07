@@ -192,56 +192,32 @@
 					<!-- Detection Metrics -->
 					<div class="bg-gradient-to-br from-purple-50 to-white border border-purple-200 rounded-xl p-6">
 						<h2 class="text-xl font-bold text-purple-900 mb-4">Detection Metrics</h2>
-						<div class="space-y-4">
+						<div class="space-y-3">
 							<!-- Confidence Score -->
-							<div>
-								<div class="flex justify-between items-center mb-2">
-									<span class="text-purple-700 font-semibold">Confidence Score</span>
-									<span class="text-2xl font-bold text-purple-900"
-										>{formatPercentage(data.detection.confidence)}</span
-									>
-								</div>
-								<div class="w-full bg-purple-200 rounded-full h-3 overflow-hidden">
-									<div
-										class="bg-gradient-to-r from-purple-500 to-purple-600 h-full rounded-full transition-all duration-500"
-										style="width: {data.detection.confidence * 100}%"
-									></div>
-								</div>
+							<div class="flex justify-between items-center py-2 border-b border-purple-100">
+								<span class="text-purple-700 font-semibold">Confidence Score</span>
+								<span class="text-xl font-bold text-purple-900"
+									>{formatPercentage(data.detection.confidence)}</span
+								>
 							</div>
 
 							<!-- Area Score -->
 							{#if data.detection.areaScore !== null}
-								<div>
-									<div class="flex justify-between items-center mb-2">
-										<span class="text-purple-700 font-semibold">Area Score</span>
-										<span class="text-xl font-bold text-purple-900"
-											>{formatPercentage(data.detection.areaScore)}</span
-										>
-									</div>
-									<div class="w-full bg-purple-200 rounded-full h-2 overflow-hidden">
-										<div
-											class="bg-purple-400 h-full rounded-full transition-all duration-500"
-											style="width: {data.detection.areaScore * 100}%"
-										></div>
-									</div>
+								<div class="flex justify-between items-center py-2 border-b border-purple-100">
+									<span class="text-purple-700 font-semibold">Area Score</span>
+									<span class="text-xl font-bold text-purple-900"
+										>{formatPercentage(data.detection.areaScore)}</span
+									>
 								</div>
 							{/if}
 
 							<!-- Depth Score -->
 							{#if data.detection.depthScore !== null}
-								<div>
-									<div class="flex justify-between items-center mb-2">
-										<span class="text-purple-700 font-semibold">Depth Score</span>
-										<span class="text-xl font-bold text-purple-900"
-											>{formatPercentage(data.detection.depthScore)}</span
-										>
-									</div>
-									<div class="w-full bg-purple-200 rounded-full h-2 overflow-hidden">
-										<div
-											class="bg-purple-400 h-full rounded-full transition-all duration-500"
-											style="width: {data.detection.depthScore * 100}%"
-										></div>
-									</div>
+								<div class="flex justify-between items-center py-2 border-b border-purple-100">
+									<span class="text-purple-700 font-semibold">Depth Score</span>
+									<span class="text-xl font-bold text-purple-900"
+										>{formatPercentage(data.detection.depthScore)}</span
+									>
 								</div>
 							{/if}
 
