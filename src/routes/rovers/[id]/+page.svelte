@@ -41,7 +41,7 @@
 
 	let tableData = $state<DetectionRow[]>([]); // Will be filled with pothole data
 	let roverPosition = $state({ x: 50, y: 40 }); // Percentage position on map
-	let roverGpsPosition = $state({ lat: 45.4215, lng: -75.6972 }); // GPS coordinates (Ottawa default)
+	let roverGpsPosition = $state({ lat: 45.419510, lng: -75.678772 }); // GPS coordinates (Ottawa default)
 	let connectionStatus = $state('Disconnected');
 	
 	// Leaflet map variables
@@ -170,7 +170,7 @@
 							sensorData.temperature = imuRaw.temperature;
 							sensorData.batteryVoltage = imuRaw.voltage;
 						}
-					}, 100);
+					}, 1000);
 
 					const status = commandCenterClient.status;
 					connectionStatus = status.isConnected ? 'Connected' : 'Disconnected';
