@@ -1324,6 +1324,7 @@ export class ROS2CommandCentreClient {
 	private handleMessage(event: MessageEvent): void {
 		try {
 			const data = JSON.parse(event.data);
+			console.log(`Received message on topic '${data.topic}' for rover ${this._roverId}`);
 
 			if (!data.topic || !data.msg) return;
 
