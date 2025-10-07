@@ -270,12 +270,12 @@ export class ROS2CommandCentreClient {
 					// Subscribe to all sensor and command topics
 					this.subscribeToGPS();
 					// this.subscribeToIMUData();
-					this.subscribeToIMURaw();
 					this.subscribeToLidar();
 					// this.subscribeToCmdVel();
 					// this.subscribeToLegacyCommands();
 					this.subscribeToObstacleDetected();
 					this.subscribeToObstacleDistance();
+					this.subscribeToIMURaw();
 					this.subscribeToNodeStatus();
 
 					// Start heartbeat
@@ -917,7 +917,7 @@ export class ROS2CommandCentreClient {
 		const subscribeMsg = {
 			op: 'subscribe',
 			topic: ROS2_CONFIG.TOPICS.GPS,
-			type: 'sensor_msgs/String'
+			type: 'std_msgs/String'
 		};
 
 		this._socket.send(JSON.stringify(subscribeMsg));

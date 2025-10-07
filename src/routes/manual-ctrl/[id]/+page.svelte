@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
+	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { RoverController, type LogEntry } from './manualControl';
 	import { createMiniLidar, type LidarMiniController } from '../../rovers/[id]/lidarController';
@@ -417,4 +418,45 @@
 			</div>
 		</div>
 	</div>
+	
+	<!-- Fixed back button bottom-left -->
+	<div class="bottom-left">
+		<button
+			on:click={() => goto(`/rovers/${roverId}`)}
+			class="back-button"
+		>
+			← Back to Rover
+		</button>
+	</div>
 </div>
+
+<style>
+	/* Fixed back button in bottom-left */
+	.bottom-left {
+		position: fixed;
+		left: 16px;
+		bottom: 16px;
+		z-index: 1002;
+	}
+
+	.back-button {
+		display: inline-block;
+		padding: 12px 16px;
+		background: #3b82f6;
+		color: white;
+		border: none;
+		border-radius: 0.5rem;
+		cursor: pointer;
+		text-decoration: none;
+		font-family: inherit;
+		font-size: 14px;
+		font-weight: 500;
+		transition: background-color 0.2s;
+		box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+	}
+
+	.back-button:hover {
+		background: #2563eb;
+		color: white;
+	}
+</style>
