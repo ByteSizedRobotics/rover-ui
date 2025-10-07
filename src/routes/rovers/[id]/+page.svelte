@@ -563,7 +563,7 @@
 							</thead>
 							<tbody>
 								{#each tableData as row}
-									<tr class="border-b border-blue-100 hover:bg-blue-50 cursor-pointer" onclick={() => goto(`/detections/${row.id}`)}>
+									<tr class="border-b border-blue-100 hover:bg-blue-50 cursor-pointer" onclick={() => goto(`/detections/${row.id}?roverId=${roverId}`)}>
 										<td class="py-2 text-blue-900">{row.id}</td>
 										<td class="py-2 text-blue-900">{row.confidence != null ? row.confidence.toFixed(2) : 'N/A'}</td>
 										<td class="py-2 text-blue-900">{row.areaScore != null ? row.areaScore.toFixed(2) : 'N/A'}</td>

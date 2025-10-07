@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 
 	export let data: {
 		detection: {
@@ -27,6 +28,9 @@
 		};
 	};
 
+	// Get the rover ID from the URL query parameter (where we came from)
+	$: roverId = $page.url.searchParams.get('roverId');
+
 	function formatDate(date: Date | string): string {
 		const d = typeof date === 'string' ? new Date(date) : date;
 		return d.toLocaleString('en-US', {
@@ -47,7 +51,9 @@
 	}
 
 	function goBack() {
-		goto('/potholes');
+		// Use the rover ID from query param if available, otherwise use the one from detection data
+		const targetRoverId = roverId || data.rover.id;
+		goto(`/rovers/${targetRoverId}`);
 	}
 </script>
 
@@ -71,7 +77,7 @@
 						clip-rule="evenodd"
 					/>
 				</svg>
-				Back to Potholes
+				Back to Rover
 			</button>
 		</div>
 
@@ -214,97 +220,24 @@
 									<div
 										class="flex items-center gap-2 px-4 py-3 rounded-lg {data.detection
 											.falsePositive === 1
-											? 'bg-red-50 border border-red-200'
-											: 'bg-green-50 border border-green-200'}"
+											? 'bg-amber-50 border border-amber-200'
+											: 'bg-blue-50 border border-blue-200'}"
 									>
 										<div
 											class="w-3 h-3 rounded-full {data.detection.falsePositive === 1
-												? 'bg-red-500'
-												: 'bg-green-500'}"
+												? 'bg-amber-500'
+												: 'bg-blue-500'}"
 										></div>
 										<span
 											class="font-semibold {data.detection.falsePositive === 1
-												? 'text-red-800'
-												: 'text-green-800'}"
+												? 'text-amber-800'
+												: 'text-blue-800'}"
 										>
-											{data.detection.falsePositive === 1 ? 'False Positive' : 'Valid Detection'}
+											{data.detection.falsePositive === 1 ? 'Possibly False Positive' : 'Likely Valid Detection'}
 										</span>
 									</div>
 								</div>
 							{/if}
-						</div>
-					</div>
-
-					<!-- Context Information -->
-					<div class="bg-purple-50 border border-purple-200 rounded-xl p-6">
-						<h2 class="text-xl font-bold text-purple-900 mb-4">Context Information</h2>
-						<div class="space-y-4">
-							<!-- Rover Info -->
-							<div>
-								<h3 class="text-purple-700 font-semibold mb-2 flex items-center gap-2">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											d="M10 12a2 2 0 100-4 2 2 0 000 4z"
-										/>
-										<path
-											fill-rule="evenodd"
-											d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Rover
-								</h3>
-								<div class="bg-white rounded-lg p-4 space-y-2 text-sm">
-									<div class="flex justify-between">
-										<span class="text-purple-600">Name:</span>
-										<span class="text-purple-900 font-medium">{data.rover.name}</span>
-									</div>
-									<div class="flex justify-between">
-										<span class="text-purple-600">ID:</span>
-										<span class="text-purple-900 font-medium">#{data.rover.id}</span>
-									</div>
-									<div class="flex justify-between">
-										<span class="text-purple-600">IP Address:</span>
-										<span class="text-purple-900 font-mono text-xs">{data.rover.ipAddress}</span>
-									</div>
-								</div>
-							</div>
-
-							<!-- Path Info -->
-							<div>
-								<h3 class="text-purple-700 font-semibold mb-2 flex items-center gap-2">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Path
-								</h3>
-								<div class="bg-white rounded-lg p-4 space-y-2 text-sm">
-									<div class="flex justify-between">
-										<span class="text-purple-600">Path ID:</span>
-										<span class="text-purple-900 font-medium">#{data.path.id}</span>
-									</div>
-									<div class="flex justify-between">
-										<span class="text-purple-600">Started:</span>
-										<span class="text-purple-900 font-medium"
-											>{formatDate(data.path.timestamp)}</span
-										>
-									</div>
-								</div>
-							</div>
 						</div>
 					</div>
 				</div>
