@@ -917,7 +917,7 @@ export class ROS2CommandCentreClient {
 		const subscribeMsg = {
 			op: 'subscribe',
 			topic: ROS2_CONFIG.TOPICS.GPS,
-			type: 'sensor_msgs/NavSatFix'
+			type: 'sensor_msgs/String'
 		};
 
 		this._socket.send(JSON.stringify(subscribeMsg));
@@ -947,7 +947,7 @@ export class ROS2CommandCentreClient {
 		const subscribeMsg = {
 			op: 'subscribe',
 			topic: ROS2_CONFIG.TOPICS.IMU_RAW,
-			type: 'std_msgs/String'
+			type: 'std_msgs/Float32MultiArray'
 		};
 
 		this._socket.send(JSON.stringify(subscribeMsg));
