@@ -83,6 +83,11 @@
 		}
 	}
 
+	// Convert Fahrenheit to Celsius
+	function fahrenheitToCelsius(fahrenheit: number): number {
+		return (fahrenheit - 32) * 5 / 9;
+	}
+
 	onMount(async () => {
 		// Import Leaflet CSS
 		if (browser) {
@@ -503,7 +508,7 @@
 						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
 							<div class="text-sm text-blue-600 font-medium">TEMP</div>
 							<div class="text-lg font-bold text-blue-900">
-								{sensorData.isConnected ? `${sensorData.temperature.toFixed(1)}°F` : 'N/A'}
+								{sensorData.isConnected ? `${fahrenheitToCelsius(sensorData.temperature).toFixed(1)}°C` : 'N/A'}
 							</div>
 						</div>
 						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
