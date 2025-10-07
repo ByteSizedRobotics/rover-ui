@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 
 	export let data: {
 		detection: {
@@ -31,6 +33,12 @@
 	// Get the rover ID from the URL query parameter (where we came from)
 	$: roverId = $page.url.searchParams.get('roverId');
 
+	// Leaflet map variables
+	let mapContainer: HTMLElement;
+	let map: any;
+	let L: any;
+	let detectionMarker: any = null;
+
 	function formatDate(date: Date | string): string {
 		const d = typeof date === 'string' ? new Date(date) : date;
 		return d.toLocaleString('en-US', {
@@ -54,6 +62,52 @@
 		// Use the rover ID from query param if available, otherwise use the one from detection data
 		const targetRoverId = roverId || data.rover.id;
 		goto(`/rovers/${targetRoverId}`);
+	}
+
+	onMount(async () => {
+		// Import Leaflet CSS
+		if (browser) {
+			await import('leaflet/dist/leaflet.css');
+		}
+
+		// Initialize the map after the component mounts
+		if (browser && mapContainer) {
+			setTimeout(initializeMap, 50);
+		}
+	});
+
+	async function initializeMap() {
+		try {
+			// Dynamically import Leaflet
+			L = await import('leaflet');
+
+			// Initialize the map centered on the detection location
+			map = L.map(mapContainer).setView([data.image.location[0], data.image.location[1]], 16);
+
+			// Add tile layer
+			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				attribution: '© OpenStreetMap contributors'
+			}).addTo(map);
+
+			// Create a custom icon using an image from the static folder
+			const detectionIcon = L.icon({
+				iconUrl: '/detection-pin.png',
+				iconSize: [60, 60],
+				iconAnchor: [20, 60],
+				popupAnchor: [0, -60]
+			});
+
+			detectionMarker = L.marker([data.image.location[0], data.image.location[1]], { icon: detectionIcon })
+				.addTo(map)
+				.bindPopup(`Detection #${data.detection.id}<br>Confidence: ${formatPercentage(data.detection.confidence)}`);
+
+			// Invalidate map size after a short delay to ensure container is sized
+			setTimeout(() => {
+				map.invalidateSize();
+			}, 100);
+		} catch (error) {
+			console.error('Error initializing map:', error);
+		}
 	}
 </script>
 
@@ -127,6 +181,14 @@
 
 				<!-- Detection Details Section -->
 				<div class="space-y-6">
+					<!-- Location Map -->
+					<div class="bg-gradient-to-br from-purple-50 to-white border border-purple-200 rounded-xl overflow-hidden">
+						<div class="p-4 bg-purple-100 border-b border-purple-200">
+							<h2 class="text-lg font-bold text-purple-900">Detection Location</h2>
+						</div>
+						<div bind:this={mapContainer} class="w-full h-64"></div>
+					</div>
+
 					<!-- Detection Metrics -->
 					<div class="bg-gradient-to-br from-purple-50 to-white border border-purple-200 rounded-xl p-6">
 						<h2 class="text-xl font-bold text-purple-900 mb-4">Detection Metrics</h2>
