@@ -147,12 +147,29 @@
 			<div class="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
 				<!-- Image Section -->
 				<div class="space-y-4">
-					<div class="bg-purple-50 rounded-xl overflow-hidden border-2 border-purple-200">
+					<div class="bg-purple-50 rounded-xl overflow-hidden border-2 border-purple-200 relative">
 						<img
 							src="/{data.image.imageUrl}"
 							alt="Detection {data.detection.id}"
 							class="w-full h-auto object-contain"
 						/>
+						<!-- Bounding Box Overlay -->
+						<svg
+							class="absolute top-0 left-0 w-full h-full pointer-events-none"
+							viewBox="0 0 100 100"
+							preserveAspectRatio="none"
+						>
+							<rect
+								x="{data.detection.bbox[0]}"
+								y="{data.detection.bbox[1]}"
+								width="{data.detection.bbox[2] - data.detection.bbox[0]}"
+								height="{data.detection.bbox[3] - data.detection.bbox[1]}"
+								fill="none"
+								stroke="rgb(74, 222, 128)"
+								stroke-width="4"
+								vector-effect="non-scaling-stroke"
+							/>
+						</svg>
 					</div>
 					<div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
 						<h3 class="font-semibold text-purple-900 mb-2">Image Information</h3>
