@@ -190,12 +190,12 @@
 					</div>
 
 					<!-- Detection Metrics -->
-					<div class="bg-gradient-to-br from-purple-50 to-white border border-purple-200 rounded-xl p-6">
+					<div class="bg-white border-2 border-purple-300 rounded-xl p-6 shadow-md">
 						<h2 class="text-xl font-bold text-purple-900 mb-4">Detection Metrics</h2>
 						<div class="space-y-3">
 							<!-- Confidence Score -->
-							<div class="flex justify-between items-center py-2 border-b border-purple-100">
-								<span class="text-purple-700 font-semibold">Confidence Score</span>
+							<div class="flex justify-between items-center py-3 px-4 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
+								<span class="text-purple-800 font-semibold">Confidence Score</span>
 								<span class="text-xl font-bold text-purple-900"
 									>{formatPercentage(data.detection.confidence)}</span
 								>
@@ -203,8 +203,8 @@
 
 							<!-- Area Score -->
 							{#if data.detection.areaScore !== null}
-								<div class="flex justify-between items-center py-2 border-b border-purple-100">
-									<span class="text-purple-700 font-semibold">Area Score</span>
+								<div class="flex justify-between items-center py-3 px-4 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
+									<span class="text-purple-800 font-semibold">Area Score</span>
 									<span class="text-xl font-bold text-purple-900"
 										>{formatPercentage(data.detection.areaScore)}</span
 									>
@@ -213,44 +213,13 @@
 
 							<!-- Depth Score -->
 							{#if data.detection.depthScore !== null}
-								<div class="flex justify-between items-center py-2 border-b border-purple-100">
-									<span class="text-purple-700 font-semibold">Depth Score</span>
+								<div class="flex justify-between items-center py-3 px-4 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
+									<span class="text-purple-800 font-semibold">Depth Score</span>
 									<span class="text-xl font-bold text-purple-900"
 										>{formatPercentage(data.detection.depthScore)}</span
 									>
 								</div>
 							{/if}
-
-							<!-- Bounding Box -->
-							<div class="pt-2 border-t border-purple-200">
-								<span class="text-purple-700 font-semibold block mb-2">Bounding Box</span>
-								<div class="grid grid-cols-2 gap-2 text-sm">
-									<div class="bg-white rounded-lg p-3 border border-purple-100">
-										<span class="text-purple-600 text-xs">X Min</span>
-										<div class="text-purple-900 font-mono font-semibold">
-											{data.detection.bbox[0]}
-										</div>
-									</div>
-									<div class="bg-white rounded-lg p-3 border border-purple-100">
-										<span class="text-purple-600 text-xs">Y Min</span>
-										<div class="text-purple-900 font-mono font-semibold">
-											{data.detection.bbox[1]}
-										</div>
-									</div>
-									<div class="bg-white rounded-lg p-3 border border-purple-100">
-										<span class="text-purple-600 text-xs">X Max</span>
-										<div class="text-purple-900 font-mono font-semibold">
-											{data.detection.bbox[2]}
-										</div>
-									</div>
-									<div class="bg-white rounded-lg p-3 border border-purple-100">
-										<span class="text-purple-600 text-xs">Y Max</span>
-										<div class="text-purple-900 font-mono font-semibold">
-											{data.detection.bbox[3]}
-										</div>
-									</div>
-								</div>
-							</div>
 
 							<!-- False Positive Status -->
 							{#if data.detection.falsePositive !== null}
