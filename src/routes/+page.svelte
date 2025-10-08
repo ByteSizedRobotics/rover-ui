@@ -36,9 +36,9 @@
 						</div>
 					</div>
 					<h3 class="mb-2 text-xl font-bold text-gray-800">Nathan Gawargy</h3>
-					<p class="mb-2 text-sm font-medium text-blue-600">Title (eg. Lead Developer)</p>
+					<p class="mb-2 text-sm font-medium text-blue-600">Team Lead</p>
 					<p class="text-center text-sm text-gray-600">
-						Computer Engineering Student specializing in autonomous systems and robotics
+						Frontend, Backend & AI/ML Developer
 					</p>
 				</div>
 
@@ -64,7 +64,7 @@
 					<h3 class="mb-2 text-xl font-bold text-gray-800">Maxime Couture</h3>
 					<p class="mb-2 text-sm font-medium text-green-600">Title</p>
 					<p class="text-center text-sm text-gray-600">
-						Computer Engineering Student focusing on machine learning and computer vision
+						Frontend, Hardware & Robotics Developer
 					</p>
 				</div>
 
@@ -86,7 +86,7 @@
 					<h3 class="mb-2 text-xl font-bold text-gray-800">Syed Yead Zaman</h3>
 					<p class="mb-2 text-sm font-medium text-purple-600">Title</p>
 					<p class="text-center text-sm text-gray-600">
-						Computer Engineering Student specializing in distributed systems and infrastructure
+						Backend, infrastructure & DevOps Developer
 					</p>
 				</div>
 
@@ -113,7 +113,7 @@
 					<h3 class="mb-2 text-xl font-bold text-gray-800">Louis Marleau</h3>
 					<p class="mb-2 text-sm font-medium text-orange-600">Title</p>
 					<p class="text-center text-sm text-gray-600">
-						Computer Engineering Student focusing on web development and user experience
+						Hardware & Robotics Developer
 					</p>
 				</div>
 			</div>
