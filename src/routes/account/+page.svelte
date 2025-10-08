@@ -1,13 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import type { PageServerData } from '../$types';
+	import type { PageData } from './$types';
 
-	type User = {
-		username: string;
-		id: string | number;
-	};
-
-	export let data: PageServerData & { user: User };
+	export let data: PageData;
 </script>
 
 <main class="flex min-h-screen flex-col items-center justify-center bg-gray-50">

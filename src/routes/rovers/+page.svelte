@@ -14,7 +14,7 @@
 	// In a real app, this would come from the database or real-time monitoring
 	function getSimulatedHealth(rover: any) {
 		// Simple hash-based simulation for consistent results
-		const hash = rover.id.toString().split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+		const hash = rover.id.toString().split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0);
 		const healthOptions = ['ok', 'warn', 'bad'];
 		return healthOptions[hash % 3];
 	}
@@ -22,10 +22,10 @@
 	function getSimulatedHeartbeat(rover: any) {
 		// Simulate heartbeat based on status and rover id
 		if (rover.status === 'active') {
-			const hash = rover.id.toString().split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+			const hash = rover.id.toString().split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0);
 			return hash % 5 + 1; // 1-5 minutes ago for active rovers
 		} else {
-			const hash = rover.id.toString().split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+			const hash = rover.id.toString().split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0);
 			return (hash % 120) + 30; // 30-150 minutes ago for inactive rovers
 		}
 	}
