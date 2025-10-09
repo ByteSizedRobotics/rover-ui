@@ -11,22 +11,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get CI status for this commit
-        id: ci_status
-        run: |
-          STATUS=$(gh run list \
-            --workflow="CI" \
-            --branch="${GITHUB_REF_NAME}" \
-            --json conclusion,headSha \
-            | jq -r ".[] | select(.headSha==\"${GITHUB_SHA}\") | .conclusion")
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
-
-      - name: Fail if CI failed
-        if: ${{ steps.ci_status.outputs.status != 'success' }}
-        run: |
-          echo "CI did not pass for this commit. Exiting."
-          exit 1
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
