@@ -1,13 +1,13 @@
 services:
-  # app:
-  #   image: bytesizedrobotics/rover-ui:latest
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - DATABASE_URL=postgres://root:mysecretpassword@postgres:5432/local
-  #     - ORIGIN=http://localhost:3000
-  #   depends_on:
-  #     - postgres
+  app:
+    image: bytesizedrobotics/rover-ui:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://root:mysecretpassword@postgres:5432/local
+      - ORIGIN=http://localhost:3000
+    depends_on:
+      - postgres
 
   postgres:
     image: postgis/postgis
@@ -23,38 +23,38 @@ services:
 
 
   # #Default ai app without GPU support
-  # ai-pothole-app:
-  #   image: bytesizedrobotics/ai-pothole-app:latest
-  #   platform: linux/amd64
-  #   environment:
-  #     - RASPI_IP=100.85.202.20
-  #     - WEBRTC_PORT=8765
-  #     - API_IP=host.docker.internal #TODO: NATHAN once UI is running in docker container, this needs to be updated
-  #     - API_PORT=5173 #TODO: NATHAN once UI is running in docker container, this needs to be updated to 3000
-  #   # volumes:
-  #   #   - ./models:/models
-  #   depends_on:
-  #     - postgres
+  ai-pothole-app:
+    image: bytesizedrobotics/ai-pothole-app:latest
+    platform: linux/amd64
+    environment:
+      - RASPI_IP=100.85.202.20
+      - WEBRTC_PORT=8765
+      - API_IP=host.docker.internal #TODO: NATHAN once UI is running in docker container, this needs to be updated
+      - API_PORT=5173 #TODO: NATHAN once UI is running in docker container, this needs to be updated to 3000
+    # volumes:
+    #   - ./models:/models
+    depends_on:
+      - postgres
 
   #Default ai app with GPU support: can run this with docker compose --profile gpu up
-  # ai-pothole-app-gpu:
-  #   image: bytesizedrobotics/ai-pothole-app:latest
-  #   platform: linux/amd64
-  #   # Enable GPU support
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: all
-  #             capabilities: [gpu]
-  #   environment:
-  #     - RASPI_IP=100.85.202.20
-  #     - WEBRTC_PORT=8765
-  #     - API_IP=host.docker.internal #TODO: NATHAN once UI is running in docker container, this needs to be updated
-  #     - API_PORT=5173 #TODO: NATHAN once UI is running in docker container, this needs to be updated to 3000
-  #   # volumes:
-  #   #   - ./models:/models
-  #   profiles: ["gpu"]
-  #   depends_on:
-  #     - postgres
+  ai-pothole-app-gpu:
+    image: bytesizedrobotics/ai-pothole-app:latest
+    platform: linux/amd64
+    # Enable GPU support
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - RASPI_IP=100.85.202.20
+      - WEBRTC_PORT=8765
+      - API_IP=host.docker.internal #TODO: NATHAN once UI is running in docker container, this needs to be updated
+      - API_PORT=5173 #TODO: NATHAN once UI is running in docker container, this needs to be updated to 3000
+    # volumes:
+    #   - ./models:/models
+    profiles: ["gpu"]
+    depends_on:
+      - postgres
