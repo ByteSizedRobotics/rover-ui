@@ -87,17 +87,15 @@ RETURNING id;
 -- Example point geometry (SRID 4326)
 INSERT INTO images (path_id, image_url, location)
 VALUES
-  (1, 'uploads/image1.jpg', ST_SetSRID(ST_Point(-73.57, 45.50), 4326)),
-  (2, 'uploads/image2.jpg', ST_SetSRID(ST_Point(-73.55, 45.49), 4326))
+  (1, 'uploads/pothole1.jpg', ST_SetSRID(ST_Point(-73.57, 45.50), 4326)),
+  (2, 'uploads/pothole2.jpg', ST_SetSRID(ST_Point(-73.55, 45.49), 4326))
 RETURNING id;
 
 -- === Seed Detections ===
 INSERT INTO detections (image_id, bbox, confidence, area_score, depth_score)
 VALUES
 (1, '[10, 20, 100, 80]', 0.92, 0.85, 0.73),
-(1, '[50, 60, 40, 30]', 0.88, 0.65, 0.70),
-(2, '[15, 25, 90, 70]', 0.95, 0.90, 0.80),
-(2, '[60, 70, 30, 25]', 0.89, 0.60, 0.66);
+(2, '[25, 60, 75, 95]', 0.65, 0.35, 0.01);
 
 -- === Seed User and Session ===
 INSERT INTO "user" (id, username, password_hash)
