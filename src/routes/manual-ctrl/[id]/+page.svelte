@@ -10,7 +10,7 @@
 
 	// Create controller with update callback
 	const params = get(page).params;
-	const roverId = params.id;
+	const roverId: string = params.id ?? '';
 	
 	let controller = $state<RoverController | undefined>(undefined);
 	let component: any;

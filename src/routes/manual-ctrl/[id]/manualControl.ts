@@ -22,7 +22,7 @@ export class RoverController {
 	private _logs: LogEntry[] = [];
 	private _ros_socket: WebSocket | null = null;
 	private _rosConfig: RosConfig;
-	private _speed: number = 1; // Default speed setting
+	private _speed: number = 2; // Default speed setting
 
 	// Callback function for state updates
 	private onStateChange: () => void;
