@@ -95,7 +95,7 @@ RETURNING id;
 INSERT INTO detections (image_id, bbox, confidence, area_score, depth_score)
 VALUES
 (1, '[10, 20, 100, 80]', 0.92, 0.85, 0.73),
-(2, '[1, 1, 1, 1]', 0.65, 0.35, 0.01);
+(2, '[25, 60, 75, 95]', 0.65, 0.35, 0.01);
 
 -- === Seed User and Session ===
 INSERT INTO "user" (id, username, password_hash)
