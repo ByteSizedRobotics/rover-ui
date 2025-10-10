@@ -40,7 +40,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			.values({
 				imageId: image_id,
 				confidence,
-				bbox: `(${bbox.join(',')})`
+				bbox: bbox // Store as JSON array, not string
 			})
 			.returning();
 
