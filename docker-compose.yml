@@ -5,7 +5,7 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgres://root:mysecretpassword@postgres:5432/local
-      - ORIGIN=http://localhost:3000
+      - ORIGIN=http://127.0.0.1:3000 # Change to URL unless testing locally
     depends_on:
       - postgres
 
@@ -29,11 +29,12 @@ services:
     environment:
       - RASPI_IP=100.85.202.20
       - WEBRTC_PORT=8765
-      - API_IP=host.docker.internal #TODO: NATHAN once UI is running in docker container, this needs to be updated
-      - API_PORT=5173 #TODO: NATHAN once UI is running in docker container, this needs to be updated to 3000
+      - API_IP=app
+      - API_PORT=3000
     # volumes:
     #   - ./models:/models
     depends_on:
+      - app
       - postgres
 
   #Default ai app with GPU support: can run this with docker compose --profile gpu up
@@ -51,10 +52,11 @@ services:
     environment:
       - RASPI_IP=100.85.202.20
       - WEBRTC_PORT=8765
-      - API_IP=host.docker.internal #TODO: NATHAN once UI is running in docker container, this needs to be updated
-      - API_PORT=5173 #TODO: NATHAN once UI is running in docker container, this needs to be updated to 3000
+      - API_IP=app
+      - API_PORT=3000
     # volumes:
     #   - ./models:/models
     profiles: ["gpu"]
     depends_on:
+      - app
       - postgres
