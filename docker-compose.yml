@@ -33,6 +33,8 @@ services:
       - API_PORT=3000
     # volumes:
     #   - ./models:/models
+    profiles:
+      - default
     depends_on:
       - app
       - postgres
