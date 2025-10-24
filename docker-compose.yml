@@ -1,5 +1,5 @@
 services:
-  app:
+  web-app:
     image: bytesizedrobotics/rover-ui:latest
     ports:
       - "3000:3000"
@@ -39,7 +39,7 @@ services:
     profiles:
       - default
     depends_on:
-      - app
+      - web-app
       - postgres
 
   #Default ai app with GPU support: can run this with docker compose --profile gpu up

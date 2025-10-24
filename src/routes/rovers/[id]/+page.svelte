@@ -5,7 +5,7 @@
 	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
 	import { createMiniLidar, LidarMiniController } from './lidarController';
-	import { commandCenterManager, type ROS2CommandCentreClient, type WebRTCStatus } from '$lib/ros2CommandCentre';
+	import { commandCenterManager, type ROS2CommandCentreClient, type CameraStreamStatus } from '$lib/ros2CommandCentre';
 	import { goto } from '$app/navigation';
 
 	let { data }: { data: PageServerData } = $props();
@@ -57,30 +57,34 @@
 
 	// ROS2 Command Center client for sensor data and video
 	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null);
-	let isWebRTCReady = $state(false);
-	let webRTCStatusMessage = $state('Connecting to rover...');
+	let isCSICameraReady = $state(false);
+	let isUSBCameraReady = $state(false);
+	let csiStatusMessage = $state('Connecting to CSI camera...');
+	let usbStatusMessage = $state('Connecting to USB camera...');
 	let cleanupWebRTCListener: (() => void) | null = null;
 
-	function updateWebRTCStatus(status: WebRTCStatus) {
-		const activeElementId = `roverVideo${currentCamera}`;
-		const matchesCurrentCamera = status.videoElementId === activeElementId;
-		const hasStreamForActiveCamera = status.hasRemoteStream && matchesCurrentCamera;
+	function updateWebRTCStatus(status: CameraStreamStatus) {
+		// Update CSI camera (Camera 1) status
+		isCSICameraReady = status.csi.isConnected && status.csi.hasRemoteStream;
+		csiStatusMessage = status.csi.isConnected
+			? status.csi.hasRemoteStream
+				? 'CSI camera connected'
+				: 'Connecting to CSI camera...'
+			: 'CSI camera disconnected';
 
-		isWebRTCReady = hasStreamForActiveCamera;
-		webRTCStatusMessage = status.isConnected
-			? status.hasRemoteStream
-				? (hasStreamForActiveCamera ? 'Camera feed connected' : 'Switching camera...')
-				: 'Connecting to camera...'
-			: 'Connecting to rover...';
+		// Update USB camera (Camera 2) status
+		isUSBCameraReady = status.usb.isConnected && status.usb.hasRemoteStream;
+		usbStatusMessage = status.usb.isConnected
+			? status.usb.hasRemoteStream
+				? 'USB camera connected'
+				: 'Connecting to USB camera...'
+			: 'USB camera disconnected';
 	}
 
 	function switchCamera(cameraNum: number) {
 		currentCamera = cameraNum;
-		if (commandCenterClient) {
-			isWebRTCReady = false;
-			webRTCStatusMessage = 'Switching camera...';
-			commandCenterClient.setVideoElement(`roverVideo${cameraNum}`);
-		}
+		// No need to do anything else - both cameras are already connected
+		// The UI will automatically show/hide the correct video element
 	}
 
 	// Convert Fahrenheit to Celsius
@@ -147,7 +151,10 @@
 				const setupCommandCenterClient = () => {
 					if (!commandCenterClient) return;
 
-					commandCenterClient.setVideoElement(`roverVideo${currentCamera}`);
+					// Set up both camera video elements
+					commandCenterClient.setVideoElement('roverVideo1', 'csi');
+					commandCenterClient.setVideoElement('roverVideo2', 'usb');
+					
 					commandCenterClient.onLidarData((lidarData) => {
 						if (lidarController) {
 							lidarController.updateData(lidarData);
@@ -188,7 +195,7 @@
 
 				const ensureConnection = commandCenterClient.isConnected
 					? Promise.resolve()
-					: commandCenterClient.connect();
+					: commandCenterClient.connect({ enableCSICamera: true, enableUSBCamera: true });
 
 				ensureConnection
 					.then(() => {
@@ -221,19 +228,23 @@
 			cleanupWebRTCListener();
 			cleanupWebRTCListener = null;
 		}
-	if (imuUpdateInterval) {
-		clearInterval(imuUpdateInterval);
-		imuUpdateInterval = null;
-	}
-		isWebRTCReady = false;
-		webRTCStatusMessage = 'Connecting to rover...';
+		if (imuUpdateInterval) {
+			clearInterval(imuUpdateInterval);
+			imuUpdateInterval = null;
+		}
+		isCSICameraReady = false;
+		isUSBCameraReady = false;
+		csiStatusMessage = 'Connecting to CSI camera...';
+		usbStatusMessage = 'Connecting to USB camera...';
 		
-	if (commandCenterClient) {
-		commandCenterClient.setVideoElement(null);
-		commandCenterClient.onLidarData(null);
-		commandCenterClient.onStateChange(null);
-		commandCenterClient = null;
-	}
+		if (commandCenterClient) {
+			// Clear both camera video elements
+			commandCenterClient.setVideoElement(null, 'csi');
+			commandCenterClient.setVideoElement(null, 'usb');
+			commandCenterClient.onLidarData(null);
+			commandCenterClient.onStateChange(null);
+			commandCenterClient = null;
+		}
 	});
 
 	async function initializeMap() {
@@ -435,8 +446,8 @@
 								Your browser does not support the video tag.
 							</video>
 						
-							<!-- Fallback when no stream is available -->
-							{#if !isWebRTCReady}
+							<!-- Fallback when no stream is available for current camera -->
+							{#if (currentCamera === 1 && !isCSICameraReady) || (currentCamera === 2 && !isUSBCameraReady)}
 								<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
 									<div>
 										<img
@@ -445,8 +456,8 @@
 											class="mx-auto mb-2 h-16 w-16 object-contain"
 											loading="lazy"
 										/>
-										<p class="font-medium">Camera {currentCamera} Feed</p>
-										<p class="text-sm text-blue-500">{webRTCStatusMessage}</p>
+										<p class="font-medium">{currentCamera === 1 ? 'CSI Camera' : 'USB Camera'} Feed</p>
+										<p class="text-sm text-blue-500">{currentCamera === 1 ? csiStatusMessage : usbStatusMessage}</p>
 									</div>
 								</div>
 							{/if}
@@ -456,16 +467,22 @@
 					<!-- Camera Switch Buttons -->
 					<div class="flex justify-center gap-2">
 						<button
-							class="px-4 py-2 rounded-lg font-medium transition-colors {currentCamera === 1 ? 'bg-blue-500 text-white' : 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
+							class="px-4 py-2 rounded-lg font-medium transition-colors relative {currentCamera === 1 ? 'bg-blue-500 text-white' : 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
 							onclick={() => switchCamera(1)}
 						>
-							Camera 1
+							CSI Camera
+							{#if isCSICameraReady}
+								<span class="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></span>
+							{/if}
 						</button>
 						<button
-							class="px-4 py-2 rounded-lg font-medium transition-colors {currentCamera === 2 ? 'bg-blue-500 text-white' : 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
+							class="px-4 py-2 rounded-lg font-medium transition-colors relative {currentCamera === 2 ? 'bg-blue-500 text-white' : 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
 							onclick={() => switchCamera(2)}
 						>
-							Camera 2
+							USB Camera
+							{#if isUSBCameraReady}
+								<span class="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></span>
+							{/if}
 						</button>
 					</div>
 				</div>
@@ -633,13 +650,6 @@
 		font-size: 0.9rem;
 		margin: 0 0 4px 0;
 		opacity: 0.95;
-	}
-
-	.notification-details {
-		font-size: 0.8rem;
-		margin: 0;
-		opacity: 0.8;
-		font-style: italic;
 	}
 
 	.notification-close {

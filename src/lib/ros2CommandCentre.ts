@@ -32,6 +32,12 @@ export interface WebRTCStatus {
 	isConnected: boolean;
 	hasRemoteStream: boolean;
 	videoElementId: string | null;
+	cameraType: 'csi' | 'usb';
+}
+
+export interface CameraStreamStatus {
+	csi: WebRTCStatus;
+	usb: WebRTCStatus;
 }
 
 export interface GPSData { // TODO: NATHAN Update this
@@ -129,15 +135,15 @@ export class ROS2CommandCentreClient {
 	private _onTimestampUpdate: ((state: number) => void) | null = null;
 	private _onLidarDataUpdate: ((data: LidarData) => void) | null = null;
 	private _onNodeStatusUpdate: ((status: NodeStatus) => void) | null = null;
-	private _webRTCStatusListeners: Set<(status: WebRTCStatus) => void> = new Set();
+	private _webRTCStatusListeners: Set<(status: CameraStreamStatus) => void> = new Set();
 
-	// WebRTC camera stream properties
-	private _webrtcSocket: WebSocket | null = null;
-	private _peerConnection: RTCPeerConnection | null = null;
-	private _isWebRTCConnected: boolean = false;
-	private _remoteStream: MediaStream | null = null; // store last received remote stream
-	private _currentVideoElementId: string | null = null; // currently bound video element id
-	private _autoStartWebRTC: boolean = true;
+	// WebRTC camera stream properties - now supporting multiple cameras
+	private _webrtcSockets: Map<'csi' | 'usb', WebSocket | null> = new Map([['csi', null], ['usb', null]]);
+	private _peerConnections: Map<'csi' | 'usb', RTCPeerConnection | null> = new Map([['csi', null], ['usb', null]]);
+	private _isWebRTCConnected: Map<'csi' | 'usb', boolean> = new Map([['csi', false], ['usb', false]]);
+	private _remoteStreams: Map<'csi' | 'usb', MediaStream | null> = new Map([['csi', null], ['usb', null]]);
+	private _currentVideoElementIds: Map<'csi' | 'usb', string | null> = new Map([['csi', null], ['usb', null]]);
+	private _autoStartWebRTC: Map<'csi' | 'usb', boolean> = new Map([['csi', true], ['usb', true]]);
 
 	// Topic data storage
 	private _gpsData: GPSData | null = null;
@@ -197,7 +203,14 @@ export class ROS2CommandCentreClient {
 		return this._obstacleData;
 	}
 	get isWebRTCConnected(): boolean {
-		return this._isWebRTCConnected;
+		// Return true if any camera is connected
+		return this._isWebRTCConnected.get('csi') || this._isWebRTCConnected.get('usb') || false;
+	}
+	get isCSICameraConnected(): boolean {
+		return this._isWebRTCConnected.get('csi') || false;
+	}
+	get isUSBCameraConnected(): boolean {
+		return this._isWebRTCConnected.get('usb') || false;
 	}
 	get obstacleDetected(): boolean {
 		return this._obstacleData?.detected || false;
@@ -222,18 +235,26 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Connect to the ROS2 Command Center
 	 */
-	async connect(options: { enableVideo?: boolean } = {}): Promise<void> {
-		const { enableVideo = true } = options;
-		this._autoStartWebRTC = enableVideo;
-		if (!enableVideo) {
-			this.disconnectWebRTC();
+	async connect(options: { enableCSICamera?: boolean; enableUSBCamera?: boolean } = {}): Promise<void> {
+		const { enableCSICamera = true, enableUSBCamera = true } = options;
+		this._autoStartWebRTC.set('csi', enableCSICamera);
+		this._autoStartWebRTC.set('usb', enableUSBCamera);
+		
+		if (!enableCSICamera) {
+			this.disconnectWebRTC('csi');
+		}
+		if (!enableUSBCamera) {
+			this.disconnectWebRTC('usb');
 		}
 
 		// Check if already connected with valid socket
 		if (this._isConnected && this._socket?.readyState === WebSocket.OPEN) {
 			console.log(`Already connected to ROS2 Command Center for rover ${this._roverId}`);
-			if (enableVideo && !this._isWebRTCConnected) {
-				this.connectWebRTC();
+			if (enableCSICamera && !this._isWebRTCConnected.get('csi')) {
+				this.connectWebRTC('csi');
+			}
+			if (enableUSBCamera && !this._isWebRTCConnected.get('usb')) {
+				this.connectWebRTC('usb');
 			}
 			return;
 		}
@@ -281,21 +302,25 @@ export class ROS2CommandCentreClient {
 					// Start heartbeat
 					this.startHeartbeat();
 
-					// Start periodic logging
-					this.startPeriodicLogging();
+				// Start periodic logging
+				this.startPeriodicLogging();
 
-					// Initialize WebRTC connection for camera stream if enabled
-					if (this._autoStartWebRTC) {
-						this.connectWebRTC();
-					} else {
-						this.setWebRTCConnected(false);
-					}
+				// Initialize WebRTC connection for camera streams if enabled
+				if (this._autoStartWebRTC.get('csi')) {
+					this.connectWebRTC('csi');
+				} else {
+					this.setWebRTCConnected('csi', false);
+				}
+				
+				if (this._autoStartWebRTC.get('usb')) {
+					this.connectWebRTC('usb');
+				} else {
+					this.setWebRTCConnected('usb', false);
+				}
 
-					this.notifyStateChange();
-					resolve();
-				};
-
-				this._socket.onerror = (error) => {
+				this.notifyStateChange();
+				resolve();
+			};				this._socket.onerror = (error) => {
 					this._connectionErrors++;
 					this._isConnected = false;
 					console.error(`ROS2 Command Center connection error for rover ${this._roverId}:`, error);
@@ -375,115 +400,126 @@ export class ROS2CommandCentreClient {
 		}
 	}
 
-	private setWebRTCConnected(isConnected: boolean): void {
-		if (this._isWebRTCConnected !== isConnected) {
-			this._isWebRTCConnected = isConnected;
-			this.emitWebRTCStatus();
-		} else {
-			// Still emit so listeners can react to other status changes
-			this.emitWebRTCStatus();
+	private setWebRTCConnected(cameraType: 'csi' | 'usb', isConnected: boolean): void {
+		const wasConnected = this._isWebRTCConnected.get(cameraType) || false;
+		if (wasConnected !== isConnected) {
+			this._isWebRTCConnected.set(cameraType, isConnected);
+			console.log(`${cameraType.toUpperCase()} camera WebRTC ${isConnected ? 'connected' : 'disconnected'} for rover ${this._roverId}`);
 		}
+		// Always emit so listeners can react to status changes
+		this.emitWebRTCStatus();
 	}
 
 	/**
 	 * Connect WebRTC for camera streaming
 	 */
-	private async connectWebRTC(): Promise<void> {
+	private async connectWebRTC(cameraType: 'csi' | 'usb'): Promise<void> {
 		try {
-			const webrtcUrl = getWebRTCWebSocketURL();
-			this._webrtcSocket = new WebSocket(webrtcUrl);
+			const webrtcUrl = getWebRTCWebSocketURL(cameraType);
+			const socket = new WebSocket(webrtcUrl);
+			this._webrtcSockets.set(cameraType, socket);
 
-			this._webrtcSocket.onopen = () => {
-				console.log(`WebRTC connection established for rover ${this._roverId}`);
-				this.startWebRTC();
+			socket.onopen = () => {
+				console.log(`${cameraType.toUpperCase()} camera WebRTC connection established for rover ${this._roverId}`);
+				this.startWebRTC(cameraType);
 			};
 
-			this._webrtcSocket.onerror = (error) => {
-				console.error(`WebRTC connection error for rover ${this._roverId}:`, error);
-				this.setWebRTCConnected(false);
+			socket.onerror = (error: Event) => {
+				console.error(`${cameraType.toUpperCase()} camera WebRTC connection error for rover ${this._roverId}:`, error);
+				this.setWebRTCConnected(cameraType, false);
 			};
 
-			this._webrtcSocket.onclose = () => {
-				console.log(`WebRTC connection closed for rover ${this._roverId}`);
-				this.setWebRTCConnected(false);
+			socket.onclose = () => {
+				console.log(`${cameraType.toUpperCase()} camera WebRTC connection closed for rover ${this._roverId}`);
+				this.setWebRTCConnected(cameraType, false);
 			};
 
-			this._webrtcSocket.onmessage = (event) => {
-				this.handleWebRTCMessage(event);
+			socket.onmessage = (event: MessageEvent) => {
+				this.handleWebRTCMessage(cameraType, event);
 			};
 		} catch (error) {
-			console.error(`Failed to connect WebRTC for rover ${this._roverId}:`, error);
-			this.setWebRTCConnected(false);
+			console.error(`Failed to connect ${cameraType.toUpperCase()} camera WebRTC for rover ${this._roverId}:`, error);
+			this.setWebRTCConnected(cameraType, false);
 		}
 	}
 
 	/**
-	 * Disconnect WebRTC
+	 * Disconnect WebRTC for specific camera or all cameras
 	 */
-	private disconnectWebRTC(): void {
-		// Clear video element before disconnecting
-		if (this._currentVideoElementId) {
-			const videoElement = document.getElementById(this._currentVideoElementId) as HTMLVideoElement | null;
-			if (videoElement) {
-				videoElement.pause();
-				videoElement.srcObject = null;
-				console.log(`Cleared video element '${this._currentVideoElementId}' for rover ${this._roverId}`);
+	private disconnectWebRTC(cameraType?: 'csi' | 'usb'): void {
+		const camerasToDisconnect: ('csi' | 'usb')[] = cameraType ? [cameraType] : ['csi', 'usb'];
+		
+		for (const camera of camerasToDisconnect) {
+			// Clear video element before disconnecting
+			const videoElementId = this._currentVideoElementIds.get(camera);
+			if (videoElementId) {
+				const videoElement = document.getElementById(videoElementId) as HTMLVideoElement | null;
+				if (videoElement) {
+					videoElement.pause();
+					videoElement.srcObject = null;
+					console.log(`Cleared ${camera.toUpperCase()} video element '${videoElementId}' for rover ${this._roverId}`);
+				}
 			}
-		}
 
-		if (this._peerConnection) {
-			this._peerConnection.close();
-			this._peerConnection = null;
-		}
+			const peerConnection = this._peerConnections.get(camera);
+			if (peerConnection) {
+				peerConnection.close();
+				this._peerConnections.set(camera, null);
+			}
 
-		if (this._webrtcSocket) {
-			this._webrtcSocket.close();
-			this._webrtcSocket = null;
-		}
+			const socket = this._webrtcSockets.get(camera);
+			if (socket) {
+				socket.close();
+				this._webrtcSockets.set(camera, null);
+			}
 
-		this._remoteStream = null;
-		this.setWebRTCConnected(false);
+			this._remoteStreams.set(camera, null);
+			this.setWebRTCConnected(camera, false);
+		}
 	}
 
 	/**
-	 * Start WebRTC peer connection
+	 * Start WebRTC peer connection for a specific camera
 	 */
-	private async startWebRTC(): Promise<void> {
+	private async startWebRTC(cameraType: 'csi' | 'usb'): Promise<void> {
 		try {
-			console.log(`Starting WebRTC connection for rover ${this._roverId}...`);
+			console.log(`Starting ${cameraType.toUpperCase()} camera WebRTC connection for rover ${this._roverId}...`);
 
 			// Initialize WebRTC peer connection
-			this._peerConnection = new RTCPeerConnection({
+			const peerConnection = new RTCPeerConnection({
 				iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }]
 			});
+			this._peerConnections.set(cameraType, peerConnection);
 
 			// Monitor connection state changes
-			this._peerConnection.onconnectionstatechange = () => {
-				console.log(`WebRTC connection state changed to: ${this._peerConnection?.connectionState} for rover ${this._roverId}`);
+			peerConnection.onconnectionstatechange = () => {
+				console.log(`${cameraType.toUpperCase()} camera WebRTC connection state changed to: ${peerConnection.connectionState} for rover ${this._roverId}`);
 			};
 
-			this._peerConnection.oniceconnectionstatechange = () => {
-				console.log(`WebRTC ICE connection state changed to: ${this._peerConnection?.iceConnectionState} for rover ${this._roverId}`);
+			peerConnection.oniceconnectionstatechange = () => {
+				console.log(`${cameraType.toUpperCase()} camera WebRTC ICE connection state changed to: ${peerConnection.iceConnectionState} for rover ${this._roverId}`);
 			};
 
 			// Ensure the WebRTC offer requests a video stream (without adding a local camera)
-			this._peerConnection.addTransceiver('video', { direction: 'recvonly' });
+			peerConnection.addTransceiver('video', { direction: 'recvonly' });
 
 			// Handle incoming video stream
-			this._peerConnection.ontrack = (event) => {
-				console.log(`WebRTC video stream received for rover ${this._roverId}`);
-				this._remoteStream = event.streams[0];
+			peerConnection.ontrack = (event: RTCTrackEvent) => {
+				console.log(`${cameraType.toUpperCase()} camera WebRTC video stream received for rover ${this._roverId}`);
+				this._remoteStreams.set(cameraType, event.streams[0]);
 				this.emitWebRTCStatus();
 				// If a video element has already been registered, apply immediately
-				if (this._currentVideoElementId) {
-					this.applyStreamToVideo();
+				const videoElementId = this._currentVideoElementIds.get(cameraType);
+				if (videoElementId) {
+					this.applyStreamToVideo(cameraType);
 				}
 			};
 
 			// Handle ICE candidates
-			this._peerConnection.onicecandidate = (event) => {
-				if (event.candidate && this._webrtcSocket) {
-					this._webrtcSocket.send(JSON.stringify({ 
+			peerConnection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
+				const socket = this._webrtcSockets.get(cameraType);
+				if (event.candidate && socket) {
+					socket.send(JSON.stringify({ 
 						type: 'candidate', 
 						candidate: event.candidate 
 					}));
@@ -491,63 +527,65 @@ export class ROS2CommandCentreClient {
 			};
 
 			// Create an offer and send it to the server
-			const offer = await this._peerConnection.createOffer();
-			await this._peerConnection.setLocalDescription(offer);
+			const offer = await peerConnection.createOffer();
+			await peerConnection.setLocalDescription(offer);
 
-			if (this._webrtcSocket) {
-				this._webrtcSocket.send(JSON.stringify({ 
+			const socket = this._webrtcSockets.get(cameraType);
+			if (socket) {
+				socket.send(JSON.stringify({ 
 					type: 'offer', 
 					sdp: offer.sdp 
 				}));
-				console.log(`WebRTC offer sent to ROS 2 server for rover ${this._roverId}`);
+				console.log(`${cameraType.toUpperCase()} camera WebRTC offer sent to ROS 2 server for rover ${this._roverId}`);
 			}
 
-			this.setWebRTCConnected(true);
+			this.setWebRTCConnected(cameraType, true);
 		} catch (error) {
-			console.error(`Error starting WebRTC for rover ${this._roverId}:`, error);
-			this.setWebRTCConnected(false);
+			console.error(`Error starting ${cameraType.toUpperCase()} camera WebRTC for rover ${this._roverId}:`, error);
+			this.setWebRTCConnected(cameraType, false);
 		}
 	}
 
 	/**
 	 * Handle WebRTC signaling messages
 	 */
-	private handleWebRTCMessage(event: MessageEvent): void {
+	private handleWebRTCMessage(cameraType: 'csi' | 'usb', event: MessageEvent): void {
 		try {
 			const data = JSON.parse(event.data);
+			const peerConnection = this._peerConnections.get(cameraType);
 
 			switch (data.type) {
 				case 'answer':
-					if (this._peerConnection) {
-						this._peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-						console.log(`WebRTC answer received and applied for rover ${this._roverId}`);
+					if (peerConnection) {
+						peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+						console.log(`${cameraType.toUpperCase()} camera WebRTC answer received and applied for rover ${this._roverId}`);
 					}
 					break;
 
 				case 'ice-candidate':
-					if (this._peerConnection && data.candidate) {
-						this._peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-						console.log(`ICE candidate received and added for rover ${this._roverId}`);
+					if (peerConnection && data.candidate) {
+						peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+						console.log(`${cameraType.toUpperCase()} camera ICE candidate received and added for rover ${this._roverId}`);
 					}
 					break;
 
 				default:
-					console.log(`Received unknown WebRTC message type: ${data.type}`);
+					console.log(`Received unknown WebRTC message type: ${data.type} for ${cameraType.toUpperCase()} camera`);
 					break;
 			}
 		} catch (error) {
-			console.error(`Error parsing WebRTC message for rover ${this._roverId}:`, error);
+			console.error(`Error parsing ${cameraType.toUpperCase()} camera WebRTC message for rover ${this._roverId}:`, error);
 		}
 	}
 
 	/**
-	 * Set video element for WebRTC stream
+	 * Set video element for WebRTC stream (CSI camera by default for backward compatibility)
 	 * This will wait for WebRTC to be ready and retry binding if needed
 	 */
-	public setVideoElement(videoElementId: string | null): void {
-		const previousElementId = this._currentVideoElementId;
-		this._currentVideoElementId = videoElementId;
-		console.log(`Setting video element '${videoElementId ?? 'none'}' for rover ${this._roverId}`);
+	public setVideoElement(videoElementId: string | null, cameraType: 'csi' | 'usb' = 'csi'): void {
+		const previousElementId = this._currentVideoElementIds.get(cameraType);
+		this._currentVideoElementIds.set(cameraType, videoElementId);
+		console.log(`Setting ${cameraType.toUpperCase()} camera video element '${videoElementId ?? 'none'}' for rover ${this._roverId}`);
 
 		if (!videoElementId) {
 			if (previousElementId) {
@@ -564,90 +602,100 @@ export class ROS2CommandCentreClient {
 		this.emitWebRTCStatus();
 
 		// If we already have a remote stream, try to apply immediately
-		if (this._remoteStream) {
-			console.log(`Remote stream already available, applying to '${videoElementId}'`);
-			this.applyStreamToVideo();
-		} else if (!this._peerConnection) {
-			// WebRTC not ready yet, wait for it with timeout
-			console.log(`WebRTC not ready yet for rover ${this._roverId}, waiting...`);
-			this.waitForWebRTCAndApply();
+		const remoteStream = this._remoteStreams.get(cameraType);
+		if (remoteStream) {
+			console.log(`${cameraType.toUpperCase()} camera remote stream already available, applying to '${videoElementId}'`);
+			this.applyStreamToVideo(cameraType);
 		} else {
-			// Peer connection exists but no stream yet - will apply when ontrack fires
-			console.log(`Peer connection ready, waiting for stream for rover ${this._roverId}`);
+			const peerConnection = this._peerConnections.get(cameraType);
+			if (!peerConnection) {
+				// WebRTC not ready yet, wait for it with timeout
+				console.log(`${cameraType.toUpperCase()} camera WebRTC not ready yet for rover ${this._roverId}, waiting...`);
+				this.waitForWebRTCAndApply(cameraType);
+			} else {
+				// Peer connection exists but no stream yet - will apply when ontrack fires
+				console.log(`${cameraType.toUpperCase()} camera peer connection ready, waiting for stream for rover ${this._roverId}`);
+			}
 		}
 	}
 
 	/**
 	 * Wait for WebRTC connection to be ready, then apply stream
 	 */
-	private waitForWebRTCAndApply(retries = 0, maxRetries = 100): void {
+	private waitForWebRTCAndApply(cameraType: 'csi' | 'usb', retries = 0, maxRetries = 100): void {
+		const peerConnection = this._peerConnections.get(cameraType);
+		const remoteStream = this._remoteStreams.get(cameraType);
+		
 		if (retries >= maxRetries) {
-			console.error(`WebRTC failed to initialize after ${maxRetries} retries for rover ${this._roverId}`);
-			console.error(`Connection state: peer=${this._peerConnection?.connectionState}, ice=${this._peerConnection?.iceConnectionState}, hasStream=${!!this._remoteStream}`);
+			console.error(`${cameraType.toUpperCase()} camera WebRTC failed to initialize after ${maxRetries} retries for rover ${this._roverId}`);
+			console.error(`Connection state: peer=${peerConnection?.connectionState}, ice=${peerConnection?.iceConnectionState}, hasStream=${!!remoteStream}`);
 			return;
 		}
 
 		// Log progress every 10 retries
 		if (retries > 0 && retries % 10 === 0) {
-			console.log(`WebRTC waiting... retry ${retries}/${maxRetries} - peer=${this._peerConnection?.connectionState}, ice=${this._peerConnection?.iceConnectionState}, hasStream=${!!this._remoteStream}`);
+			console.log(`${cameraType.toUpperCase()} camera WebRTC waiting... retry ${retries}/${maxRetries} - peer=${peerConnection?.connectionState}, ice=${peerConnection?.iceConnectionState}, hasStream=${!!remoteStream}`);
 		}
 
-		if (this._remoteStream && this._currentVideoElementId) {
-			console.log(`WebRTC ready after ${retries} retries (${retries * 200}ms), applying stream`);
-			this.applyStreamToVideo();
+		const videoElementId = this._currentVideoElementIds.get(cameraType);
+		if (remoteStream && videoElementId) {
+			console.log(`${cameraType.toUpperCase()} camera WebRTC ready after ${retries} retries (${retries * 200}ms), applying stream`);
+			this.applyStreamToVideo(cameraType);
 		} else {
 			// Retry after 200ms (increased from 100ms for more stable connection)
-			setTimeout(() => this.waitForWebRTCAndApply(retries + 1, maxRetries), 200);
+			setTimeout(() => this.waitForWebRTCAndApply(cameraType, retries + 1, maxRetries), 200);
 		}
 	}
 
 	/**
 	 * Apply currently stored remote stream to the registered video element
 	 */
-	private applyStreamToVideo(): void {
-		const elementId = this._currentVideoElementId;
-		if (!elementId || !this._remoteStream) {
-			console.warn(`Cannot apply stream: elementId=${elementId}, hasStream=${!!this._remoteStream}`);
+	private applyStreamToVideo(cameraType: 'csi' | 'usb'): void {
+		const elementId = this._currentVideoElementIds.get(cameraType);
+		const remoteStream = this._remoteStreams.get(cameraType);
+		
+		if (!elementId || !remoteStream) {
+			console.warn(`Cannot apply ${cameraType.toUpperCase()} stream: elementId=${elementId}, hasStream=${!!remoteStream}`);
 			return;
 		}
 
 		const videoElement = document.getElementById(elementId) as HTMLVideoElement | null;
 		if (!videoElement) {
-			console.error(`Video element with id '${elementId}' not found for rover ${this._roverId}, will retry...`);
+			console.error(`Video element with id '${elementId}' not found for ${cameraType.toUpperCase()} camera on rover ${this._roverId}, will retry...`);
 			// Retry after a delay in case the element isn't in DOM yet
 			setTimeout(() => {
 				const retryElement = elementId ? (document.getElementById(elementId) as HTMLVideoElement | null) : null;
-				if (retryElement && this._remoteStream) {
-					console.log(`Video element found on retry, applying stream`);
-					retryElement.srcObject = this._remoteStream;
+				if (retryElement && remoteStream) {
+					console.log(`${cameraType.toUpperCase()} camera video element found on retry, applying stream`);
+					retryElement.srcObject = remoteStream;
 					retryElement.muted = true; // Auto-mute to help with autoplay
-					retryElement.play().catch(e => console.error(`Error playing video:`, e));
+					retryElement.play().catch(e => console.error(`Error playing ${cameraType.toUpperCase()} video:`, e));
 					this.emitWebRTCStatus();
 				} else {
-					console.error(`Video element still not found after retry`);
+					console.error(`${cameraType.toUpperCase()} camera video element still not found after retry`);
 				}
 			}, 1000);
 			return;
 		}
 
-		console.log(`Applying WebRTC stream to video element '${elementId}' for rover ${this._roverId}`);
+		console.log(`Applying ${cameraType.toUpperCase()} camera WebRTC stream to video element '${elementId}' for rover ${this._roverId}`);
 		
 		// Set the stream
-		if (videoElement.srcObject !== this._remoteStream) {
-			videoElement.srcObject = this._remoteStream;
+		if (videoElement.srcObject !== remoteStream) {
+			videoElement.srcObject = remoteStream;
 			videoElement.muted = true; // Auto-mute to help with autoplay policies
-			console.log(`Stream source set for video element`);
+			console.log(`${cameraType.toUpperCase()} camera stream source set for video element`);
 		}
 		this.emitWebRTCStatus();
 
 		// Try to play the video
 		videoElement.play()
 			.then(() => {
-				console.log(`✅ WebRTC video stream successfully playing on '${this._currentVideoElementId}' for rover ${this._roverId}`);
+				console.log(`✅ ${cameraType.toUpperCase()} camera WebRTC video stream successfully playing on '${elementId}' for rover ${this._roverId}`);
 				this.emitWebRTCStatus();
 			})
 			.catch(e => {
-				console.error(`❌ Error playing video for rover ${this._roverId}:`, e);
+				console.error(`❌ Error playing ${cameraType.toUpperCase()} camera video for rover ${this._roverId}:`, e);
 				// Already muted above, log the specific error
 				console.error(`Autoplay error details:`, e.message);
 			});
@@ -834,7 +882,7 @@ export class ROS2CommandCentreClient {
 	 * Subscribe to WebRTC status updates (connection + stream availability)
 	 * Returns a cleanup function to remove the listener
 	 */
-	onWebRTCStatusChange(callback: (status: WebRTCStatus) => void): () => void {
+	onWebRTCStatusChange(callback: (status: CameraStreamStatus) => void): () => void {
 		this._webRTCStatusListeners.add(callback);
 		callback(this.getWebRTCStatus());
 		return () => {
@@ -842,11 +890,20 @@ export class ROS2CommandCentreClient {
 		};
 	}
 
-	private getWebRTCStatus(): WebRTCStatus {
+	private getWebRTCStatus(): CameraStreamStatus {
 		return {
-			isConnected: this._isWebRTCConnected,
-			hasRemoteStream: !!this._remoteStream,
-			videoElementId: this._currentVideoElementId
+			csi: {
+				isConnected: this._isWebRTCConnected.get('csi') || false,
+				hasRemoteStream: !!this._remoteStreams.get('csi'),
+				videoElementId: this._currentVideoElementIds.get('csi') || null,
+				cameraType: 'csi'
+			},
+			usb: {
+				isConnected: this._isWebRTCConnected.get('usb') || false,
+				hasRemoteStream: !!this._remoteStreams.get('usb'),
+				videoElementId: this._currentVideoElementIds.get('usb') || null,
+				cameraType: 'usb'
+			}
 		};
 	}
 
