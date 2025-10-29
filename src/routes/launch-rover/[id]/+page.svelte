@@ -26,7 +26,7 @@
 		isNavigating: false,
 		totalWaypoints: 0
 	};
-	
+
 	// Read waypoints from sessionStorage
 	const key = `launch_waypoints_${roverId}`;
 	const raw = typeof window !== 'undefined' ? sessionStorage.getItem(key) : null;
@@ -178,105 +178,124 @@
 			}
 		];
 	}
-
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6">
-	<div class="container max-w-4xl mx-auto">
-		<header class="page-header bg-white rounded-2xl border border-blue-100 shadow-lg p-6 mb-6">
+	<div class="container mx-auto max-w-4xl">
+		<header class="page-header mb-6 rounded-2xl border border-blue-100 bg-white p-6 shadow-lg">
 			<h1 class="title text-3xl font-bold text-blue-900">Launch Rover-{roverId}</h1>
-			<div class="divider mt-4 h-1 bg-gradient-to-r from-blue-500 to-blue-300 rounded"></div>
+			<div class="divider mt-4 h-1 rounded bg-gradient-to-r from-blue-500 to-blue-300"></div>
 		</header>
 
-	{#if waypoints.length === 0}
-		<div class="empty-state">
-			<p>No saved waypoints found for this path.</p>
-			<p class="hint">Please set a route first using the map.</p>
-		</div>
-	{:else}
-		<section class="route-info">
-			<h2 class="section-title">Route Information</h2>
-			<div class="route-container">
-				<div class="destinations">
-					<div class="destination-item">
-						<strong class="label">Start Address:</strong>
-						<div class="address">{startAddr}</div>
-						<p class="instruction">
-							Make sure the start address corresponds to the location where the rover will be
-							dropped off.
-						</p>
-					</div>
-					<div class="destination-item">
-						<strong class="label">End Address:</strong>
-						<div class="address">{endAddr}</div>
-					</div>
-				</div>
-
-				<div class="waypoints-section">
-					<div class="waypoints-box">
-						<p class="wp-count">GPS waypoints: {waypoints.length}</p>
-						<ul class="waypoints-list">
-							{#each waypoints as wp}
-								<li class="waypoint-item">{wp.lat}, {wp.lng}</li>
-							{/each}
-						</ul>
-					</div>
-				</div>
+		{#if waypoints.length === 0}
+			<div class="empty-state">
+				<p>No saved waypoints found for this path.</p>
+				<p class="hint">Please set a route first using the map.</p>
 			</div>
-		</section>
+		{:else}
+			<section class="route-info">
+				<h2 class="section-title">Route Information</h2>
+				<div class="route-container">
+					<div class="destinations">
+						<div class="destination-item">
+							<strong class="label">Start Address:</strong>
+							<div class="address">{startAddr}</div>
+							<p class="instruction">
+								Make sure the start address corresponds to the location where the rover will be
+								dropped off.
+							</p>
+						</div>
+						<div class="destination-item">
+							<strong class="label">End Address:</strong>
+							<div class="address">{endAddr}</div>
+						</div>
+					</div>
 
-		<section class="launch-section mb-6 text-center">
-			<button class="confirm bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 shadow-lg" on:click={confirmLaunch} disabled={connecting}>
-				<span class="btn-text">
-					{#if connecting}
-						Connecting & Launching...
-					{:else if commandCenterStatus.isNavigating}
-						Navigation In Progress
+					<div class="waypoints-section">
+						<div class="waypoints-box">
+							<p class="wp-count">GPS waypoints: {waypoints.length}</p>
+							<ul class="waypoints-list">
+								{#each waypoints as wp}
+									<li class="waypoint-item">{wp.lat}, {wp.lng}</li>
+								{/each}
+							</ul>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="launch-section mb-6 text-center">
+				<button
+					class="confirm rounded-lg bg-blue-500 px-8 py-3 font-bold text-white shadow-lg transition-colors duration-200 hover:bg-blue-600 disabled:bg-blue-300"
+					on:click={confirmLaunch}
+					disabled={connecting}
+				>
+					<span class="btn-text">
+						{#if connecting}
+							Connecting & Launching...
+						{:else if commandCenterStatus.isNavigating}
+							Navigation In Progress
+						{:else}
+							Confirm Launch
+						{/if}
+					</span>
+				</button>
+			</section>
+
+			<section class="log-section rounded-2xl border border-blue-100 bg-white p-6 shadow-lg">
+				<h2 class="section-title mb-4 text-2xl font-bold text-blue-900">Launch Log</h2>
+				<div
+					class="log-container max-h-64 overflow-y-auto rounded-lg border border-blue-200 bg-blue-50 p-4"
+				>
+					{#if logs.length > 0}
+						{#each logs as log}
+							<div
+								class="log-entry mb-2 rounded p-2 {log.type === 'error'
+									? 'bg-red-100 text-red-700'
+									: log.type === 'success'
+										? 'bg-green-100 text-green-700'
+										: 'bg-blue-100 text-blue-700'}"
+							>
+								<span class="timestamp text-xs opacity-75">{log.time}</span>
+								<span class="log-message ml-2">{log.message}</span>
+							</div>
+						{/each}
+						{#if status}
+							<div
+								class="log-entry mb-2 rounded p-2 {status.includes('failed')
+									? 'bg-red-100 text-red-700'
+									: status.includes('Launching')
+										? 'bg-blue-100 text-blue-700'
+										: 'bg-green-100 text-green-700'}"
+							>
+								<span class="timestamp text-xs opacity-75">{new Date().toLocaleTimeString()}</span>
+								<span class="log-message ml-2">{status}</span>
+							</div>
+						{/if}
 					{:else}
-						Confirm Launch
+						<p class="no-logs italic text-blue-600">
+							No launch activity yet. Click "Confirm Launch" to begin.
+						</p>
 					{/if}
-				</span>
-			</button>
-		</section>
+				</div>
+			</section>
+		{/if}
 
-		<section class="log-section bg-white rounded-2xl border border-blue-100 shadow-lg p-6">
-			<h2 class="section-title text-2xl font-bold text-blue-900 mb-4">Launch Log</h2>
-			<div class="log-container bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-64 overflow-y-auto">
-				{#if logs.length > 0}
-					{#each logs as log}
-						<div class="log-entry mb-2 p-2 rounded {log.type === 'error' ? 'bg-red-100 text-red-700' : log.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">
-							<span class="timestamp text-xs opacity-75">{log.time}</span>
-							<span class="log-message ml-2">{log.message}</span>
-						</div>
-					{/each}
-					{#if status}
-						<div
-							class="log-entry mb-2 p-2 rounded {status.includes('failed')
-								? 'bg-red-100 text-red-700'
-								: status.includes('Launching')
-									? 'bg-blue-100 text-blue-700'
-									: 'bg-green-100 text-green-700'}"
-						>
-							<span class="timestamp text-xs opacity-75">{new Date().toLocaleTimeString()}</span>
-							<span class="log-message ml-2">{status}</span>
-						</div>
-					{/if}
-				{:else}
-					<p class="no-logs text-blue-600 italic">No launch activity yet. Click "Confirm Launch" to begin.</p>
-				{/if}
-			</div>
-		</section>
-	{/if}
+		<!-- Back to map (bottom-left) -->
+		<div class="bottom-left fixed bottom-4 left-4 z-10">
+			<a
+				class="btn rounded-lg bg-blue-500 px-4 py-2 font-medium text-white shadow-lg transition-colors hover:bg-blue-600"
+				href={`/map/${encodeURIComponent(roverId)}`}>← Back to Map</a
+			>
+		</div>
 
-	<!-- Back to map (bottom-left) -->
-	<div class="bottom-left fixed left-4 bottom-4 z-10">
-		<a class="btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-lg" href={`/map/${encodeURIComponent(roverId)}`}>← Back to Map</a>
-	</div>
-
-	<!-- Live Metrics (bottom-right) -->
-	<div class="bottom-right fixed right-4 bottom-4 z-10">
-		<a class="btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-lg" href={`/rovers/${encodeURIComponent(roverId)}`}>View Live Metrics →</a>
-	</div>
+		<!-- Live Metrics (bottom-right) -->
+		<div class="bottom-right fixed bottom-4 right-4 z-10">
+			<a
+				class="btn rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow-lg transition-colors hover:bg-green-600"
+				href={`/rovers/${encodeURIComponent(roverId)}`}>View Live Metrics →</a
+			>
+		</div>
 	</div>
 </div>
 

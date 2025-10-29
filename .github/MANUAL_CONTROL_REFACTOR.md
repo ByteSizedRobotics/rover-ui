@@ -1,6 +1,7 @@
 # Manual Control Page Refactoring Summary
 
 ## Overview
+
 The manual control page has been refactored to use the centralized `ROS2CommandCentreClient` for all sensor data (lidar, obstacle detection) while keeping motor command publishing separate.
 
 ## Changes Made
@@ -8,13 +9,14 @@ The manual control page has been refactored to use the centralized `ROS2CommandC
 ### 1. `manualControl.ts` - Simplified Controller
 
 #### Removed:
+
 - ❌ `LidarData` interface (now imported from `$lib/ros2CommandCentre`)
 - ❌ Lidar-related config (`lidarTopic`, `obstacleDetectedTopic`, `obstacleDistanceTopic`, `gpsTopic`)
 - ❌ Lidar visualization properties (`_lidarCanvas`, `_lidarContext`, `_lidarData`)
 - ❌ Obstacle detection state (`_obstacleDetected`, `_obstacleDistance`)
 - ❌ Lidar handler (`_lidarHandler`)
 - ❌ `initLidarVisualization()` method
-- ❌ `resizeLidarCanvas()` method  
+- ❌ `resizeLidarCanvas()` method
 - ❌ `visualizeLidarData()` method
 - ❌ `setLidarHandler()` method
 - ❌ Lidar subscription in `connectToRover()`
@@ -24,6 +26,7 @@ The manual control page has been refactored to use the centralized `ROS2CommandC
 - ❌ `obstacleDetected` and `obstacleDistance` getters
 
 #### Kept:
+
 - ✅ Motor command publishing logic
 - ✅ WebRTC video stream connection
 - ✅ Movement methods (`moveForward()`, `moveBackward()`, etc.)
@@ -34,6 +37,7 @@ The manual control page has been refactored to use the centralized `ROS2CommandC
 ### 2. `+page.svelte` - Updated Integration
 
 #### Added:
+
 - ✅ Import `createMiniLidar` and `LidarMiniController`
 - ✅ Import `commandCenterManager` and `ROS2CommandCentreClient`
 - ✅ `lidarController` state variable
@@ -45,16 +49,19 @@ The manual control page has been refactored to use the centralized `ROS2CommandC
 - ✅ Cleanup of Command Center client in `onDestroy`
 
 #### Removed:
+
 - ❌ Obstacle detection state from controller reactive statements
 - ❌ `initLidarVisualization()` call
 
 #### Updated:
+
 - ✅ Obstacle detection now uses local state updated from Command Center
 - ✅ Lidar visualization handled by `LidarMiniController`
 
 ## Architecture
 
 ### Before:
+
 ```
 Manual Control Page
 ├── RoverController
@@ -65,6 +72,7 @@ Manual Control Page
 ```
 
 ### After:
+
 ```
 Manual Control Page
 ├── RoverController
@@ -81,21 +89,25 @@ Manual Control Page
 ## Benefits
 
 ### 1. **Single Source of Truth**
+
 - All sensor data flows through `ROS2CommandCentreClient`
 - No duplicate subscriptions across pages
 - Consistent data across the application
 
 ### 2. **Separation of Concerns**
+
 - `RoverController` handles motor commands only
 - `ROS2CommandCentreClient` handles all sensor data
 - `LidarMiniController` handles visualization only
 
 ### 3. **Maintainability**
+
 - Easier to debug (one place for sensor data)
 - Easier to add new sensors (just add to Command Center)
 - Less code duplication
 
 ### 4. **Performance**
+
 - No redundant WebSocket connections
 - Efficient data sharing between components
 - Centralized connection management
@@ -108,10 +120,10 @@ graph TD
     B --> C[onLidarData callback]
     C --> D[LidarMiniController.updateData]
     D --> E[Canvas Visualization]
-    
+
     B --> F[obstacleData property]
     F --> G[UI State obstacleDetected/Distance]
-    
+
     H[User Input] --> I[RoverController]
     I --> J[Motor Command Topic]
     J --> A

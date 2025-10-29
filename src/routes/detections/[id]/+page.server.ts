@@ -6,7 +6,7 @@ import { eq, sql } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const detectionId = Number(params.id);
-	
+
 	if (isNaN(detectionId)) {
 		throw error(400, 'Invalid detection ID');
 	}

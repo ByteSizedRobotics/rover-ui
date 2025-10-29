@@ -97,9 +97,13 @@
 				popupAnchor: [0, -60]
 			});
 
-			detectionMarker = L.marker([data.image.location[0], data.image.location[1]], { icon: detectionIcon })
+			detectionMarker = L.marker([data.image.location[0], data.image.location[1]], {
+				icon: detectionIcon
+			})
 				.addTo(map)
-				.bindPopup(`Detection #${data.detection.id}<br>Confidence: ${formatPercentage(data.detection.confidence)}`);
+				.bindPopup(
+					`Detection #${data.detection.id}<br>Confidence: ${formatPercentage(data.detection.confidence)}`
+				);
 
 			// Invalidate map size after a short delay to ensure container is sized
 			setTimeout(() => {
@@ -117,7 +121,7 @@
 		<div class="mb-6">
 			<button
 				on:click={goBack}
-				class="flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium transition-colors"
+				class="flex items-center gap-2 font-medium text-purple-600 transition-colors hover:text-purple-700"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -136,34 +140,34 @@
 		</div>
 
 		<!-- Main Content Card -->
-		<div class="bg-white rounded-2xl shadow-lg border border-purple-100 overflow-hidden">
+		<div class="overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-lg">
 			<!-- Header Section -->
 			<div class="bg-gradient-to-r from-purple-600 to-purple-700 px-8 py-6">
-				<h1 class="text-3xl font-bold text-white mb-2">Detection Details</h1>
+				<h1 class="mb-2 text-3xl font-bold text-white">Detection Details</h1>
 				<p class="text-purple-100">Detection ID: #{data.detection.id}</p>
 			</div>
 
 			<!-- Content Grid -->
-			<div class="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+			<div class="grid grid-cols-1 gap-8 p-8 lg:grid-cols-2">
 				<!-- Image Section -->
 				<div class="space-y-4">
-					<div class="bg-purple-50 rounded-xl overflow-hidden border-2 border-purple-200 relative">
+					<div class="relative overflow-hidden rounded-xl border-2 border-purple-200 bg-purple-50">
 						<img
 							src="/{data.image.imageUrl}"
 							alt="Detection {data.detection.id}"
-							class="w-full h-auto object-contain"
+							class="h-auto w-full object-contain"
 						/>
 						<!-- Bounding Box Overlay -->
 						<svg
-							class="absolute top-0 left-0 w-full h-full pointer-events-none"
+							class="pointer-events-none absolute left-0 top-0 h-full w-full"
 							viewBox="0 0 100 100"
 							preserveAspectRatio="none"
 						>
 							<rect
-								x="{data.detection.bbox[0]}"
-								y="{data.detection.bbox[1]}"
-								width="{data.detection.bbox[2] - data.detection.bbox[0]}"
-								height="{data.detection.bbox[3] - data.detection.bbox[1]}"
+								x={data.detection.bbox[0]}
+								y={data.detection.bbox[1]}
+								width={data.detection.bbox[2] - data.detection.bbox[0]}
+								height={data.detection.bbox[3] - data.detection.bbox[1]}
 								fill="none"
 								stroke="rgb(74, 222, 128)"
 								stroke-width="4"
@@ -171,22 +175,20 @@
 							/>
 						</svg>
 					</div>
-					<div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
-						<h3 class="font-semibold text-purple-900 mb-2">Image Information</h3>
+					<div class="rounded-lg border border-purple-200 bg-purple-50 p-4">
+						<h3 class="mb-2 font-semibold text-purple-900">Image Information</h3>
 						<div class="space-y-2 text-sm">
 							<div class="flex justify-between">
 								<span class="text-purple-600">Image ID:</span>
-								<span class="text-purple-900 font-medium">#{data.image.id}</span>
+								<span class="font-medium text-purple-900">#{data.image.id}</span>
 							</div>
 							<div class="flex justify-between">
 								<span class="text-purple-600">Captured:</span>
-								<span class="text-purple-900 font-medium"
-									>{formatDate(data.image.timestamp)}</span
-								>
+								<span class="font-medium text-purple-900">{formatDate(data.image.timestamp)}</span>
 							</div>
 							<div class="flex justify-between">
 								<span class="text-purple-600">Location:</span>
-								<span class="text-purple-900 font-mono text-xs"
+								<span class="font-mono text-xs text-purple-900"
 									>[{formatCoordinate(data.image.location[0])}, {formatCoordinate(
 										data.image.location[1]
 									)}]</span
@@ -199,20 +201,24 @@
 				<!-- Detection Details Section -->
 				<div class="space-y-6">
 					<!-- Location Map -->
-					<div class="bg-gradient-to-br from-purple-50 to-white border border-purple-200 rounded-xl overflow-hidden">
-						<div class="p-4 bg-purple-100 border-b border-purple-200">
+					<div
+						class="overflow-hidden rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white"
+					>
+						<div class="border-b border-purple-200 bg-purple-100 p-4">
 							<h2 class="text-lg font-bold text-purple-900">Detection Location</h2>
 						</div>
-						<div bind:this={mapContainer} class="w-full h-64"></div>
+						<div bind:this={mapContainer} class="h-64 w-full"></div>
 					</div>
 
 					<!-- Detection Metrics -->
-					<div class="bg-white border-2 border-purple-300 rounded-xl p-6 shadow-md">
-						<h2 class="text-xl font-bold text-purple-900 mb-4">Detection Metrics</h2>
+					<div class="rounded-xl border-2 border-purple-300 bg-white p-6 shadow-md">
+						<h2 class="mb-4 text-xl font-bold text-purple-900">Detection Metrics</h2>
 						<div class="space-y-3">
 							<!-- Confidence Score -->
-							<div class="flex justify-between items-center py-3 px-4 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
-								<span class="text-purple-800 font-semibold">Confidence Score</span>
+							<div
+								class="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 shadow-sm"
+							>
+								<span class="font-semibold text-purple-800">Confidence Score</span>
 								<span class="text-xl font-bold text-purple-900"
 									>{formatPercentage(data.detection.confidence)}</span
 								>
@@ -220,8 +226,10 @@
 
 							<!-- Area Score -->
 							{#if data.detection.areaScore !== null}
-								<div class="flex justify-between items-center py-3 px-4 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
-									<span class="text-purple-800 font-semibold">Area Score</span>
+								<div
+									class="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 shadow-sm"
+								>
+									<span class="font-semibold text-purple-800">Area Score</span>
 									<span class="text-xl font-bold text-purple-900"
 										>{formatPercentage(data.detection.areaScore)}</span
 									>
@@ -230,8 +238,10 @@
 
 							<!-- Depth Score -->
 							{#if data.detection.depthScore !== null}
-								<div class="flex justify-between items-center py-3 px-4 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
-									<span class="text-purple-800 font-semibold">Depth Score</span>
+								<div
+									class="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 shadow-sm"
+								>
+									<span class="font-semibold text-purple-800">Depth Score</span>
 									<span class="text-xl font-bold text-purple-900"
 										>{formatPercentage(data.detection.depthScore)}</span
 									>
@@ -242,13 +252,13 @@
 							{#if data.detection.falsePositive !== null}
 								<div class="pt-2">
 									<div
-										class="flex items-center gap-2 px-4 py-3 rounded-lg {data.detection
+										class="flex items-center gap-2 rounded-lg px-4 py-3 {data.detection
 											.falsePositive === 1
-											? 'bg-amber-50 border border-amber-200'
-											: 'bg-blue-50 border border-blue-200'}"
+											? 'border border-amber-200 bg-amber-50'
+											: 'border border-blue-200 bg-blue-50'}"
 									>
 										<div
-											class="w-3 h-3 rounded-full {data.detection.falsePositive === 1
+											class="h-3 w-3 rounded-full {data.detection.falsePositive === 1
 												? 'bg-amber-500'
 												: 'bg-blue-500'}"
 										></div>
@@ -257,7 +267,9 @@
 												? 'text-amber-800'
 												: 'text-blue-800'}"
 										>
-											{data.detection.falsePositive === 1 ? 'Possibly False Positive' : 'Likely Valid Detection'}
+											{data.detection.falsePositive === 1
+												? 'Possibly False Positive'
+												: 'Likely Valid Detection'}
 										</span>
 									</div>
 								</div>

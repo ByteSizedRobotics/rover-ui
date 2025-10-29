@@ -7,23 +7,26 @@
 **Location:** `connect()` method - `onerror` handler
 
 **Problem:**
+
 ```typescript
 this._socket.onerror = (error) => {
-    this._connectionErrors++;
-    console.error('ROS2 Command Center connection error:', error);
-    this.notifyStateChange();
-    reject(new Error('Failed to connect to ROS2 Command Center'));
-    // ❌ _isConnected is NOT set to false here!
+	this._connectionErrors++;
+	console.error('ROS2 Command Center connection error:', error);
+	this.notifyStateChange();
+	reject(new Error('Failed to connect to ROS2 Command Center'));
+	// ❌ _isConnected is NOT set to false here!
 };
 ```
 
 **Impact:**
+
 - If an error occurs during connection, `_isConnected` remains `false` (which is correct initially)
 - BUT if an error occurs on an already-open connection, `_isConnected` might still be `true`
 - The `onerror` event can fire even when connection is supposedly "open"
 - This creates an inconsistent state where `_isConnected = true` but connection is broken
 
 **Scenario:**
+
 ```
 1. connect() called → _isConnected = false
 2. WebSocket opens → _isConnected = true
@@ -41,6 +44,7 @@ this._socket.onerror = (error) => {
 When a WebSocket error occurs, BOTH `onerror` and `onclose` events fire, but in an undefined order.
 
 **Current Code:**
+
 ```typescript
 this._socket.onerror = (error) => {
     // Doesn't set _isConnected = false
@@ -54,6 +58,7 @@ this._socket.onclose = () => {
 ```
 
 **Impact:**
+
 - If `onerror` fires first, code rejects the promise while `_isConnected` is still `true`
 - If `onclose` fires first, code sets `_isConnected = false` then `onerror` fires
 - Inconsistent state during the brief window between events
@@ -66,6 +71,7 @@ this._socket.onclose = () => {
 **Location:** `disconnect()` method
 
 **Problem:**
+
 ```typescript
 disconnect(): void {
     this.stopHeartbeat();
@@ -83,6 +89,7 @@ disconnect(): void {
 ```
 
 **Impact:**
+
 - `this._socket.close()` triggers the `onclose` event handler
 - The `onclose` handler sets `_isConnected = false`
 - Then we set it to `false` again (redundant)
@@ -90,6 +97,7 @@ disconnect(): void {
 - The socket is set to `null` but `onclose` handler might still fire and try to access it
 
 **Timeline:**
+
 ```
 1. disconnect() called
 2. this._socket.close() called
@@ -108,16 +116,18 @@ disconnect(): void {
 
 **Problem:**
 If connection fails during the initial `connect()` call:
+
 ```typescript
 this._socket.onerror = (error) => {
-    this._connectionErrors++;
-    reject(new Error('Failed to connect'));
-    // _isConnected stays false (correct)
-    // BUT _socket still exists!
+	this._connectionErrors++;
+	reject(new Error('Failed to connect'));
+	// _isConnected stays false (correct)
+	// BUT _socket still exists!
 };
 ```
 
 **Impact:**
+
 - `_socket` object remains in memory even though connection failed
 - Next call to `connect()` checks `if (this._isConnected)` but not if socket exists
 - Potential memory leak with dangling WebSocket objects
@@ -131,11 +141,11 @@ this._socket.onerror = (error) => {
 
 ```typescript
 this._socket.onerror = (error) => {
-    this._connectionErrors++;
-    this._isConnected = false;  // ← ADD THIS
-    console.error('ROS2 Command Center connection error:', error);
-    this.notifyStateChange();
-    reject(new Error('Failed to connect to ROS2 Command Center'));
+	this._connectionErrors++;
+	this._isConnected = false; // ← ADD THIS
+	console.error('ROS2 Command Center connection error:', error);
+	this.notifyStateChange();
+	reject(new Error('Failed to connect to ROS2 Command Center'));
 };
 ```
 
@@ -143,21 +153,21 @@ this._socket.onerror = (error) => {
 
 ```typescript
 this._socket.onerror = (error) => {
-    this._connectionErrors++;
-    this._isConnected = false;
-    console.error('ROS2 Command Center connection error:', error);
-    
-    // Clean up the socket
-    if (this._socket) {
-        this._socket.onclose = null;  // Prevent onclose from firing
-        this._socket.onerror = null;
-        this._socket.onmessage = null;
-        this._socket = null;
-    }
-    
-    this.stopHeartbeat();
-    this.notifyStateChange();
-    reject(new Error('Failed to connect to ROS2 Command Center'));
+	this._connectionErrors++;
+	this._isConnected = false;
+	console.error('ROS2 Command Center connection error:', error);
+
+	// Clean up the socket
+	if (this._socket) {
+		this._socket.onclose = null; // Prevent onclose from firing
+		this._socket.onerror = null;
+		this._socket.onmessage = null;
+		this._socket = null;
+	}
+
+	this.stopHeartbeat();
+	this.notifyStateChange();
+	reject(new Error('Failed to connect to ROS2 Command Center'));
 };
 ```
 
@@ -168,7 +178,7 @@ disconnect(): void {
     // Set disconnected state FIRST
     const wasConnected = this._isConnected;
     this._isConnected = false;
-    
+
     this.stopHeartbeat();
     this.disconnectWebRTC();
 
@@ -178,10 +188,10 @@ disconnect(): void {
         this._socket.onerror = null;
         this._socket.onmessage = null;
         this._socket.onopen = null;
-        
+
         // Unsubscribe from all topics
         this.unsubscribeFromAllTopics();
-        
+
         // Close the socket
         this._socket.close();
         this._socket = null;
@@ -202,7 +212,7 @@ async connect(): Promise<void> {
         console.log('Already connected');
         return;
     }
-    
+
     // Clean up any existing socket
     if (this._socket) {
         console.log('Cleaning up existing socket before reconnecting');
@@ -213,9 +223,9 @@ async connect(): Promise<void> {
         this._socket.close();
         this._socket = null;
     }
-    
+
     this._isConnected = false;  // Ensure clean state
-    
+
     return new Promise((resolve, reject) => {
         // ... rest of connection logic
     });
@@ -227,6 +237,7 @@ async connect(): Promise<void> {
 ## Testing Recommendations
 
 ### Test 1: Connection Error
+
 ```typescript
 // Simulate network error after connection
 1. Connect to rover
@@ -237,6 +248,7 @@ async connect(): Promise<void> {
 ```
 
 ### Test 2: Rapid Reconnection
+
 ```typescript
 // Simulate rapid disconnect/reconnect
 1. Connect to rover
@@ -247,6 +259,7 @@ async connect(): Promise<void> {
 ```
 
 ### Test 3: Connection Refused
+
 ```typescript
 // Simulate connection to wrong IP
 1. Change IP to invalid address
@@ -257,6 +270,7 @@ async connect(): Promise<void> {
 ```
 
 ### Test 4: WebSocket State Check
+
 ```typescript
 // Check WebSocket readyState
 1. During connection: readyState should be 0 (CONNECTING)
@@ -271,16 +285,17 @@ async connect(): Promise<void> {
 
 ```typescript
 enum WebSocketReadyState {
-    CONNECTING = 0,  // Connection not yet established
-    OPEN = 1,        // Connection open and ready
-    CLOSING = 2,     // Connection closing
-    CLOSED = 3       // Connection closed or failed
+	CONNECTING = 0, // Connection not yet established
+	OPEN = 1, // Connection open and ready
+	CLOSING = 2, // Connection closing
+	CLOSED = 3 // Connection closed or failed
 }
 ```
 
 ## Current vs Improved State Management
 
 ### Current (Problematic)
+
 ```
 Connection Error:
 ├─ onerror fires → reject promise (no state change)
@@ -297,6 +312,7 @@ Reconnect:
 ```
 
 ### Improved
+
 ```
 Connection Error:
 ├─ onerror fires → _isConnected = false, clean up socket
@@ -319,12 +335,14 @@ Reconnect:
 ## Summary
 
 **Critical Issues:**
+
 1. ❌ `onerror` doesn't set `_isConnected = false`
 2. ❌ Race condition between `onerror` and `onclose`
 3. ❌ `disconnect()` causes duplicate events
 4. ❌ No cleanup of failed sockets
 
 **Recommended Actions:**
+
 1. ✅ Set `_isConnected = false` in `onerror` handler
 2. ✅ Remove event handlers before closing socket
 3. ✅ Clean up socket on error

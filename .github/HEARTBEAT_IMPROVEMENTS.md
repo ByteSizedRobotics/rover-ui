@@ -9,9 +9,11 @@ The heartbeat function in `ROS2CommandCentreClient` was silently failing to send
 ### Original Implementation Issues
 
 1. **Silent Failures**: The `sendHeartbeat()` function had an early return with no logging:
+
    ```typescript
    if (!this._isConnected || !this._socket) return;
    ```
+
    This made it impossible to know why heartbeats weren't being sent.
 
 2. **No Error Handling**: No try-catch block meant any errors during sending would crash the interval silently.
@@ -33,13 +35,18 @@ Added comprehensive logging with prefixed messages `[Heartbeat]` for easy filter
 console.log(`[Heartbeat] Starting heartbeat for rover ${this._roverId}`);
 
 // On successful send
-console.log(`[Heartbeat] ✓ Sent heartbeat for rover ${this._roverId} (navigating=${this._isNavigating})`);
+console.log(
+	`[Heartbeat] ✓ Sent heartbeat for rover ${this._roverId} (navigating=${this._isNavigating})`
+);
 
 // When connection issues occur
 console.warn(`[Heartbeat] Cannot send heartbeat for rover ${this._roverId}: Not connected`);
 
 // On errors
-console.error(`[Heartbeat] ✗ Failed to send heartbeat for rover ${this._roverId} (error #${this._heartbeatErrors}):`, error);
+console.error(
+	`[Heartbeat] ✗ Failed to send heartbeat for rover ${this._roverId} (error #${this._heartbeatErrors}):`,
+	error
+);
 ```
 
 ### 2. Error Tracking and Recovery
@@ -51,6 +58,7 @@ private _heartbeatErrors: number = 0;
 ```
 
 **Behavior:**
+
 - Resets to 0 on successful heartbeat
 - Increments on each failure
 - After 5 consecutive errors, stops the heartbeat to prevent spam
@@ -62,12 +70,15 @@ Added explicit check for WebSocket readiness:
 
 ```typescript
 if (this._socket.readyState !== WebSocket.OPEN) {
-    console.warn(`[Heartbeat] Cannot send heartbeat: WebSocket not ready (state=${this._socket.readyState})`);
-    return;
+	console.warn(
+		`[Heartbeat] Cannot send heartbeat: WebSocket not ready (state=${this._socket.readyState})`
+	);
+	return;
 }
 ```
 
 **WebSocket States:**
+
 - `0` = CONNECTING
 - `1` = OPEN (ready to send)
 - `2` = CLOSING
@@ -94,19 +105,19 @@ Wrapped the entire send operation in try-catch:
 
 ```typescript
 try {
-    // Create and send message
-    this._socket.send(JSON.stringify(heartbeatMsg));
-    this._lastHeartbeat = Date.now();
-    this._heartbeatErrors = 0;
-    console.log(`[Heartbeat] ✓ Sent heartbeat...`);
+	// Create and send message
+	this._socket.send(JSON.stringify(heartbeatMsg));
+	this._lastHeartbeat = Date.now();
+	this._heartbeatErrors = 0;
+	console.log(`[Heartbeat] ✓ Sent heartbeat...`);
 } catch (error) {
-    this._heartbeatErrors++;
-    console.error(`[Heartbeat] ✗ Failed to send heartbeat:`, error);
-    
-    if (this._heartbeatErrors >= 5) {
-        console.error(`[Heartbeat] Too many errors, stopping heartbeat`);
-        this.stopHeartbeat();
-    }
+	this._heartbeatErrors++;
+	console.error(`[Heartbeat] ✗ Failed to send heartbeat:`, error);
+
+	if (this._heartbeatErrors >= 5) {
+		console.error(`[Heartbeat] Too many errors, stopping heartbeat`);
+		this.stopHeartbeat();
+	}
 }
 ```
 
@@ -164,7 +175,7 @@ User connects to rover
              │
              ▼
          Log success ✓
-         
+
          } catch (error) {
              │
              ▼
@@ -257,25 +268,28 @@ State 4: CRITICAL FAILURE
 ## Heartbeat Configuration
 
 **Frequency:** Every 3 seconds (3000ms)
+
 ```typescript
 setInterval(() => {
-    this.sendHeartbeat();
+	this.sendHeartbeat();
 }, 3000);
 ```
 
 **Topic:** `/heartbeat`
+
 ```typescript
-topic: ROS2_CONFIG.TOPICS.ROVER_HEARTBEAT
+topic: ROS2_CONFIG.TOPICS.ROVER_HEARTBEAT;
 ```
 
 **Message Format:**
+
 ```json
 {
-  "op": "publish",
-  "topic": "/heartbeat",
-  "msg": {
-    "data": "{\"rover_id\":\"rover-123\",\"timestamp\":1696118400000,\"status\":\"alive\",\"is_navigating\":true}"
-  }
+	"op": "publish",
+	"topic": "/heartbeat",
+	"msg": {
+		"data": "{\"rover_id\":\"rover-123\",\"timestamp\":1696118400000,\"status\":\"alive\",\"is_navigating\":true}"
+	}
 }
 ```
 
@@ -284,6 +298,7 @@ topic: ROS2_CONFIG.TOPICS.ROVER_HEARTBEAT
 ### 1. Open Browser DevTools Console
 
 Look for heartbeat messages:
+
 ```
 Filter by: [Heartbeat]
 ```
@@ -291,11 +306,13 @@ Filter by: [Heartbeat]
 ### 2. Check ROS Side
 
 On the Raspberry Pi, subscribe to the heartbeat topic:
+
 ```bash
 ros2 topic echo /heartbeat
 ```
 
 You should see messages every 3 seconds:
+
 ```yaml
 data: '{"rover_id":"rover-123","timestamp":1696118400000,"status":"alive","is_navigating":true}'
 ---
@@ -326,11 +343,13 @@ data: '{"rover_id":"rover-123","timestamp":1696118403000,"status":"alive","is_na
 ### Heartbeat Not Starting
 
 **Check:**
+
 1. Is `connect()` being called?
 2. Is the WebSocket connection successful?
 3. Check console for `[Heartbeat] Starting heartbeat...` message
 
 **Solution:**
+
 - Ensure rover is reachable at configured IP
 - Check network connectivity
 - Verify ROS Bridge is running on the rover
@@ -338,11 +357,13 @@ data: '{"rover_id":"rover-123","timestamp":1696118403000,"status":"alive","is_na
 ### Heartbeat Stops After a While
 
 **Check:**
+
 1. Console for error messages
 2. WebSocket connection state
 3. Error count in logs
 
 **Solution:**
+
 - Check network stability
 - Verify ROS Bridge is still running
 - Check for rover-side errors
@@ -350,11 +371,13 @@ data: '{"rover_id":"rover-123","timestamp":1696118403000,"status":"alive","is_na
 ### Heartbeat Shows "Not Connected"
 
 **Check:**
+
 1. `_isConnected` state
 2. WebSocket readyState
 3. Connection lifecycle
 
 **Solution:**
+
 - Verify WebSocket `onopen` event fired
 - Check for connection errors
 - Try reconnecting
@@ -381,12 +404,14 @@ Potential improvements for the future:
 ## Code Changes Summary
 
 **Files Modified:**
+
 - `/src/lib/ros2CommandCentre.ts`
 
 **Lines Changed:**
+
 - Added `_heartbeatErrors` property
 - Enhanced `startHeartbeat()` with logging
-- Enhanced `stopHeartbeat()` with logging  
+- Enhanced `stopHeartbeat()` with logging
 - Completely rewrote `sendHeartbeat()` with:
   - Connection state validation
   - WebSocket readiness check

@@ -3,7 +3,6 @@ import { detections } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from '@sveltejs/kit';
 
-
 export const GET: RequestHandler = async ({ params }) => {
 	const id = Number(params.id);
 	if (!id) {
@@ -24,8 +23,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		console.error('Error fetching detection:', err);
 		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
 	}
-}
-
+};
 
 export const PATCH: RequestHandler = async ({ params, request }) => {
 	const id = Number(params.id);
@@ -48,7 +46,11 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 	}
 
 	try {
-		const result = await db.update(detections).set(updates).where(eq(detections.id, id)).returning();
+		const result = await db
+			.update(detections)
+			.set(updates)
+			.where(eq(detections.id, id))
+			.returning();
 		if (!result[0]) {
 			return new Response(JSON.stringify({ error: 'Detection not found' }), { status: 404 });
 		}
@@ -63,7 +65,6 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 	}
 };
 
-
 export const DELETE: RequestHandler = async ({ params }) => {
 	const id = Number(params.id);
 	if (!id) {
@@ -76,7 +77,9 @@ export const DELETE: RequestHandler = async ({ params }) => {
 			return new Response(JSON.stringify({ error: 'Detection not found' }), { status: 404 });
 		}
 
-		return new Response(JSON.stringify({ message: 'Detection deleted successfully' }), { status: 200 });
+		return new Response(JSON.stringify({ message: 'Detection deleted successfully' }), {
+			status: 200
+		});
 	} catch (err) {
 		console.error('Error deleting detection:', err);
 		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });

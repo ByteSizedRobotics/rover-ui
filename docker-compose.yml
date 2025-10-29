@@ -2,7 +2,7 @@ services:
   web-app:
     image: bytesizedrobotics/rover-ui:latest
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - DATABASE_URL=postgres://root:mysecretpassword@postgres:5432/local
       - ORIGIN=http://127.0.0.1:3000 # Change to URL unless testing locally
@@ -23,7 +23,6 @@ services:
       - ./drizzle/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     ports:
       - '5432:5432'
-
 
   # #Default ai app without GPU support
   ai-pothole-app:
@@ -61,7 +60,7 @@ services:
       - API_PORT=3000
     # volumes:
     #   - ./models:/models
-    profiles: ["gpu"]
+    profiles: ['gpu']
     depends_on:
       - app
       - postgres

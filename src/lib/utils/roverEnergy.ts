@@ -1,7 +1,10 @@
 export const ROVER_MAX_POWER_WATTS = 33;
 export const ROVER_BATTERY_VOLTAGE_V = 12;
 
-export function calculateTravelTimeSeconds(distanceMeters: number, speedMetersPerSecond: number): number {
+export function calculateTravelTimeSeconds(
+	distanceMeters: number,
+	speedMetersPerSecond: number
+): number {
 	if (distanceMeters <= 0 || speedMetersPerSecond <= 0) {
 		return 0;
 	}
@@ -17,7 +20,11 @@ export function calculateEnergyConsumptionWh(powerWatts: number, travelSeconds: 
 	return (powerWatts * travelSeconds) / 3600;
 }
 
-export function formatDuration(totalSeconds: number): { hours: number; minutes: number; seconds: number } {
+export function formatDuration(totalSeconds: number): {
+	hours: number;
+	minutes: number;
+	seconds: number;
+} {
 	if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
 		return { hours: 0, minutes: 0, seconds: 0 };
 	}

@@ -47,7 +47,7 @@
                     ⬇️ PROBLEMS ⬇️
 
 • 7 WebSocket connections per rover
-• Duplicate /scan subscriptions  
+• Duplicate /scan subscriptions
 • Duplicate WebRTC connections
 • 650+ lines of duplicate code
 • No data sharing between pages

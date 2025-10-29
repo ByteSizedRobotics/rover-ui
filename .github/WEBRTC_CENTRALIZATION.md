@@ -1,6 +1,7 @@
 # WebRTC Video Feed Centralization
 
 ## Overview
+
 The WebRTC video streaming functionality has been centralized into `ROS2CommandCentreClient`, eliminating duplicate connections and code across the rovers and manual control pages.
 
 ## Changes Made
@@ -10,6 +11,7 @@ The WebRTC video streaming functionality has been centralized into `ROS2CommandC
 The Command Center already had WebRTC support built-in:
 
 #### Features:
+
 - ✅ Single WebRTC peer connection per rover
 - ✅ Automatic connection on Command Center connect
 - ✅ `setVideoElement(id)` method to bind video to any element
@@ -17,6 +19,7 @@ The Command Center already had WebRTC support built-in:
 - ✅ Proper cleanup on disconnect
 
 #### API:
+
 ```typescript
 // Get command center client
 const client = commandCenterManager.getClient(roverId);
@@ -37,6 +40,7 @@ client.disconnect();
 ### 2. Rovers Page (`/rovers/[id]`)
 
 #### Removed:
+
 - ❌ `webrtcSocket` state variable
 - ❌ `peerConnection` state variable
 - ❌ `remoteStream` state variable
@@ -48,6 +52,7 @@ client.disconnect();
 - ❌ Duplicate WebRTC cleanup in `onDestroy`
 
 #### Updated:
+
 ```typescript
 // OLD: Manual WebRTC connection
 connectWebRTC();
@@ -60,14 +65,15 @@ commandCenterClient.setVideoElement(`roverVideo${currentCamera}`);
 
 // Camera switching
 function switchCamera(cameraNum: number) {
-  currentCamera = cameraNum;
-  commandCenterClient.setVideoElement(`roverVideo${cameraNum}`);
+	currentCamera = cameraNum;
+	commandCenterClient.setVideoElement(`roverVideo${cameraNum}`);
 }
 ```
 
 ### 3. Manual Control Page (`/manual-ctrl/[id]`)
 
 #### Removed from `manualControl.ts`:
+
 - ❌ `_webrtc_socket` property
 - ❌ `peerConnection` property
 - ❌ `webrtcPort` from config
@@ -77,6 +83,7 @@ function switchCamera(cameraNum: number) {
 - ❌ ~70 lines of duplicate WebRTC code
 
 #### Updated in `+page.svelte`:
+
 ```typescript
 // OLD: RoverController handled video
 await controller.connectToRover(); // WebRTC happened here
@@ -91,13 +98,14 @@ commandCenterClient.setVideoElement('roverVideo');
 ## Architecture Improvement
 
 ### Before:
+
 ```
 Rovers Page
 ├── Own WebSocket → WebRTC Server
 ├── Own RTCPeerConnection
 └── Binds to video elements
 
-Manual Control Page  
+Manual Control Page
 ├── RoverController
 │   ├── Own WebSocket → WebRTC Server
 │   ├── Own RTCPeerConnection
@@ -108,6 +116,7 @@ Result: 2 WebRTC connections per rover ❌
 ```
 
 ### After:
+
 ```
 ROS2CommandCentreClient (per rover)
 ├── Single WebSocket → WebRTC Server
@@ -127,28 +136,33 @@ Result: 1 WebRTC connection per rover ✅
 ## Benefits
 
 ### 1. **Single Connection**
+
 - Only one WebRTC peer connection per rover
 - No duplicate signaling WebSockets
 - Reduced network overhead
 
 ### 2. **Code Simplification**
+
 - **Rovers page**: -90 lines of WebRTC code
 - **Manual control**: -70 lines of WebRTC code
 - **RoverController**: -100+ lines, now focused only on motor commands
 - Total: ~260 lines of duplicate code removed
 
 ### 3. **Better Separation of Concerns**
+
 - `ROS2CommandCentreClient`: Handles ALL rover communication (sensors + video + commands)
 - `RoverController`: Handles ONLY motor commands
 - Pages: Just bind video elements, no connection management
 
 ### 4. **Easier Video Element Management**
+
 - Simple `setVideoElement(id)` API
 - No need to manage streams, tracks, or peer connections
 - Automatic stream application when ready
 - Easy to switch video elements (e.g., camera switching)
 
 ### 5. **Consistent Lifecycle**
+
 - Video connects/disconnects with Command Center
 - No orphaned connections
 - Automatic cleanup
@@ -156,6 +170,7 @@ Result: 1 WebRTC connection per rover ✅
 ## Usage Examples
 
 ### Basic Video Display
+
 ```typescript
 // Get client and connect
 const client = commandCenterManager.getClient('rover-1');
@@ -169,6 +184,7 @@ client.setVideoElement('myVideo');
 ```
 
 ### Multiple Camera Views (Rovers Page)
+
 ```typescript
 let currentCamera = 1;
 
@@ -187,6 +203,7 @@ function switchCamera(num: number) {
 ```
 
 ### Manual Control (Single Camera)
+
 ```typescript
 // Connect command center
 commandCenterClient = commandCenterManager.getClient(roverId);
@@ -204,6 +221,7 @@ await controller.connectToRover(); // Only for motor commands
 ## Data Flow
 
 ### Video Stream Flow:
+
 ```
 Rover Camera
   ↓
@@ -220,6 +238,7 @@ ROS2CommandCentreClient
 ```
 
 ### Complete System:
+
 ```
 ROS2 Topics (sensors)  →  ROS2CommandCentreClient  ←  WebRTC Server (video)
                               ↓           ↓
@@ -235,17 +254,23 @@ ROS2 Topics (sensors)  →  ROS2CommandCentreClient  ←  WebRTC Server (video)
 If you have other pages using direct WebRTC:
 
 ### Step 1: Remove Direct WebRTC Code
+
 ```typescript
 // Remove these
 let webrtcSocket: WebSocket | null = null;
 let peerConnection: RTCPeerConnection | null = null;
 let remoteStream: MediaStream | null = null;
 
-function connectWebRTC() { /* ... */ }
-function startWebRTC() { /* ... */ }
+function connectWebRTC() {
+	/* ... */
+}
+function startWebRTC() {
+	/* ... */
+}
 ```
 
 ### Step 2: Use Command Center
+
 ```typescript
 // Add this
 let commandCenterClient: ROS2CommandCentreClient | null = null;
@@ -260,6 +285,7 @@ commandCenterClient.disconnect();
 ```
 
 ### Step 3: Update Video Elements
+
 ```typescript
 // Make sure video elements have IDs
 <video id="yourVideoElementId" autoplay playsinline></video>
@@ -268,6 +294,7 @@ commandCenterClient.disconnect();
 ## Testing Checklist
 
 ### Video Display
+
 - [ ] Video appears on rovers page (camera 1)
 - [ ] Video appears on manual control page
 - [ ] Video is smooth (no stuttering)
@@ -275,24 +302,28 @@ commandCenterClient.disconnect();
 - [ ] Video reconnects after disconnect
 
 ### Camera Switching (Rovers Page)
+
 - [ ] Camera 1 button displays camera 1 feed
 - [ ] Camera 2 button displays camera 2 feed
 - [ ] Switching is instant (uses same stream)
 - [ ] Active button is highlighted correctly
 
 ### Connection Management
+
 - [ ] Only ONE WebRTC connection per rover (check DevTools Network → WS)
 - [ ] Connection closes when leaving page
 - [ ] Connection reestablishes when returning
 - [ ] No orphaned connections
 
 ### Integration with Sensors
+
 - [ ] Lidar still works
 - [ ] Obstacle detection still works
 - [ ] IMU data still works
 - [ ] Video doesn't interfere with sensor data
 
 ### Performance
+
 - [ ] No duplicate WebRTC connections
 - [ ] No memory leaks
 - [ ] CPU usage is reasonable
@@ -301,6 +332,7 @@ commandCenterClient.disconnect();
 ## Troubleshooting
 
 ### Video Not Showing
+
 1. Check Command Center connection: `commandCenterClient.isConnected`
 2. Check if video element exists: `document.getElementById('yourId')`
 3. Verify video element ID matches `setVideoElement()` call
@@ -308,17 +340,20 @@ commandCenterClient.disconnect();
 5. Verify WebRTC server is running on rover
 
 ### Video Freezes
+
 1. Check network connection
 2. Look for WebRTC errors in console
 3. Verify peer connection state
 4. Check rover's WebRTC server status
 
 ### Multiple Videos Not Working
+
 1. Make sure each video has unique ID
 2. Call `setVideoElement()` for each switch
 3. Verify stream is being shared (not duplicated)
 
 ### Motor Commands Stopped Working
+
 1. Make sure `RoverController.connectToRover()` is still called
 2. Verify ROS WebSocket is separate from WebRTC
 3. Check that motor command topic is correct

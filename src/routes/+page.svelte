@@ -16,7 +16,9 @@
 				/>
 			</div>
 			<!-- Gradient Overlay for better text visibility -->
-			<div class="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-900/70 via-30% to-transparent to-50%"></div>
+			<div
+				class="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-900/70 via-30% to-transparent to-50%"
+			></div>
 		</div>
 
 		<!-- Hero Content -->
@@ -44,7 +46,9 @@
 							class="group relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 px-8 py-4 text-lg font-semibold text-white shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-blue-500/50 focus:outline-none focus:ring-4 focus:ring-blue-500/50"
 						>
 							<span class="relative z-10">Enter Command Centre</span>
-							<div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-400 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+							<div
+								class="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-400 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+							></div>
 						</button>
 					</div>
 				</div>
@@ -54,7 +58,12 @@
 		<!-- Scroll Indicator -->
 		<div class="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 animate-bounce">
 			<svg class="h-8 w-8 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M19 14l-7 7m0 0l-7-7m7 7V3"
+				></path>
 			</svg>
 		</div>
 	</div>
@@ -86,16 +95,14 @@
 							<img
 								src="/nathan.JPEG"
 								alt="Team Member 1"
-								class="h-32 w-32 object-cover scale-150"
-    							style="object-position: 20% 20px;"
+								class="h-32 w-32 scale-150 object-cover"
+								style="object-position: 20% 20px;"
 							/>
 						</div>
 					</div>
 					<h3 class="mb-2 text-xl font-bold text-white">Nathan Gawargy</h3>
 					<p class="mb-2 text-sm font-medium text-blue-400">Full-Stack & AI Engineer</p>
-					<p class="text-center text-sm text-gray-300">
-						Frontend, Backend & AI/ML Developer
-					</p>
+					<p class="text-center text-sm text-gray-300">Frontend, Backend & AI/ML Developer</p>
 				</div>
 
 				<!-- Team Member 2 -->
@@ -113,15 +120,15 @@
 							<img
 								src="/maxime2.JPG"
 								alt="Team Member 2"
-								class="h-full w-full object-cover scale-200"
+								class="scale-200 h-full w-full object-cover"
 							/>
 						</div>
 					</div>
 					<h3 class="mb-2 text-xl font-bold text-white">Maxime Couture</h3>
-					<p class="text-center mb-2 text-sm font-medium text-cyan-400">Full-Stack & Robotics Engineer</p>
-					<p class="text-center text-sm text-gray-300">
-						Frontend, Hardware & Robotics Developer
+					<p class="mb-2 text-center text-sm font-medium text-cyan-400">
+						Full-Stack & Robotics Engineer
 					</p>
+					<p class="text-center text-sm text-gray-300">Frontend, Hardware & Robotics Developer</p>
 				</div>
 
 				<!-- Team Member 3 -->
@@ -161,16 +168,16 @@
 							<img
 								src="/louis.JPG"
 								alt="Team Member 4"
-								class="h-32 w-32 object-cover scale-150"
-    							style="object-position: 30% -15px;"
+								class="h-32 w-32 scale-150 object-cover"
+								style="object-position: 30% -15px;"
 							/>
 						</div>
 					</div>
 					<h3 class="mb-2 text-xl font-bold text-white">Louis Marleau</h3>
-					<p class="text-center mb-2 text-sm font-medium text-orange-400">Hardware & Robotics Engineer</p>
-					<p class="text-center text-sm text-gray-300">
-						Hardware & Robotics Developer
+					<p class="mb-2 text-center text-sm font-medium text-orange-400">
+						Hardware & Robotics Engineer
 					</p>
+					<p class="text-center text-sm text-gray-300">Hardware & Robotics Developer</p>
 				</div>
 			</div>
 

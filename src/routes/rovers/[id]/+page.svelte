@@ -5,7 +5,11 @@
 	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
 	import { createMiniLidar, LidarMiniController } from './lidarController';
-	import { commandCenterManager, type ROS2CommandCentreClient, type CameraStreamStatus } from '$lib/ros2CommandCentre';
+	import {
+		commandCenterManager,
+		type ROS2CommandCentreClient,
+		type CameraStreamStatus
+	} from '$lib/ros2CommandCentre';
 	import { goto } from '$app/navigation';
 
 	let { data }: { data: PageServerData } = $props();
@@ -41,11 +45,11 @@
 
 	let tableData = $state<DetectionRow[]>([]); // Will be filled with pothole data
 	let roverPosition = $state({ x: 50, y: 40 }); // Percentage position on map
-	let roverGpsPosition = $state({ lat: 45.419510, lng: -75.678772 }); // GPS coordinates (Ottawa default)
+	let roverGpsPosition = $state({ lat: 45.41951, lng: -75.678772 }); // GPS coordinates (Ottawa default)
 	let connectionStatus = $state('Disconnected');
 	const DETECTION_POLL_INTERVAL_MS = 5000;
 	let detectionPoller: ReturnType<typeof setInterval> | null = null;
-	
+
 	// Leaflet map variables
 	let mapContainer: HTMLElement;
 	let map: any;
@@ -91,21 +95,21 @@
 
 	// Convert Fahrenheit to Celsius
 	function fahrenheitToCelsius(fahrenheit: number): number {
-		return (fahrenheit - 32) * 5 / 9;
+		return ((fahrenheit - 32) * 5) / 9;
 	}
 
-		async function loadDetections() {
-			try {
-				const res = await fetch('/api/detections', { cache: 'no-store' });
-				if (!res.ok) {
-					console.error('Failed to fetch detection data:', res.statusText);
-					return;
-				}
-				tableData = await res.json();
-			} catch (err) {
-				console.error('Error fetching detection data:', err);
+	async function loadDetections() {
+		try {
+			const res = await fetch('/api/detections', { cache: 'no-store' });
+			if (!res.ok) {
+				console.error('Failed to fetch detection data:', res.statusText);
+				return;
 			}
+			tableData = await res.json();
+		} catch (err) {
+			console.error('Error fetching detection data:', err);
 		}
+	}
 
 	onMount(async () => {
 		// Import Leaflet CSS
@@ -157,19 +161,19 @@
 			setTimeout(() => {
 				// Create lidar visualization controller
 				lidarController = createMiniLidar({ canvas: 'lidarMiniCanvas' });
-				
+
 				// Get command center client for this rover
 				commandCenterClient = commandCenterManager.getClient(roverId);
 				cleanupWebRTCListener?.();
 				cleanupWebRTCListener = commandCenterClient.onWebRTCStatusChange(updateWebRTCStatus);
-				
+
 				const setupCommandCenterClient = () => {
 					if (!commandCenterClient) return;
 
 					// Set up both camera video elements
 					commandCenterClient.setVideoElement('roverVideo1', 'csi');
 					commandCenterClient.setVideoElement('roverVideo2', 'usb');
-					
+
 					commandCenterClient.onLidarData((lidarData) => {
 						if (lidarController) {
 							lidarController.updateData(lidarData);
@@ -241,7 +245,7 @@
 		isUSBCameraReady = false;
 		csiStatusMessage = 'Connecting to CSI camera...';
 		usbStatusMessage = 'Connecting to USB camera...';
-		
+
 		if (commandCenterClient) {
 			// Clear both camera video elements
 			commandCenterClient.setVideoElement(null, 'csi');
@@ -304,78 +308,77 @@
 
 		try {
 			console.log('Emergency stop triggered');
-			
+
 			// Send stop command first
 			await commandCenterClient.stopRover();
 			console.log('Emergency stop command sent successfully');
-			
+
 			// Show initial notification
 			// notification = {
 			// 	message: 'Emergency stop activated - Shutting down nodes...',
 			// 	waypointCount: 0,
 			// 	show: true
 			// };
-			
+
 			// Monitor node status to confirm all nodes are offline
 			let checkCount = 0;
 			const maxChecks = 20; // 20 seconds max wait
 			const checkInterval = setInterval(() => {
 				checkCount++;
 				const nodeStatus = commandCenterClient?.nodeStatus;
-				
+
 				if (nodeStatus) {
 					// Check if all nodes are offline
 					const allOffline = Object.values(nodeStatus.nodes).every(
-						status => status === 'offline' || status === undefined
+						(status) => status === 'offline' || status === undefined
 					);
-					
+
 					if (allOffline) {
 						clearInterval(checkInterval);
-						
+
 						// Disconnect from ROS2
 						commandCenterClient?.disconnect();
-						
+
 						// Show success notification
 						notification = {
 							message: 'Emergency Stop Completed Successfully',
 							waypointCount: 0,
 							show: true
 						};
-						
+
 						// Auto-hide notification after 5 seconds
 						setTimeout(() => {
 							if (notification) {
 								notification.show = false;
 							}
 						}, 5000);
-						
+
 						console.log('Emergency stop completed - all nodes offline');
 					}
 				}
-				
+
 				// Timeout after maxChecks
 				if (checkCount >= maxChecks) {
 					clearInterval(checkInterval);
-					
+
 					// Force disconnect even if nodes didn't report offline
 					commandCenterClient?.disconnect();
-					
+
 					notification = {
 						message: 'Emergency stop completed (timeout)',
 						waypointCount: 0,
 						show: true
 					};
-					
+
 					setTimeout(() => {
 						if (notification) {
 							notification.show = false;
 						}
 					}, 5000);
-					
+
 					console.warn('Emergency stop timeout - forcing disconnect');
 				}
 			}, 1000); // Check every second
-			
 		} catch (error) {
 			console.error('Failed to send emergency stop command:', error);
 		}
@@ -398,7 +401,9 @@
 					</svg>
 				</div>
 				<div class="notification-text">
-					<h3 class="notification-title">{notification.message.includes('Emergency') ? 'Emergency Stop' : 'Launch Successful'}</h3>
+					<h3 class="notification-title">
+						{notification.message.includes('Emergency') ? 'Emergency Stop' : 'Launch Successful'}
+					</h3>
 					<p class="notification-message">{notification.message}</p>
 				</div>
 				<button
@@ -424,13 +429,15 @@
 		<!-- Top Row - Camera and Map -->
 		<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
 			<!-- Live Camera Section -->
-			<div class="bg-white rounded-2xl shadow-lg border border-blue-100">
+			<div class="rounded-2xl border border-blue-100 bg-white shadow-lg">
 				<div class="p-6">
-					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Camera</h2>
+					<h2 class="mb-4 text-xl font-bold text-blue-900">Live Camera</h2>
 
 					<!-- Camera Feed Display -->
-					<div class="mb-4 w-full max-w-2xl mx-auto" style="aspect-ratio: 820/616;">
-						<div class="w-full h-full overflow-hidden rounded-lg bg-black border border-blue-200 relative">
+					<div class="mx-auto mb-4 w-full max-w-2xl" style="aspect-ratio: 820/616;">
+						<div
+							class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200 bg-black"
+						>
 							<!-- Video elements for both cameras -->
 							<video
 								id="roverVideo1"
@@ -439,7 +446,9 @@
 								muted
 								width="820"
 								height="616"
-								class="absolute inset-0 w-full h-full object-contain {currentCamera === 1 ? 'block' : 'hidden'}"
+								class="absolute inset-0 h-full w-full object-contain {currentCamera === 1
+									? 'block'
+									: 'hidden'}"
 							>
 								Your browser does not support the video tag.
 							</video>
@@ -450,14 +459,18 @@
 								muted
 								width="1280"
 								height="720"
-								class="absolute inset-0 w-full h-full object-contain {currentCamera === 2 ? 'block' : 'hidden'}"
+								class="absolute inset-0 h-full w-full object-contain {currentCamera === 2
+									? 'block'
+									: 'hidden'}"
 							>
 								Your browser does not support the video tag.
 							</video>
-						
+
 							<!-- Fallback when no stream is available for current camera -->
 							{#if (currentCamera === 1 && !isCSICameraReady) || (currentCamera === 2 && !isUSBCameraReady)}
-								<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
+								<div
+									class="absolute inset-0 flex items-center justify-center bg-blue-50 text-center text-blue-600"
+								>
 									<div>
 										<img
 											src="/video_cam.png"
@@ -465,8 +478,12 @@
 											class="mx-auto mb-2 h-16 w-16 object-contain"
 											loading="lazy"
 										/>
-										<p class="font-medium">{currentCamera === 1 ? 'CSI Camera' : 'USB Camera'} Feed</p>
-										<p class="text-sm text-blue-500">{currentCamera === 1 ? csiStatusMessage : usbStatusMessage}</p>
+										<p class="font-medium">
+											{currentCamera === 1 ? 'CSI Camera' : 'USB Camera'} Feed
+										</p>
+										<p class="text-sm text-blue-500">
+											{currentCamera === 1 ? csiStatusMessage : usbStatusMessage}
+										</p>
 									</div>
 								</div>
 							{/if}
@@ -476,21 +493,27 @@
 					<!-- Camera Switch Buttons -->
 					<div class="flex justify-center gap-2">
 						<button
-							class="px-4 py-2 rounded-lg font-medium transition-colors relative {currentCamera === 1 ? 'bg-blue-500 text-white' : 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
+							class="relative rounded-lg px-4 py-2 font-medium transition-colors {currentCamera ===
+							1
+								? 'bg-blue-500 text-white'
+								: 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
 							onclick={() => switchCamera(1)}
 						>
 							CSI Camera
 							{#if isCSICameraReady}
-								<span class="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></span>
+								<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-green-400"></span>
 							{/if}
 						</button>
 						<button
-							class="px-4 py-2 rounded-lg font-medium transition-colors relative {currentCamera === 2 ? 'bg-blue-500 text-white' : 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
+							class="relative rounded-lg px-4 py-2 font-medium transition-colors {currentCamera ===
+							2
+								? 'bg-blue-500 text-white'
+								: 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
 							onclick={() => switchCamera(2)}
 						>
 							USB Camera
 							{#if isUSBCameraReady}
-								<span class="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></span>
+								<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-green-400"></span>
 							{/if}
 						</button>
 					</div>
@@ -498,17 +521,17 @@
 			</div>
 
 			<!-- Map Section -->
-			<div class="bg-white rounded-2xl shadow-lg border border-blue-100">
+			<div class="rounded-2xl border border-blue-100 bg-white shadow-lg">
 				<div class="p-6">
-					<h2 class="text-xl font-bold text-blue-900 mb-4">Map</h2>
+					<h2 class="mb-4 text-xl font-bold text-blue-900">Map</h2>
 
 					<!-- Leaflet Map Display -->
-					<div class="mb-4 w-full max-w-2xl mx-auto" style="aspect-ratio: 820/616;">
-						<div class="relative w-full h-full overflow-hidden rounded-lg border border-blue-200">
+					<div class="mx-auto mb-4 w-full max-w-2xl" style="aspect-ratio: 820/616;">
+						<div class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200">
 							<div bind:this={mapContainer} class="z-0 h-full w-full"></div>
 						</div>
 					</div>
-					
+
 					<!-- Spacer to match camera buttons height -->
 					<div class="h-10"></div>
 				</div>
@@ -518,27 +541,28 @@
 		<!-- Bottom Row - Live Data, Data Table, Navigation -->
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
 			<!-- Live Metrics widened -->
-			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 lg:col-span-4">
+			<div class="rounded-2xl border border-blue-100 bg-white shadow-lg lg:col-span-4">
 				<div class="p-6">
-					<h2 class="text-xl font-bold text-blue-900 mb-4">Live Metrics</h2>
+					<h2 class="mb-4 text-xl font-bold text-blue-900">Live Metrics</h2>
 					<div class="mb-4 grid grid-cols-2 gap-2">
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200 col-span-2">
-							<div class="text-sm text-blue-600 font-medium">Roll/Pitch/Yaw</div>
+						<div class="col-span-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+							<div class="text-sm font-medium text-blue-600">Roll/Pitch/Yaw</div>
 							<div class="text-sm font-bold text-blue-900">
-								{sensorData.isConnected ? 
-									`${sensorData.roll.toFixed(1)}° / ${sensorData.pitch.toFixed(1)}° / ${sensorData.yaw.toFixed(1)}°` : 
-									'-- / -- / --'
-								}
+								{sensorData.isConnected
+									? `${sensorData.roll.toFixed(1)}° / ${sensorData.pitch.toFixed(1)}° / ${sensorData.yaw.toFixed(1)}°`
+									: '-- / -- / --'}
 							</div>
 						</div>
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
-							<div class="text-sm text-blue-600 font-medium">TEMP</div>
+						<div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
+							<div class="text-sm font-medium text-blue-600">TEMP</div>
 							<div class="text-lg font-bold text-blue-900">
-								{sensorData.isConnected ? `${fahrenheitToCelsius(sensorData.temperature).toFixed(1)}°C` : 'N/A'}
+								{sensorData.isConnected
+									? `${fahrenheitToCelsius(sensorData.temperature).toFixed(1)}°C`
+									: 'N/A'}
 							</div>
 						</div>
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
-							<div class="text-sm text-blue-600 font-medium">Battery</div>
+						<div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
+							<div class="text-sm font-medium text-blue-600">Battery</div>
 							<div class="text-lg font-bold text-blue-900">
 								{sensorData.isConnected ? `${sensorData.batteryVoltage.toFixed(1)}V` : 'N/A'}
 							</div>
@@ -552,9 +576,13 @@
 								}
 							</div>
 						</div> -->
-						<div class="bg-blue-50 p-3 rounded-lg border border-blue-200 col-span-2">
-							<div class="text-sm text-blue-600 font-medium">ROS Status</div>
-							<div class="text-sm font-bold {sensorData.isConnected ? 'text-green-600' : 'text-red-600'}">
+						<div class="col-span-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+							<div class="text-sm font-medium text-blue-600">ROS Status</div>
+							<div
+								class="text-sm font-bold {sensorData.isConnected
+									? 'text-green-600'
+									: 'text-red-600'}"
+							>
 								{connectionStatus}
 							</div>
 						</div>
@@ -566,7 +594,7 @@
 							id="lidarMiniCanvas"
 							width="300"
 							height="300"
-							class="h-80 w-80 border border-blue-200 rounded-lg"
+							class="h-80 w-80 rounded-lg border border-blue-200"
 							bind:this={lidarCanvasEl}
 						></canvas>
 					</div>
@@ -574,26 +602,35 @@
 			</div>
 
 			<!-- Data Table narrowed -->
-			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 lg:col-span-6">
+			<div class="rounded-2xl border border-blue-100 bg-white shadow-lg lg:col-span-6">
 				<div class="p-6">
-					<h2 class="text-xl font-bold text-blue-900 mb-4">Data Table</h2>
+					<h2 class="mb-4 text-xl font-bold text-blue-900">Data Table</h2>
 					<div class="overflow-x-auto">
 						<table class="w-full">
 							<thead>
 								<tr class="border-b border-blue-200">
-									<th class="text-left text-blue-600 font-medium py-2">ID</th>
-									<th class="text-left text-blue-600 font-medium py-2">Confidence</th>
-									<th class="text-left text-blue-600 font-medium py-2">Area Score</th>
-									<th class="text-left text-blue-600 font-medium py-2">Depth Score</th>
+									<th class="py-2 text-left font-medium text-blue-600">ID</th>
+									<th class="py-2 text-left font-medium text-blue-600">Confidence</th>
+									<th class="py-2 text-left font-medium text-blue-600">Area Score</th>
+									<th class="py-2 text-left font-medium text-blue-600">Depth Score</th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each tableData as row}
-									<tr class="border-b border-blue-100 hover:bg-blue-50 cursor-pointer" onclick={() => goto(`/detections/${row.id}?roverId=${roverId}`)}>
+									<tr
+										class="cursor-pointer border-b border-blue-100 hover:bg-blue-50"
+										onclick={() => goto(`/detections/${row.id}?roverId=${roverId}`)}
+									>
 										<td class="py-2 text-blue-900">{row.id}</td>
-										<td class="py-2 text-blue-900">{row.confidence != null ? row.confidence.toFixed(2) : 'N/A'}</td>
-										<td class="py-2 text-blue-900">{row.areaScore != null ? row.areaScore.toFixed(2) : 'N/A'}</td>
-										<td class="py-2 text-blue-900">{row.depthScore != null ? row.depthScore.toFixed(2) : 'N/A'}</td>
+										<td class="py-2 text-blue-900"
+											>{row.confidence != null ? row.confidence.toFixed(2) : 'N/A'}</td
+										>
+										<td class="py-2 text-blue-900"
+											>{row.areaScore != null ? row.areaScore.toFixed(2) : 'N/A'}</td
+										>
+										<td class="py-2 text-blue-900"
+											>{row.depthScore != null ? row.depthScore.toFixed(2) : 'N/A'}</td
+										>
 									</tr>
 								{/each}
 							</tbody>
@@ -603,10 +640,17 @@
 			</div>
 
 			<!-- Navigation widened -->
-			<div class="bg-white rounded-2xl shadow-lg border border-blue-100 flex lg:col-span-2">
-				<div class="p-4 flex flex-col justify-center gap-4 w-full">
-					<a href="/manual-ctrl/{roverId}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-center">Manual Control</a>
-					<button class="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg font-medium transition-colors" onclick={emergencyStop}>E-Stop</button>
+			<div class="flex rounded-2xl border border-blue-100 bg-white shadow-lg lg:col-span-2">
+				<div class="flex w-full flex-col justify-center gap-4 p-4">
+					<a
+						href="/manual-ctrl/{roverId}"
+						class="rounded-lg bg-blue-500 px-4 py-3 text-center font-medium text-white transition-colors hover:bg-blue-600"
+						>Manual Control</a
+					>
+					<button
+						class="rounded-lg bg-red-500 px-4 py-3 font-medium text-white transition-colors hover:bg-red-600"
+						onclick={emergencyStop}>E-Stop</button
+					>
 				</div>
 			</div>
 		</div>

@@ -10,9 +10,7 @@
 >
 	<!-- Decorative Background Elements -->
 	<div class="absolute inset-0 overflow-hidden">
-		<div
-			class="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-blue-200/30 blur-3xl"
-		></div>
+		<div class="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-blue-200/30 blur-3xl"></div>
 		<div
 			class="absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-purple-200/30 blur-3xl"
 		></div>
@@ -27,7 +25,7 @@
 
 		<!-- Login Card -->
 		<div
-			class="rounded-2xl border border-gray-200 bg-white p-8 shadow-2xl transition-all duration-300 hover:shadow-3xl"
+			class="hover:shadow-3xl rounded-2xl border border-gray-200 bg-white p-8 shadow-2xl transition-all duration-300"
 		>
 			<h2 class="mb-6 text-2xl font-bold text-gray-800">Welcome back</h2>
 

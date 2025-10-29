@@ -80,7 +80,8 @@
 		// Initialize map
 		map = L.map('map').setView([45.4215, -75.6972], 13);
 		L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+			attribution:
+				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
 			subdomains: 'abcd',
 			maxZoom: 20
 		}).addTo(map);
@@ -264,12 +265,12 @@
 				if (filtered.length >= 8) break; // Stop after getting 8 good results
 
 				const addr = result.address || {};
-				
+
 				// Create a lightweight key for deduplication
 				const road = addr.road || addr.street || '';
 				const num = addr.house_number || '';
 				const city = addr.city || addr.town || addr.village || '';
-				
+
 				// More flexible key - prioritize exact matches with house numbers
 				const key = num ? `${num}|${road}|${city}` : `${road}|${city}`;
 
@@ -281,7 +282,6 @@
 
 			console.log(`Got ${filtered.length} suggestions`);
 			return filtered;
-
 		} catch (error) {
 			console.error('Error fetching suggestions:', error);
 			return [];
@@ -463,65 +463,66 @@
 				on:focus={() => {
 					if (endSuggestions.length > 0) showEndSuggestions = true;
 				}}
-			on:blur={() => {
-				// Delay hiding suggestions to allow click to register
-				setTimeout(() => (showEndSuggestions = false), 200);
-			}}
-		/>
-		{#if showEndSuggestions && endSuggestions.length > 0}
-			<div class="suggestions">
-				{#each endSuggestions as suggestion}
-					<div
-						class="suggestion-item"
-						on:mousedown|preventDefault={() => selectEndSuggestion(suggestion)}
-					>
-						{formatSuggestion(suggestion)}
-					</div>
-				{/each}
+				on:blur={() => {
+					// Delay hiding suggestions to allow click to register
+					setTimeout(() => (showEndSuggestions = false), 200);
+				}}
+			/>
+			{#if showEndSuggestions && endSuggestions.length > 0}
+				<div class="suggestions">
+					{#each endSuggestions as suggestion}
+						<div
+							class="suggestion-item"
+							on:mousedown|preventDefault={() => selectEndSuggestion(suggestion)}
+						>
+							{formatSuggestion(suggestion)}
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+		<div class="speed-input">
+			<label for="rover-speed">Rover speed (m/s)</label>
+			<input
+				id="rover-speed"
+				type="number"
+				min="0.1"
+				step="0.1"
+				value={roverSpeed}
+				on:input={handleSpeedInput}
+				on:blur={() => {
+					if (!roverSpeed || roverSpeed <= 0) {
+						roverSpeed = 0.1;
+						updateRouteEstimates();
+					}
+				}}
+			/>
+		</div>
+		<button class="set-route-btn" on:click={setRoute}>Set Route</button>
+		{#if routeSelected}
+			<button class="launch-btn" on:click={launchRover}>Launch Rover</button>
+		{/if}
+		{#if routeSelected && routeDistanceMeters > 0}
+			<div class="route-details">
+				<p>
+					Estimated travel time: {durationBreakdown.hours}h {durationBreakdown.minutes}m {durationBreakdown.seconds}s
+				</p>
+				<p>Planned distance: {routeDistanceMeters.toFixed(0)} m</p>
+				{#if estimatedTravelSeconds > MAX_OPERATION_SECONDS}
+					<p class="warning">⚠️ Route exceeds 1 hour. Consider adjusting the plan or recharging.</p>
+				{/if}
 			</div>
 		{/if}
 	</div>
-	<div class="speed-input">
-		<label for="rover-speed">Rover speed (m/s)</label>
-		<input
-			id="rover-speed"
-			type="number"
-			min="0.1"
-			step="0.1"
-			value={roverSpeed}
-			on:input={handleSpeedInput}
-			on:blur={() => {
-				if (!roverSpeed || roverSpeed <= 0) {
-					roverSpeed = 0.1;
-					updateRouteEstimates();
-				}
-			}}
-		/>
+
+	<div id="map" class="map-container"></div>
+
+	<!-- Fixed back button bottom-left -->
+	<div class="bottom-left">
+		<a href="/" class="back-button">← Home</a>
 	</div>
-	<button class="set-route-btn" on:click={setRoute}>Set Route</button>
-	{#if routeSelected}
-		<button class="launch-btn" on:click={launchRover}>Launch Rover</button>
-	{/if}
-	{#if routeSelected && routeDistanceMeters > 0}
-		<div class="route-details">
-			<p>
-				Estimated travel time: {durationBreakdown.hours}h {durationBreakdown.minutes}m {durationBreakdown.seconds}s
-			</p>
-			<p>Planned distance: {routeDistanceMeters.toFixed(0)} m</p>
-			{#if estimatedTravelSeconds > MAX_OPERATION_SECONDS}
-				<p class="warning">⚠️ Route exceeds 1 hour. Consider adjusting the plan or recharging.</p>
-			{/if}
-		</div>
-	{/if}
 </div>
 
-<div id="map" class="map-container"></div>
-
-<!-- Fixed back button bottom-left -->
-<div class="bottom-left">
-	<a href="/" class="back-button">← Home</a>
-</div>
-</div>
 <!-- ``` We need to add dynamic map subpage for each rover id, modify main page to link to it, and make map
 use rover id when launching — the created file copy already does that (done). Now implement the launch-rover
 page to read sessionStorage key and display waypoints and a Launch confirm button that POSTs to /api/launch/:id
@@ -587,7 +588,9 @@ and an API route `src/routes/api/launch/[id].ts` that accepts POST and returns s
 		border-radius: 0.5rem;
 		width: 250px;
 		font-size: 14px;
-		transition: border-color 0.2s, box-shadow 0.2s;
+		transition:
+			border-color 0.2s,
+			box-shadow 0.2s;
 		background: white;
 	}
 
@@ -641,7 +644,9 @@ and an API route `src/routes/api/launch/[id].ts` that accepts POST and returns s
 		border-radius: 0.5rem;
 		width: 150px;
 		font-size: 14px;
-		transition: border-color 0.2s, box-shadow 0.2s;
+		transition:
+			border-color 0.2s,
+			box-shadow 0.2s;
 		background: white;
 	}
 

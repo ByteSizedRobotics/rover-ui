@@ -6,7 +6,6 @@ import { api } from '../utils/api'; // your Supertest wrapper
 import { createPathFixture } from '../fixtures/path';
 import { createImageFixture } from '../fixtures/image';
 
-
 describe('GET /api/images', () => {
 	it('returns all images', async () => {
 		const res = await api().get('/api/images');
@@ -14,7 +13,6 @@ describe('GET /api/images', () => {
 		expect(Array.isArray(res.body)).toBe(true);
 	});
 });
-
 
 describe('POST /api/images', () => {
 	it('uploads an image and inserts into DB', async () => {
@@ -37,7 +35,6 @@ describe('POST /api/images', () => {
 	});
 });
 
-
 describe('GET /api/images/:id', () => {
 	it('retrieves a specific image by ID', async () => {
 		const image = await createImageFixture();
@@ -47,7 +44,6 @@ describe('GET /api/images/:id', () => {
 		expect(res.body).toHaveProperty('id', image.id);
 	});
 });
-
 
 describe('DELETE /api/images/:id', () => {
 	it('deletes a specific image by ID', async () => {

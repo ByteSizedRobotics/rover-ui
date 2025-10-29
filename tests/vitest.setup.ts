@@ -17,7 +17,6 @@ beforeAll(async () => {
 	await migrate(db, { migrationsFolder: 'drizzle/' });
 });
 
-
 beforeEach(async () => {
 	await pool.query('TRUNCATE detections, images, paths, rovers RESTART IDENTITY CASCADE');
 });

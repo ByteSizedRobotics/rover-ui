@@ -5,33 +5,35 @@
 ### ✅ Fix 1: `_isConnected` Not Set to False on Error
 
 **Before:**
+
 ```typescript
 this._socket.onerror = (error) => {
-    this._connectionErrors++;
-    console.error('Connection error:', error);
-    reject(new Error('Failed to connect'));
-    // ❌ _isConnected not set to false!
+	this._connectionErrors++;
+	console.error('Connection error:', error);
+	reject(new Error('Failed to connect'));
+	// ❌ _isConnected not set to false!
 };
 ```
 
 **After:**
+
 ```typescript
 this._socket.onerror = (error) => {
-    this._connectionErrors++;
-    this._isConnected = false;  // ✅ Fixed!
-    console.error(`Connection error for rover ${this._roverId}:`, error);
-    
-    // Clean up socket and stop heartbeat
-    this.stopHeartbeat();
-    if (this._socket) {
-        this._socket.onclose = null;  // Prevent race with onclose
-        this._socket.onerror = null;
-        this._socket.onmessage = null;
-        this._socket.onopen = null;
-    }
-    
-    this.notifyStateChange();
-    reject(new Error('Failed to connect to ROS2 Command Center'));
+	this._connectionErrors++;
+	this._isConnected = false; // ✅ Fixed!
+	console.error(`Connection error for rover ${this._roverId}:`, error);
+
+	// Clean up socket and stop heartbeat
+	this.stopHeartbeat();
+	if (this._socket) {
+		this._socket.onclose = null; // Prevent race with onclose
+		this._socket.onerror = null;
+		this._socket.onmessage = null;
+		this._socket.onopen = null;
+	}
+
+	this.notifyStateChange();
+	reject(new Error('Failed to connect to ROS2 Command Center'));
 };
 ```
 
@@ -42,21 +44,24 @@ this._socket.onerror = (error) => {
 ### ✅ Fix 2: Race Condition Between `onerror` and `onclose` Fixed
 
 **Before:**
+
 - Both handlers could fire in undefined order
 - Both would set `_isConnected = false` (duplicate)
 - Both would call `notifyStateChange()` (duplicate)
 - `onclose` would fire even after `onerror` handled the error
 
 **After:**
+
 - `onerror` handler removes the `onclose` handler immediately
 - Only one handler processes the disconnection
 - Single state change notification
 - No race condition
 
 **Code:**
+
 ```typescript
 // In onerror handler:
-this._socket.onclose = null;  // ✅ Prevents onclose from firing
+this._socket.onclose = null; // ✅ Prevents onclose from firing
 ```
 
 ---
@@ -64,31 +69,33 @@ this._socket.onclose = null;  // ✅ Prevents onclose from firing
 ### ✅ Fix 3: `disconnect()` No Longer Causes Duplicate Events
 
 **Before:**
+
 ```typescript
 disconnect(): void {
     this.stopHeartbeat();
     this.disconnectWebRTC();
-    
+
     if (this._socket) {
         this.unsubscribeFromAllTopics();
         this._socket.close();  // ❌ Triggers onclose handler
         this._socket = null;
     }
-    
+
     this._isConnected = false;  // After onclose already set it
     this.notifyStateChange();   // Duplicate notification!
 }
 ```
 
 **After:**
+
 ```typescript
 disconnect(): void {
     // Track if state changed
     const wasConnected = this._isConnected;
-    
+
     // Set state FIRST
     this._isConnected = false;
-    
+
     this.stopHeartbeat();
     this.disconnectWebRTC();
 
@@ -98,10 +105,10 @@ disconnect(): void {
         this._socket.onerror = null;
         this._socket.onmessage = null;
         this._socket.onopen = null;
-        
+
         this.unsubscribeFromAllTopics();
-        
-        if (this._socket.readyState === WebSocket.OPEN || 
+
+        if (this._socket.readyState === WebSocket.OPEN ||
             this._socket.readyState === WebSocket.CONNECTING) {
             this._socket.close();
         }
@@ -116,7 +123,8 @@ disconnect(): void {
 }
 ```
 
-**Impact:** 
+**Impact:**
+
 - No duplicate `onclose` events
 - No duplicate state change notifications
 - Clean, predictable disconnection
@@ -126,21 +134,23 @@ disconnect(): void {
 ### ✅ Fix 4: Improved `connect()` with Socket Cleanup
 
 **Before:**
+
 ```typescript
 async connect(): Promise<void> {
     if (this._isConnected) {  // ❌ Only checks _isConnected
         return;
     }
-    
+
     // ❌ Doesn't clean up existing socket
     // ❌ Could have multiple sockets in memory
-    
+
     this._socket = new WebSocket(wsUrl);
     // ...
 }
 ```
 
 **After:**
+
 ```typescript
 async connect(): Promise<void> {
     // ✅ Check both _isConnected AND socket state
@@ -156,7 +166,7 @@ async connect(): Promise<void> {
         this._socket.onerror = null;
         this._socket.onmessage = null;
         this._socket.onopen = null;
-        if (this._socket.readyState === WebSocket.OPEN || 
+        if (this._socket.readyState === WebSocket.OPEN ||
             this._socket.readyState === WebSocket.CONNECTING) {
             this._socket.close();
         }
@@ -165,7 +175,7 @@ async connect(): Promise<void> {
 
     // ✅ Ensure clean state
     this._isConnected = false;
-    
+
     // Now create new connection
     this._socket = new WebSocket(wsUrl);
     // ...
@@ -173,6 +183,7 @@ async connect(): Promise<void> {
 ```
 
 **Impact:**
+
 - No memory leaks from dangling sockets
 - Safe to call `connect()` multiple times
 - Proper cleanup before reconnection
@@ -182,6 +193,7 @@ async connect(): Promise<void> {
 ## State Management Flow (After Fixes)
 
 ### Connection Success Flow
+
 ```
 1. connect() called
    ├─ Check if already connected (both _isConnected AND socket state)
@@ -201,6 +213,7 @@ Connection established!
 ```
 
 ### Connection Error Flow
+
 ```
 1. connect() called
    └─ new WebSocket(url)
@@ -218,6 +231,7 @@ Clean error state, no duplicates!
 ```
 
 ### Disconnection Flow
+
 ```
 1. disconnect() called
    ├─ wasConnected = _isConnected
@@ -241,6 +255,7 @@ Clean disconnect, single notification!
 ```
 
 ### Reconnection Flow
+
 ```
 1. connect() called (already have socket)
    ├─ Check: _isConnected = false, socket exists
@@ -260,11 +275,12 @@ No conflicts, no memory leaks!
 ## WebSocket State Reference
 
 Understanding `readyState`:
+
 ```typescript
-WebSocket.CONNECTING = 0  // Connection in progress
-WebSocket.OPEN       = 1  // Connected and ready
-WebSocket.CLOSING    = 2  // close() called, closing
-WebSocket.CLOSED     = 3  // Closed or failed to open
+WebSocket.CONNECTING = 0; // Connection in progress
+WebSocket.OPEN = 1; // Connected and ready
+WebSocket.CLOSING = 2; // close() called, closing
+WebSocket.CLOSED = 3; // Closed or failed to open
 ```
 
 **Safe to close:** States 0 (CONNECTING) and 1 (OPEN)  
@@ -275,6 +291,7 @@ WebSocket.CLOSED     = 3  // Closed or failed to open
 ## Testing the Fixes
 
 ### Test 1: Normal Connection
+
 ```typescript
 ✅ Expected behavior:
 1. connect() called
@@ -284,6 +301,7 @@ WebSocket.CLOSED     = 3  // Closed or failed to open
 ```
 
 ### Test 2: Connection Error
+
 ```typescript
 ✅ Expected behavior:
 1. connect() called with wrong IP
@@ -295,6 +313,7 @@ WebSocket.CLOSED     = 3  // Closed or failed to open
 ```
 
 ### Test 3: Disconnect
+
 ```typescript
 ✅ Expected behavior:
 1. disconnect() called
@@ -307,6 +326,7 @@ WebSocket.CLOSED     = 3  // Closed or failed to open
 ```
 
 ### Test 4: Rapid Reconnection
+
 ```typescript
 ✅ Expected behavior:
 1. connect() called
@@ -319,6 +339,7 @@ WebSocket.CLOSED     = 3  // Closed or failed to open
 ```
 
 ### Test 5: Network Loss During Connection
+
 ```typescript
 ✅ Expected behavior:
 1. Connected successfully (_isConnected = true)
@@ -335,28 +356,34 @@ WebSocket.CLOSED     = 3  // Closed or failed to open
 ## Console Output Examples
 
 ### Successful Connection
+
 ```
 Already connected to ROS2 Command Center for rover rover-123
 ```
+
 or
+
 ```
 [Heartbeat] Starting heartbeat for rover rover-123
 [Heartbeat] ✓ Sent heartbeat for rover rover-123 (navigating=false)
 ```
 
 ### Connection with Cleanup
+
 ```
 Cleaning up existing socket before reconnecting for rover rover-123
 [Heartbeat] Starting heartbeat for rover rover-123
 ```
 
 ### Connection Error
+
 ```
 ROS2 Command Center connection error for rover rover-123: [Error object]
 [Heartbeat] Stopping heartbeat for rover rover-123
 ```
 
 ### Clean Disconnect
+
 ```
 [Heartbeat] Stopping heartbeat for rover rover-123
 Disconnected from ROS2 Command Center for rover rover-123

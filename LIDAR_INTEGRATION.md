@@ -1,6 +1,7 @@
 # Lidar Controller Integration with ROS2 Command Centre
 
 ## Overview
+
 The `LidarMiniController` has been refactored to work as a pure visualization component that receives data from the `ROS2CommandCentreClient` instead of managing its own WebSocket connection.
 
 ## Changes Made
@@ -8,6 +9,7 @@ The `LidarMiniController` has been refactored to work as a pure visualization co
 ### 1. LidarMiniController (`src/routes/rovers/[id]/lidarController.ts`)
 
 **Removed:**
+
 - WebSocket connection management (`connect()`, `disconnect()`, `_socket`)
 - ROS topic subscription logic (`subscribe()`, `handleMessage()`)
 - Connection configuration (`_rosIp`, `_rosPort`, `_topic`)
@@ -16,16 +18,19 @@ The `LidarMiniController` has been refactored to work as a pure visualization co
 - `createAndConnectMiniLidar()` helper function
 
 **Added:**
+
 - `updateData(data: LidarData)` method - receives lidar data from external source
 - Uses `LidarData` type from `$lib/ros2CommandCentre` for consistency
 
 **Kept:**
+
 - Canvas rendering logic
 - Visualization parameters (`pointStride`, `maxVisualRange`)
 - `setCanvas()` and `setCanvasById()` methods
 - `onScan` callback option
 
 **New Helper Function:**
+
 - `createMiniLidar()` - Creates controller without auto-connecting
 
 ### 2. Integration Pattern (`src/routes/rovers/[id]/+page.svelte`)
@@ -44,9 +49,9 @@ await commandCenterClient.connect();
 
 // 4. Subscribe to lidar data and feed it to the controller
 commandCenterClient.onLidarData((lidarData) => {
-    if (lidarController) {
-        lidarController.updateData(lidarData);
-    }
+	if (lidarController) {
+		lidarController.updateData(lidarData);
+	}
 });
 ```
 
@@ -65,10 +70,10 @@ import { createMiniLidar, LidarMiniController } from './lidarController';
 import { commandCenterManager } from '$lib/ros2CommandCentre';
 
 // Create controller
-const lidarController = createMiniLidar({ 
-    canvas: 'myCanvas',
-    pointStride: 3,
-    maxVisualRange: 1.0
+const lidarController = createMiniLidar({
+	canvas: 'myCanvas',
+	pointStride: 3,
+	maxVisualRange: 1.0
 });
 
 // Get command center client
@@ -77,7 +82,7 @@ const client = commandCenterManager.getClient('rover-1');
 // Connect and subscribe
 await client.connect();
 client.onLidarData((data) => {
-    lidarController.updateData(data);
+	lidarController.updateData(data);
 });
 
 // Cleanup
@@ -112,6 +117,7 @@ If you have other components using the old `createAndConnectMiniLidar()` pattern
 The manual control page has also been refactored to use the centralized connection:
 
 ### Changes to `manualControl.ts`:
+
 - ✅ Removed all lidar subscription and visualization code
 - ✅ Removed obstacle detection subscription (now handled by Command Center)
 - ✅ Simplified ROS connection to only handle motor commands
@@ -119,6 +125,7 @@ The manual control page has also been refactored to use the centralized connecti
 - ✅ Removed `initLidarVisualization()`, `visualizeLidarData()`, and related methods
 
 ### Changes to manual control `+page.svelte`:
+
 - ✅ Uses `LidarMiniController` for visualization
 - ✅ Gets sensor data from `ROS2CommandCentreClient`
 - ✅ Obstacle detection comes from `commandCenterClient.obstacleData`
@@ -126,6 +133,7 @@ The manual control page has also been refactored to use the centralized connecti
 - ✅ Motor commands still go through `RoverController` (as they should)
 
 ### Benefits:
+
 - No duplicate lidar subscriptions between pages
 - Consistent sensor data across the application
 - Easier to maintain and extend

@@ -6,12 +6,12 @@ Both pages were creating their own connections and subscriptions:
 
 ```typescript
 // Rovers Page
-createAndConnectMiniLidar() 
+createAndConnectMiniLidar()
   ├── Creates WebSocket
   ├── Subscribes to /scan topic
   └── Handles lidar data
 
-// Manual Control Page  
+// Manual Control Page
 RoverController.connectToRover()
   ├── Creates WebSocket
   ├── Subscribes to /scan topic
@@ -21,6 +21,7 @@ RoverController.connectToRover()
 ```
 
 **Problems:**
+
 - 2 separate WebSocket connections to the same ROS bridge
 - 2 separate subscriptions to the `/scan` lidar topic
 - Duplicate code for handling lidar data
@@ -60,6 +61,7 @@ RoverController (motor commands only) + LidarMiniController
 ```
 
 **Benefits:**
+
 - ✅ Single WebSocket per rover (shared across pages)
 - ✅ Single subscription to each topic
 - ✅ Reusable visualization component
@@ -75,25 +77,25 @@ RoverController (motor commands only) + LidarMiniController
 ```typescript
 // ❌ Old way - in manualControl.ts
 this._ros_socket.onopen = () => {
-  // Subscribe to lidar topic
-  const lidarSubscribeMsg = {
-    op: 'subscribe',
-    topic: this._rosConfig.lidarTopic,
-    type: 'sensor_msgs/LaserScan'
-  };
-  
-  this._ros_socket?.send(JSON.stringify(lidarSubscribeMsg));
-  // ... more subscriptions
+	// Subscribe to lidar topic
+	const lidarSubscribeMsg = {
+		op: 'subscribe',
+		topic: this._rosConfig.lidarTopic,
+		type: 'sensor_msgs/LaserScan'
+	};
+
+	this._ros_socket?.send(JSON.stringify(lidarSubscribeMsg));
+	// ... more subscriptions
 };
 
 this._ros_socket.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.topic === this._rosConfig.lidarTopic && data.msg) {
-    if (this._lidarHandler) {
-      this._lidarHandler(data.msg);
-    }
-  }
-  // ... handle other topics
+	const data = JSON.parse(event.data);
+	if (data.topic === this._rosConfig.lidarTopic && data.msg) {
+		if (this._lidarHandler) {
+			this._lidarHandler(data.msg);
+		}
+	}
+	// ... handle other topics
 };
 ```
 
@@ -112,7 +114,7 @@ await commandCenterClient.connect();
 
 // Subscribe to updates
 commandCenterClient.onLidarData((lidarData) => {
-  lidarController.updateData(lidarData);
+	lidarController.updateData(lidarData);
 });
 
 // Obstacle data is just a property
@@ -124,11 +126,13 @@ const obstacleData = commandCenterClient.obstacleData;
 ## File Size Reduction
 
 ### manualControl.ts
+
 - **Before**: ~639 lines
 - **After**: ~350 lines
 - **Reduction**: ~289 lines (45% smaller)
 
 **Removed code:**
+
 - Lidar visualization (130+ lines)
 - Lidar subscription logic (40+ lines)
 - Obstacle detection handling (50+ lines)
@@ -140,6 +144,7 @@ const obstacleData = commandCenterClient.obstacleData;
 ## Connection Management
 
 ### Before:
+
 ```
 Page 1: Rover Details
   └── WebSocket 1 → ROS Bridge
@@ -155,6 +160,7 @@ Result: 2 WebSockets, duplicate /scan subscription
 ```
 
 ### After:
+
 ```
 commandCenterManager
   └── rover-1 → ROS2CommandCentreClient
@@ -184,17 +190,21 @@ Result: 1 WebSocket, single subscription per topic
 ## What This Means for Development
 
 ### Adding a New Sensor:
+
 **Before**: Add to each page that needs it
 **After**: Add once to `ROS2CommandCentreClient`
 
 ### Debugging Sensor Issues:
+
 **Before**: Check multiple files and connections
 **After**: Check one place - `ROS2CommandCentreClient`
 
 ### Sharing Data Between Pages:
+
 **Before**: Impossible (separate connections)
 **After**: Automatic (shared client instance)
 
 ### Connection Management:
+
 **Before**: Each page manages its own lifecycle
 **After**: Centralized manager handles everything

@@ -118,7 +118,10 @@ export const logs = pgTable(
 		voltage: doublePrecision('voltage').notNull()
 	},
 	(table) => [
-		index('idx_logs_location').using('gist', table.location.asc().nullsLast().op('gist_geometry_ops_2d'))
+		index('idx_logs_location').using(
+			'gist',
+			table.location.asc().nullsLast().op('gist_geometry_ops_2d')
+		)
 	]
 );
 

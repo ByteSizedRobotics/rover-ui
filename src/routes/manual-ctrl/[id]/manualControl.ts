@@ -54,8 +54,6 @@ export class RoverController {
 		return this._logs;
 	}
 
-
-
 	connectToRover(): Promise<void> {
 		this._connectionStatus = 'Connecting...';
 		this._statusColor = 'text-yellow-500';

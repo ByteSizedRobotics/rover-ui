@@ -40,7 +40,8 @@ export interface CameraStreamStatus {
 	usb: WebRTCStatus;
 }
 
-export interface GPSData { // TODO: NATHAN Update this
+export interface GPSData {
+	// TODO: NATHAN Update this
 	latitude: number;
 	longitude: number;
 	altitude: number;
@@ -138,12 +139,30 @@ export class ROS2CommandCentreClient {
 	private _webRTCStatusListeners: Set<(status: CameraStreamStatus) => void> = new Set();
 
 	// WebRTC camera stream properties - now supporting multiple cameras
-	private _webrtcSockets: Map<'csi' | 'usb', WebSocket | null> = new Map([['csi', null], ['usb', null]]);
-	private _peerConnections: Map<'csi' | 'usb', RTCPeerConnection | null> = new Map([['csi', null], ['usb', null]]);
-	private _isWebRTCConnected: Map<'csi' | 'usb', boolean> = new Map([['csi', false], ['usb', false]]);
-	private _remoteStreams: Map<'csi' | 'usb', MediaStream | null> = new Map([['csi', null], ['usb', null]]);
-	private _currentVideoElementIds: Map<'csi' | 'usb', string | null> = new Map([['csi', null], ['usb', null]]);
-	private _autoStartWebRTC: Map<'csi' | 'usb', boolean> = new Map([['csi', true], ['usb', true]]);
+	private _webrtcSockets: Map<'csi' | 'usb', WebSocket | null> = new Map([
+		['csi', null],
+		['usb', null]
+	]);
+	private _peerConnections: Map<'csi' | 'usb', RTCPeerConnection | null> = new Map([
+		['csi', null],
+		['usb', null]
+	]);
+	private _isWebRTCConnected: Map<'csi' | 'usb', boolean> = new Map([
+		['csi', false],
+		['usb', false]
+	]);
+	private _remoteStreams: Map<'csi' | 'usb', MediaStream | null> = new Map([
+		['csi', null],
+		['usb', null]
+	]);
+	private _currentVideoElementIds: Map<'csi' | 'usb', string | null> = new Map([
+		['csi', null],
+		['usb', null]
+	]);
+	private _autoStartWebRTC: Map<'csi' | 'usb', boolean> = new Map([
+		['csi', true],
+		['usb', true]
+	]);
 
 	// Topic data storage
 	private _gpsData: GPSData | null = null;
@@ -235,11 +254,13 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Connect to the ROS2 Command Center
 	 */
-	async connect(options: { enableCSICamera?: boolean; enableUSBCamera?: boolean } = {}): Promise<void> {
+	async connect(
+		options: { enableCSICamera?: boolean; enableUSBCamera?: boolean } = {}
+	): Promise<void> {
 		const { enableCSICamera = true, enableUSBCamera = true } = options;
 		this._autoStartWebRTC.set('csi', enableCSICamera);
 		this._autoStartWebRTC.set('usb', enableUSBCamera);
-		
+
 		if (!enableCSICamera) {
 			this.disconnectWebRTC('csi');
 		}
@@ -266,7 +287,10 @@ export class ROS2CommandCentreClient {
 			this._socket.onerror = null;
 			this._socket.onmessage = null;
 			this._socket.onopen = null;
-			if (this._socket.readyState === WebSocket.OPEN || this._socket.readyState === WebSocket.CONNECTING) {
+			if (
+				this._socket.readyState === WebSocket.OPEN ||
+				this._socket.readyState === WebSocket.CONNECTING
+			) {
 				this._socket.close();
 			}
 			this._socket = null;
@@ -302,40 +326,41 @@ export class ROS2CommandCentreClient {
 					// Start heartbeat
 					this.startHeartbeat();
 
-				// Start periodic logging
-				this.startPeriodicLogging();
+					// Start periodic logging
+					this.startPeriodicLogging();
 
-				// Initialize WebRTC connection for camera streams if enabled
-				if (this._autoStartWebRTC.get('csi')) {
-					this.connectWebRTC('csi');
-				} else {
-					this.setWebRTCConnected('csi', false);
-				}
-				
-				if (this._autoStartWebRTC.get('usb')) {
-					this.connectWebRTC('usb');
-				} else {
-					this.setWebRTCConnected('usb', false);
-				}
+					// Initialize WebRTC connection for camera streams if enabled
+					if (this._autoStartWebRTC.get('csi')) {
+						this.connectWebRTC('csi');
+					} else {
+						this.setWebRTCConnected('csi', false);
+					}
 
-				this.notifyStateChange();
-				resolve();
-			};				this._socket.onerror = (error) => {
+					if (this._autoStartWebRTC.get('usb')) {
+						this.connectWebRTC('usb');
+					} else {
+						this.setWebRTCConnected('usb', false);
+					}
+
+					this.notifyStateChange();
+					resolve();
+				};
+				this._socket.onerror = (error) => {
 					this._connectionErrors++;
 					this._isConnected = false;
 					console.error(`ROS2 Command Center connection error for rover ${this._roverId}:`, error);
-					
+
 					// Clean up socket and stop heartbeat
 					this.stopHeartbeat();
 					this.disconnectWebRTC();
 					this.resetSensorData();
 					if (this._socket) {
-						this._socket.onclose = null;  // Prevent onclose from firing after error
+						this._socket.onclose = null; // Prevent onclose from firing after error
 						this._socket.onerror = null;
 						this._socket.onmessage = null;
 						this._socket.onopen = null;
 					}
-					
+
 					this.notifyStateChange();
 					reject(new Error('Failed to connect to ROS2 Command Center'));
 				};
@@ -366,10 +391,10 @@ export class ROS2CommandCentreClient {
 	disconnect(): void {
 		// Track if state actually changed to prevent duplicate notifications
 		const wasConnected = this._isConnected;
-		
+
 		// Set disconnected state FIRST
 		this._isConnected = false;
-		
+
 		this.stopHeartbeat();
 		this.stopNodeHealthCheck();
 		this.disconnectWebRTC();
@@ -382,12 +407,15 @@ export class ROS2CommandCentreClient {
 			this._socket.onerror = null;
 			this._socket.onmessage = null;
 			this._socket.onopen = null;
-			
+
 			// Unsubscribe from all topics
 			this.unsubscribeFromAllTopics();
-			
+
 			// Close the socket
-			if (this._socket.readyState === WebSocket.OPEN || this._socket.readyState === WebSocket.CONNECTING) {
+			if (
+				this._socket.readyState === WebSocket.OPEN ||
+				this._socket.readyState === WebSocket.CONNECTING
+			) {
 				this._socket.close();
 			}
 			this._socket = null;
@@ -404,7 +432,9 @@ export class ROS2CommandCentreClient {
 		const wasConnected = this._isWebRTCConnected.get(cameraType) || false;
 		if (wasConnected !== isConnected) {
 			this._isWebRTCConnected.set(cameraType, isConnected);
-			console.log(`${cameraType.toUpperCase()} camera WebRTC ${isConnected ? 'connected' : 'disconnected'} for rover ${this._roverId}`);
+			console.log(
+				`${cameraType.toUpperCase()} camera WebRTC ${isConnected ? 'connected' : 'disconnected'} for rover ${this._roverId}`
+			);
 		}
 		// Always emit so listeners can react to status changes
 		this.emitWebRTCStatus();
@@ -420,17 +450,24 @@ export class ROS2CommandCentreClient {
 			this._webrtcSockets.set(cameraType, socket);
 
 			socket.onopen = () => {
-				console.log(`${cameraType.toUpperCase()} camera WebRTC connection established for rover ${this._roverId}`);
+				console.log(
+					`${cameraType.toUpperCase()} camera WebRTC connection established for rover ${this._roverId}`
+				);
 				this.startWebRTC(cameraType);
 			};
 
 			socket.onerror = (error: Event) => {
-				console.error(`${cameraType.toUpperCase()} camera WebRTC connection error for rover ${this._roverId}:`, error);
+				console.error(
+					`${cameraType.toUpperCase()} camera WebRTC connection error for rover ${this._roverId}:`,
+					error
+				);
 				this.setWebRTCConnected(cameraType, false);
 			};
 
 			socket.onclose = () => {
-				console.log(`${cameraType.toUpperCase()} camera WebRTC connection closed for rover ${this._roverId}`);
+				console.log(
+					`${cameraType.toUpperCase()} camera WebRTC connection closed for rover ${this._roverId}`
+				);
 				this.setWebRTCConnected(cameraType, false);
 			};
 
@@ -438,7 +475,10 @@ export class ROS2CommandCentreClient {
 				this.handleWebRTCMessage(cameraType, event);
 			};
 		} catch (error) {
-			console.error(`Failed to connect ${cameraType.toUpperCase()} camera WebRTC for rover ${this._roverId}:`, error);
+			console.error(
+				`Failed to connect ${cameraType.toUpperCase()} camera WebRTC for rover ${this._roverId}:`,
+				error
+			);
 			this.setWebRTCConnected(cameraType, false);
 		}
 	}
@@ -448,7 +488,7 @@ export class ROS2CommandCentreClient {
 	 */
 	private disconnectWebRTC(cameraType?: 'csi' | 'usb'): void {
 		const camerasToDisconnect: ('csi' | 'usb')[] = cameraType ? [cameraType] : ['csi', 'usb'];
-		
+
 		for (const camera of camerasToDisconnect) {
 			// Clear video element before disconnecting
 			const videoElementId = this._currentVideoElementIds.get(camera);
@@ -457,7 +497,9 @@ export class ROS2CommandCentreClient {
 				if (videoElement) {
 					videoElement.pause();
 					videoElement.srcObject = null;
-					console.log(`Cleared ${camera.toUpperCase()} video element '${videoElementId}' for rover ${this._roverId}`);
+					console.log(
+						`Cleared ${camera.toUpperCase()} video element '${videoElementId}' for rover ${this._roverId}`
+					);
 				}
 			}
 
@@ -483,7 +525,9 @@ export class ROS2CommandCentreClient {
 	 */
 	private async startWebRTC(cameraType: 'csi' | 'usb'): Promise<void> {
 		try {
-			console.log(`Starting ${cameraType.toUpperCase()} camera WebRTC connection for rover ${this._roverId}...`);
+			console.log(
+				`Starting ${cameraType.toUpperCase()} camera WebRTC connection for rover ${this._roverId}...`
+			);
 
 			// Initialize WebRTC peer connection
 			const peerConnection = new RTCPeerConnection({
@@ -493,11 +537,15 @@ export class ROS2CommandCentreClient {
 
 			// Monitor connection state changes
 			peerConnection.onconnectionstatechange = () => {
-				console.log(`${cameraType.toUpperCase()} camera WebRTC connection state changed to: ${peerConnection.connectionState} for rover ${this._roverId}`);
+				console.log(
+					`${cameraType.toUpperCase()} camera WebRTC connection state changed to: ${peerConnection.connectionState} for rover ${this._roverId}`
+				);
 			};
 
 			peerConnection.oniceconnectionstatechange = () => {
-				console.log(`${cameraType.toUpperCase()} camera WebRTC ICE connection state changed to: ${peerConnection.iceConnectionState} for rover ${this._roverId}`);
+				console.log(
+					`${cameraType.toUpperCase()} camera WebRTC ICE connection state changed to: ${peerConnection.iceConnectionState} for rover ${this._roverId}`
+				);
 			};
 
 			// Ensure the WebRTC offer requests a video stream (without adding a local camera)
@@ -505,7 +553,9 @@ export class ROS2CommandCentreClient {
 
 			// Handle incoming video stream
 			peerConnection.ontrack = (event: RTCTrackEvent) => {
-				console.log(`${cameraType.toUpperCase()} camera WebRTC video stream received for rover ${this._roverId}`);
+				console.log(
+					`${cameraType.toUpperCase()} camera WebRTC video stream received for rover ${this._roverId}`
+				);
 				this._remoteStreams.set(cameraType, event.streams[0]);
 				this.emitWebRTCStatus();
 				// If a video element has already been registered, apply immediately
@@ -519,10 +569,12 @@ export class ROS2CommandCentreClient {
 			peerConnection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
 				const socket = this._webrtcSockets.get(cameraType);
 				if (event.candidate && socket) {
-					socket.send(JSON.stringify({ 
-						type: 'candidate', 
-						candidate: event.candidate 
-					}));
+					socket.send(
+						JSON.stringify({
+							type: 'candidate',
+							candidate: event.candidate
+						})
+					);
 				}
 			};
 
@@ -532,16 +584,23 @@ export class ROS2CommandCentreClient {
 
 			const socket = this._webrtcSockets.get(cameraType);
 			if (socket) {
-				socket.send(JSON.stringify({ 
-					type: 'offer', 
-					sdp: offer.sdp 
-				}));
-				console.log(`${cameraType.toUpperCase()} camera WebRTC offer sent to ROS 2 server for rover ${this._roverId}`);
+				socket.send(
+					JSON.stringify({
+						type: 'offer',
+						sdp: offer.sdp
+					})
+				);
+				console.log(
+					`${cameraType.toUpperCase()} camera WebRTC offer sent to ROS 2 server for rover ${this._roverId}`
+				);
 			}
 
 			this.setWebRTCConnected(cameraType, true);
 		} catch (error) {
-			console.error(`Error starting ${cameraType.toUpperCase()} camera WebRTC for rover ${this._roverId}:`, error);
+			console.error(
+				`Error starting ${cameraType.toUpperCase()} camera WebRTC for rover ${this._roverId}:`,
+				error
+			);
 			this.setWebRTCConnected(cameraType, false);
 		}
 	}
@@ -558,23 +617,32 @@ export class ROS2CommandCentreClient {
 				case 'answer':
 					if (peerConnection) {
 						peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-						console.log(`${cameraType.toUpperCase()} camera WebRTC answer received and applied for rover ${this._roverId}`);
+						console.log(
+							`${cameraType.toUpperCase()} camera WebRTC answer received and applied for rover ${this._roverId}`
+						);
 					}
 					break;
 
 				case 'ice-candidate':
 					if (peerConnection && data.candidate) {
 						peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-						console.log(`${cameraType.toUpperCase()} camera ICE candidate received and added for rover ${this._roverId}`);
+						console.log(
+							`${cameraType.toUpperCase()} camera ICE candidate received and added for rover ${this._roverId}`
+						);
 					}
 					break;
 
 				default:
-					console.log(`Received unknown WebRTC message type: ${data.type} for ${cameraType.toUpperCase()} camera`);
+					console.log(
+						`Received unknown WebRTC message type: ${data.type} for ${cameraType.toUpperCase()} camera`
+					);
 					break;
 			}
 		} catch (error) {
-			console.error(`Error parsing ${cameraType.toUpperCase()} camera WebRTC message for rover ${this._roverId}:`, error);
+			console.error(
+				`Error parsing ${cameraType.toUpperCase()} camera WebRTC message for rover ${this._roverId}:`,
+				error
+			);
 		}
 	}
 
@@ -585,11 +653,15 @@ export class ROS2CommandCentreClient {
 	public setVideoElement(videoElementId: string | null, cameraType: 'csi' | 'usb' = 'csi'): void {
 		const previousElementId = this._currentVideoElementIds.get(cameraType);
 		this._currentVideoElementIds.set(cameraType, videoElementId);
-		console.log(`Setting ${cameraType.toUpperCase()} camera video element '${videoElementId ?? 'none'}' for rover ${this._roverId}`);
+		console.log(
+			`Setting ${cameraType.toUpperCase()} camera video element '${videoElementId ?? 'none'}' for rover ${this._roverId}`
+		);
 
 		if (!videoElementId) {
 			if (previousElementId) {
-				const previousElement = document.getElementById(previousElementId) as HTMLVideoElement | null;
+				const previousElement = document.getElementById(
+					previousElementId
+				) as HTMLVideoElement | null;
 				if (previousElement) {
 					previousElement.pause();
 					previousElement.srcObject = null;
@@ -604,17 +676,23 @@ export class ROS2CommandCentreClient {
 		// If we already have a remote stream, try to apply immediately
 		const remoteStream = this._remoteStreams.get(cameraType);
 		if (remoteStream) {
-			console.log(`${cameraType.toUpperCase()} camera remote stream already available, applying to '${videoElementId}'`);
+			console.log(
+				`${cameraType.toUpperCase()} camera remote stream already available, applying to '${videoElementId}'`
+			);
 			this.applyStreamToVideo(cameraType);
 		} else {
 			const peerConnection = this._peerConnections.get(cameraType);
 			if (!peerConnection) {
 				// WebRTC not ready yet, wait for it with timeout
-				console.log(`${cameraType.toUpperCase()} camera WebRTC not ready yet for rover ${this._roverId}, waiting...`);
+				console.log(
+					`${cameraType.toUpperCase()} camera WebRTC not ready yet for rover ${this._roverId}, waiting...`
+				);
 				this.waitForWebRTCAndApply(cameraType);
 			} else {
 				// Peer connection exists but no stream yet - will apply when ontrack fires
-				console.log(`${cameraType.toUpperCase()} camera peer connection ready, waiting for stream for rover ${this._roverId}`);
+				console.log(
+					`${cameraType.toUpperCase()} camera peer connection ready, waiting for stream for rover ${this._roverId}`
+				);
 			}
 		}
 	}
@@ -625,21 +703,29 @@ export class ROS2CommandCentreClient {
 	private waitForWebRTCAndApply(cameraType: 'csi' | 'usb', retries = 0, maxRetries = 100): void {
 		const peerConnection = this._peerConnections.get(cameraType);
 		const remoteStream = this._remoteStreams.get(cameraType);
-		
+
 		if (retries >= maxRetries) {
-			console.error(`${cameraType.toUpperCase()} camera WebRTC failed to initialize after ${maxRetries} retries for rover ${this._roverId}`);
-			console.error(`Connection state: peer=${peerConnection?.connectionState}, ice=${peerConnection?.iceConnectionState}, hasStream=${!!remoteStream}`);
+			console.error(
+				`${cameraType.toUpperCase()} camera WebRTC failed to initialize after ${maxRetries} retries for rover ${this._roverId}`
+			);
+			console.error(
+				`Connection state: peer=${peerConnection?.connectionState}, ice=${peerConnection?.iceConnectionState}, hasStream=${!!remoteStream}`
+			);
 			return;
 		}
 
 		// Log progress every 10 retries
 		if (retries > 0 && retries % 10 === 0) {
-			console.log(`${cameraType.toUpperCase()} camera WebRTC waiting... retry ${retries}/${maxRetries} - peer=${peerConnection?.connectionState}, ice=${peerConnection?.iceConnectionState}, hasStream=${!!remoteStream}`);
+			console.log(
+				`${cameraType.toUpperCase()} camera WebRTC waiting... retry ${retries}/${maxRetries} - peer=${peerConnection?.connectionState}, ice=${peerConnection?.iceConnectionState}, hasStream=${!!remoteStream}`
+			);
 		}
 
 		const videoElementId = this._currentVideoElementIds.get(cameraType);
 		if (remoteStream && videoElementId) {
-			console.log(`${cameraType.toUpperCase()} camera WebRTC ready after ${retries} retries (${retries * 200}ms), applying stream`);
+			console.log(
+				`${cameraType.toUpperCase()} camera WebRTC ready after ${retries} retries (${retries * 200}ms), applying stream`
+			);
 			this.applyStreamToVideo(cameraType);
 		} else {
 			// Retry after 200ms (increased from 100ms for more stable connection)
@@ -653,33 +739,47 @@ export class ROS2CommandCentreClient {
 	private applyStreamToVideo(cameraType: 'csi' | 'usb'): void {
 		const elementId = this._currentVideoElementIds.get(cameraType);
 		const remoteStream = this._remoteStreams.get(cameraType);
-		
+
 		if (!elementId || !remoteStream) {
-			console.warn(`Cannot apply ${cameraType.toUpperCase()} stream: elementId=${elementId}, hasStream=${!!remoteStream}`);
+			console.warn(
+				`Cannot apply ${cameraType.toUpperCase()} stream: elementId=${elementId}, hasStream=${!!remoteStream}`
+			);
 			return;
 		}
 
 		const videoElement = document.getElementById(elementId) as HTMLVideoElement | null;
 		if (!videoElement) {
-			console.error(`Video element with id '${elementId}' not found for ${cameraType.toUpperCase()} camera on rover ${this._roverId}, will retry...`);
+			console.error(
+				`Video element with id '${elementId}' not found for ${cameraType.toUpperCase()} camera on rover ${this._roverId}, will retry...`
+			);
 			// Retry after a delay in case the element isn't in DOM yet
 			setTimeout(() => {
-				const retryElement = elementId ? (document.getElementById(elementId) as HTMLVideoElement | null) : null;
+				const retryElement = elementId
+					? (document.getElementById(elementId) as HTMLVideoElement | null)
+					: null;
 				if (retryElement && remoteStream) {
-					console.log(`${cameraType.toUpperCase()} camera video element found on retry, applying stream`);
+					console.log(
+						`${cameraType.toUpperCase()} camera video element found on retry, applying stream`
+					);
 					retryElement.srcObject = remoteStream;
 					retryElement.muted = true; // Auto-mute to help with autoplay
-					retryElement.play().catch(e => console.error(`Error playing ${cameraType.toUpperCase()} video:`, e));
+					retryElement
+						.play()
+						.catch((e) => console.error(`Error playing ${cameraType.toUpperCase()} video:`, e));
 					this.emitWebRTCStatus();
 				} else {
-					console.error(`${cameraType.toUpperCase()} camera video element still not found after retry`);
+					console.error(
+						`${cameraType.toUpperCase()} camera video element still not found after retry`
+					);
 				}
 			}, 1000);
 			return;
 		}
 
-		console.log(`Applying ${cameraType.toUpperCase()} camera WebRTC stream to video element '${elementId}' for rover ${this._roverId}`);
-		
+		console.log(
+			`Applying ${cameraType.toUpperCase()} camera WebRTC stream to video element '${elementId}' for rover ${this._roverId}`
+		);
+
 		// Set the stream
 		if (videoElement.srcObject !== remoteStream) {
 			videoElement.srcObject = remoteStream;
@@ -689,13 +789,19 @@ export class ROS2CommandCentreClient {
 		this.emitWebRTCStatus();
 
 		// Try to play the video
-		videoElement.play()
+		videoElement
+			.play()
 			.then(() => {
-				console.log(`✅ ${cameraType.toUpperCase()} camera WebRTC video stream successfully playing on '${elementId}' for rover ${this._roverId}`);
+				console.log(
+					`✅ ${cameraType.toUpperCase()} camera WebRTC video stream successfully playing on '${elementId}' for rover ${this._roverId}`
+				);
 				this.emitWebRTCStatus();
 			})
-			.catch(e => {
-				console.error(`❌ Error playing ${cameraType.toUpperCase()} camera video for rover ${this._roverId}:`, e);
+			.catch((e) => {
+				console.error(
+					`❌ Error playing ${cameraType.toUpperCase()} camera video for rover ${this._roverId}:`,
+					e
+				);
 				// Already muted above, log the specific error
 				console.error(`Autoplay error details:`, e.message);
 			});
@@ -724,7 +830,7 @@ export class ROS2CommandCentreClient {
 		this._socket.send(JSON.stringify(message));
 		console.log(`Sent command to rover ${this._roverId}:`, command.type);
 	}
-	
+
 	/**
 	 * Send software data to the rover
 	 */
@@ -768,11 +874,11 @@ export class ROS2CommandCentreClient {
 		});
 
 		console.log('Waiting for required nodes to start up...');
-		
-		// Wait for required nodes to be running (based on Python autonomous_nodes) 
+
+		// Wait for required nodes to be running (based on Python autonomous_nodes)
 		const requiredNodes = ['gps', 'csi_camera_1', 'obstacle_detection', 'rover']; // 'usb_camera' TODO: NATHAN add this back'imu' , 'motor_control'
 		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
-		
+
 		if (!nodesStarted) {
 			console.error('Failed to start all required nodes for autonomous navigation');
 			this._isNavigating = false;
@@ -781,7 +887,7 @@ export class ROS2CommandCentreClient {
 		}
 
 		console.log('All required nodes are running, sending waypoints...');
-		
+
 		// Store required nodes and start health monitoring
 		this._requiredNodes = requiredNodes;
 		this.startNodeHealthCheck();
@@ -814,18 +920,24 @@ export class ROS2CommandCentreClient {
 		});
 
 		console.log('Waiting for manual control nodes to start up...');
-		
+
 		// Wait for required nodes to be running (based on Python manual_control_nodes)
-		const requiredNodes = ['manual_control', 'motor_control', 'gps', 'obstacle_detection', 'csi_camera_1'];
+		const requiredNodes = [
+			'manual_control',
+			'motor_control',
+			'gps',
+			'obstacle_detection',
+			'csi_camera_1'
+		];
 		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
-		
+
 		if (!nodesStarted) {
 			console.error('Failed to start all required nodes for manual control');
 			throw new Error('Required nodes failed to start for manual control');
 		}
 
 		console.log('Manual control setup completed successfully');
-		
+
 		// Store required nodes and start health monitoring
 		this._requiredNodes = requiredNodes;
 		this.startNodeHealthCheck();
@@ -917,10 +1029,13 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Wait for specified nodes to reach running state
 	 */
-	private async waitForNodesRunning(requiredNodes: string[], timeoutMs: number = 30000): Promise<boolean> {
+	private async waitForNodesRunning(
+		requiredNodes: string[],
+		timeoutMs: number = 30000
+	): Promise<boolean> {
 		return new Promise((resolve) => {
 			const startTime = Date.now();
-			
+
 			const checkNodes = () => {
 				if (!this._nodeStatus) {
 					// No status received yet, keep waiting
@@ -935,15 +1050,17 @@ export class ROS2CommandCentreClient {
 				}
 
 				// Check if all required nodes are running
-				const runningNodes = requiredNodes.filter(node => 
-					this._nodeStatus?.nodes[node] === 'running'
-				);
-				
-				const errorNodes = requiredNodes.filter(node => 
-					this._nodeStatus?.nodes[node] === 'error'
+				const runningNodes = requiredNodes.filter(
+					(node) => this._nodeStatus?.nodes[node] === 'running'
 				);
 
-				console.log(`Node status check: ${runningNodes.length}/${requiredNodes.length} running, ${errorNodes.length} errors`);
+				const errorNodes = requiredNodes.filter(
+					(node) => this._nodeStatus?.nodes[node] === 'error'
+				);
+
+				console.log(
+					`Node status check: ${runningNodes.length}/${requiredNodes.length} running, ${errorNodes.length} errors`
+				);
 
 				if (runningNodes.length === requiredNodes.length) {
 					console.log('All required nodes are running');
@@ -955,7 +1072,9 @@ export class ROS2CommandCentreClient {
 					// Keep waiting
 					setTimeout(checkNodes, 1000);
 				} else {
-					console.warn(`Timeout waiting for nodes: ${requiredNodes.filter(node => this._nodeStatus?.nodes[node] !== 'running').join(', ')}`);
+					console.warn(
+						`Timeout waiting for nodes: ${requiredNodes.filter((node) => this._nodeStatus?.nodes[node] !== 'running').join(', ')}`
+					);
 					resolve(false);
 				}
 			};
@@ -1133,7 +1252,7 @@ export class ROS2CommandCentreClient {
 		this.stopHeartbeat(); // Clear any existing heartbeat
 
 		console.log(`[Heartbeat] Starting heartbeat for rover ${this._roverId}`);
-		
+
 		this._heartbeatInterval = setInterval(() => {
 			this.sendHeartbeat();
 		}, 3000); // Send heartbeat every 3 seconds
@@ -1166,7 +1285,7 @@ export class ROS2CommandCentreClient {
 
 		console.log(`[NodeHealth] Starting node health check for rover ${this._roverId}`);
 		console.log(`[NodeHealth] Monitoring nodes: ${this._requiredNodes.join(', ')}`);
-		
+
 		this._nodeHealthCheckInterval = setInterval(() => {
 			this.checkNodeHealth();
 		}, 15000); // Check every 15 seconds
@@ -1220,10 +1339,14 @@ export class ROS2CommandCentreClient {
 
 		if (failedNodes.length > 0) {
 			console.error(`[NodeHealth] ❌ Critical nodes not running for rover ${this._roverId}:`);
-			console.error(`[NodeHealth]   - Offline: ${offlineNodes.length > 0 ? offlineNodes.join(', ') : 'none'}`);
-			console.error(`[NodeHealth]   - Error: ${errorNodes.length > 0 ? errorNodes.join(', ') : 'none'}`);
+			console.error(
+				`[NodeHealth]   - Offline: ${offlineNodes.length > 0 ? offlineNodes.join(', ') : 'none'}`
+			);
+			console.error(
+				`[NodeHealth]   - Error: ${errorNodes.length > 0 ? errorNodes.join(', ') : 'none'}`
+			);
 			console.error(`[NodeHealth] Disconnecting due to node failure...`);
-			
+
 			// Disconnect from rover due to node failure
 			this.disconnect();
 		} else {
@@ -1237,13 +1360,17 @@ export class ROS2CommandCentreClient {
 	private sendHeartbeat(): void {
 		// Check connection status
 		if (!this._isConnected || !this._socket) {
-			console.warn(`[Heartbeat] Cannot send heartbeat for rover ${this._roverId}: Not connected (socket=${!!this._socket}, connected=${this._isConnected})`);
+			console.warn(
+				`[Heartbeat] Cannot send heartbeat for rover ${this._roverId}: Not connected (socket=${!!this._socket}, connected=${this._isConnected})`
+			);
 			return;
 		}
 
 		// Check if socket is in OPEN state
 		if (this._socket.readyState !== WebSocket.OPEN) {
-			console.warn(`[Heartbeat] Cannot send heartbeat for rover ${this._roverId}: WebSocket not ready (state=${this._socket.readyState})`);
+			console.warn(
+				`[Heartbeat] Cannot send heartbeat for rover ${this._roverId}: WebSocket not ready (state=${this._socket.readyState})`
+			);
 			return;
 		}
 
@@ -1264,15 +1391,22 @@ export class ROS2CommandCentreClient {
 			this._socket.send(JSON.stringify(heartbeatMsg));
 			this._lastHeartbeat = Date.now();
 			this._heartbeatErrors = 0; // Reset error count on success
-			
-			console.log(`[Heartbeat] ✓ Sent heartbeat for rover ${this._roverId} (navigating=${this._isNavigating})`);
+
+			console.log(
+				`[Heartbeat] ✓ Sent heartbeat for rover ${this._roverId} (navigating=${this._isNavigating})`
+			);
 		} catch (error) {
 			this._heartbeatErrors++;
-			console.error(`[Heartbeat] ✗ Failed to send heartbeat for rover ${this._roverId} (error #${this._heartbeatErrors}):`, error);
-			
+			console.error(
+				`[Heartbeat] ✗ Failed to send heartbeat for rover ${this._roverId} (error #${this._heartbeatErrors}):`,
+				error
+			);
+
 			// If too many errors, stop the heartbeat to prevent spam
 			if (this._heartbeatErrors >= 5) {
-				console.error(`[Heartbeat] Too many heartbeat errors (${this._heartbeatErrors}), stopping heartbeat for rover ${this._roverId}`);
+				console.error(
+					`[Heartbeat] Too many heartbeat errors (${this._heartbeatErrors}), stopping heartbeat for rover ${this._roverId}`
+				);
 				this.stopHeartbeat();
 			}
 		}
@@ -1348,7 +1482,10 @@ export class ROS2CommandCentreClient {
 			});
 
 			if (!response.ok) {
-				console.error(`[DB] Failed to write timestamp for rover ${this._roverId}:`, await response.text());
+				console.error(
+					`[DB] Failed to write timestamp for rover ${this._roverId}:`,
+					await response.text()
+				);
 			} else {
 				console.log(`[DB] Timestamp written to database for rover ${this._roverId}`);
 			}
@@ -1433,28 +1570,30 @@ export class ROS2CommandCentreClient {
 	 */
 	private handleTimestampMessage(data: any): void {
 		try {
-			const timestampData = typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
-			
+			const timestampData =
+				typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
+
 			// Update the timestamp from the rover
 			// ROS2 timestamps are typically in seconds, so convert to milliseconds
 			let rawTimestamp = timestampData.timestamp || timestampData || Date.now();
-			
+
 			// If timestamp looks like it's in seconds (smaller than year 2000 in milliseconds), convert it
-			if (rawTimestamp < 946684800000) { // Jan 1, 2000 in milliseconds
+			if (rawTimestamp < 946684800000) {
+				// Jan 1, 2000 in milliseconds
 				rawTimestamp = rawTimestamp * 1000;
 			}
-			
+
 			this._timestamp = rawTimestamp;
-			
+
 			// Check if 15 seconds have passed since last database write
 			const now = Date.now();
 			const timeSinceLastWrite = now - this._lastTimestampDbWrite;
 			const fifteenSeconds = 15 * 1000; // 15 seconds in milliseconds
-			
+
 			if (timeSinceLastWrite >= fifteenSeconds) {
 				// Create log entry
 				this.writeTimestampToDatabase(this._timestamp);
-				
+
 				this._lastTimestampDbWrite = now;
 			}
 
@@ -1474,8 +1613,9 @@ export class ROS2CommandCentreClient {
 	 */
 	private handleNodeStatusMessage(data: any): void {
 		try {
-			const statusData = typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
-			
+			const statusData =
+				typeof data.msg.data === 'string' ? JSON.parse(data.msg.data) : data.msg.data;
+
 			// Update the node status from the rover
 			this._nodeStatus = {
 				timestamp: statusData.timestamp || Date.now(),
@@ -1486,7 +1626,7 @@ export class ROS2CommandCentreClient {
 			console.log(`===== Node Status Update for Rover ${this._roverId} =====`);
 			console.log(`Timestamp: ${new Date(this._nodeStatus.timestamp * 1000).toISOString()}`);
 			console.log('Node Status Details:');
-			
+
 			// Log each node's status with color coding for better visibility
 			Object.entries(this._nodeStatus.nodes).forEach(([nodeName, status]) => {
 				const statusIcon = this.getStatusIcon(status);
@@ -1495,7 +1635,9 @@ export class ROS2CommandCentreClient {
 
 			// Summary counts
 			const statusCounts = this.getNodeStatusCounts(this._nodeStatus.nodes);
-			console.log(`Summary: ${statusCounts.running} running, ${statusCounts.offline} offline, ${statusCounts.starting} starting, ${statusCounts.stopping} stopping, ${statusCounts.error} error`);
+			console.log(
+				`Summary: ${statusCounts.running} running, ${statusCounts.offline} offline, ${statusCounts.starting} starting, ${statusCounts.stopping} stopping, ${statusCounts.error} error`
+			);
 			console.log('===============================================');
 
 			// Call node status update callback if set
@@ -1549,7 +1691,7 @@ export class ROS2CommandCentreClient {
 			unknown: 0
 		};
 
-		Object.values(nodes).forEach(status => {
+		Object.values(nodes).forEach((status) => {
 			switch (status) {
 				case 'running':
 					counts.running++;
@@ -1583,7 +1725,9 @@ export class ROS2CommandCentreClient {
 			latitude: data.msg.latitude || 0,
 			longitude: data.msg.longitude || 0,
 			altitude: data.msg.altitude || 0,
-			accuracy: data.msg.position_covariance ? Math.sqrt(data.msg.position_covariance[0]) : undefined,
+			accuracy: data.msg.position_covariance
+				? Math.sqrt(data.msg.position_covariance[0])
+				: undefined,
 			timestamp: Date.now()
 		};
 
@@ -1656,7 +1800,7 @@ export class ROS2CommandCentreClient {
 		};
 
 		this._lidarData = lidarData;
-		
+
 		// Call lidar callback if set
 		if (this._onLidarDataUpdate) {
 			this._onLidarDataUpdate(lidarData);
@@ -1668,7 +1812,7 @@ export class ROS2CommandCentreClient {
 	 */
 	private handleObstacleDetectedMessage(data: any): void {
 		const detected = data.msg.data === true || data.msg.data === 'true';
-		
+
 		// Update or create obstacle data
 		if (!this._obstacleData || this._obstacleData.detected !== detected) {
 			this._obstacleData = {
@@ -1676,7 +1820,6 @@ export class ROS2CommandCentreClient {
 				distance: this._obstacleData?.distance,
 				timestamp: Date.now()
 			};
-
 		}
 	}
 
@@ -1685,14 +1828,13 @@ export class ROS2CommandCentreClient {
 	 */
 	private handleObstacleDistanceMessage(data: any): void {
 		const distance = parseFloat(data.msg.data) || 0;
-		
+
 		// Update or create obstacle data
 		this._obstacleData = {
 			detected: this._obstacleData?.detected || false,
 			distance: distance,
 			timestamp: Date.now()
 		};
-
 	}
 
 	/**
@@ -1709,7 +1851,7 @@ export class ROS2CommandCentreClient {
 		this._nodeStatus = null;
 		this._isNavigating = false;
 		this._totalWaypoints = 0;
-		
+
 		// Notify lidar callback with null to clear display
 		if (this._onLidarDataUpdate) {
 			// We can't pass null, but we can pass empty lidar data to clear the display
@@ -1724,7 +1866,7 @@ export class ROS2CommandCentreClient {
 			};
 			this._onLidarDataUpdate(emptyLidar);
 		}
-		
+
 		console.log(`Reset sensor data for rover ${this._roverId}`);
 	}
 

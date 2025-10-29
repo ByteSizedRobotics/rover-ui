@@ -132,6 +132,7 @@
 ## Event Handler Lifecycle
 
 ### Before Fixes (Problematic)
+
 ```
 WebSocket Created
        │
@@ -149,11 +150,12 @@ WebSocket Created
               └─ onclose fires  ──► Also fires! (duplicate)
                                     Sets _isConnected=false
                                     Notifies again (duplicate)
-              
+
        ❌ RESULT: Race conditions, duplicates, wrong state
 ```
 
 ### After Fixes (Correct)
+
 ```
 WebSocket Created
        │
@@ -176,9 +178,9 @@ WebSocket Created
                      │  └─ onopen = null
                      ├─ notifyStateChange() once ✅
                      └─ reject Promise ✅
-              
+
        onclose does NOT fire (handler removed)
-       
+
        ✅ RESULT: Clean state, no duplicates, correct behavior
 ```
 
@@ -187,6 +189,7 @@ WebSocket Created
 ## Memory Management
 
 ### Socket Lifecycle (Before Fixes)
+
 ```
 connect() #1
     └─ socket #1 created
@@ -198,11 +201,12 @@ connect() #2
     └─ socket #2 created
            │
            └─ socket #1 still in memory ❌
-           
+
 Result: Memory leak! Multiple sockets!
 ```
 
 ### Socket Lifecycle (After Fixes)
+
 ```
 connect() #1
     └─ Check: No existing socket
@@ -216,7 +220,7 @@ connect() #2
     └─ Check: No existing socket ✅
     └─ socket #2 created
            └─ Clean state ✅
-           
+
 Result: No memory leaks! Only one socket at a time!
 ```
 
@@ -256,6 +260,7 @@ t=4   │ onopen #2 fires │ _isConnected=true   │ _isConnected=true
 ## State Consistency Checks
 
 ### Before Fixes
+
 ```javascript
 // State can be inconsistent:
 _isConnected = true
@@ -271,6 +276,7 @@ if (!_isConnected || !_socket) return;
 ```
 
 ### After Fixes
+
 ```javascript
 // State is always consistent:
 _isConnected = true
@@ -296,6 +302,7 @@ if (_socket.readyState !== WebSocket.OPEN) return;
 ## Error Recovery Patterns
 
 ### Network Disconnection
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │               NETWORK DISCONNECTION FLOW                      │
@@ -311,9 +318,9 @@ onerror fires
     ├─ stopHeartbeat() ✅
     ├─ Remove handlers ✅
     └─ notifyStateChange() ✅
-    
+
 UI shows "Disconnected"
-    
+
 User reconnects network
     │
     ▼
@@ -322,11 +329,12 @@ User clicks "Connect"
     ├─ Check: not connected ✅
     ├─ Clean up: no socket ✅
     └─ Create new connection ✅
-    
+
 Connection restored! ✅
 ```
 
 ### Rapid Reconnection
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                  RAPID RECONNECTION FLOW                      │
@@ -340,7 +348,7 @@ disconnect() called
     ├─ _isConnected = false ✅
     ├─ Remove handlers ✅
     └─ Close socket ✅
-    
+
 Disconnected (t=0)
     │
     ▼ (t=1ms)
@@ -349,7 +357,7 @@ connect() called
     ├─ Check: not connected ✅
     ├─ No existing socket ✅
     └─ Create new connection ✅
-    
+
 New connection established! ✅
 No conflicts or duplicates ✅
 ```
@@ -359,6 +367,7 @@ No conflicts or duplicates ✅
 ## Debugging Tips
 
 ### Check Connection State
+
 ```javascript
 // In browser console:
 commandCenterClient.isConnected
@@ -376,18 +385,20 @@ isConnected = false → socket = null OR readyState = 3 ✅
 ```
 
 ### Monitor State Changes
+
 ```javascript
 // Add logging:
 commandCenterClient.onStateChange(() => {
-    console.log('State changed:', {
-        isConnected: commandCenterClient.isConnected,
-        socketState: commandCenterClient._socket?.readyState,
-        hasSocket: !!commandCenterClient._socket
-    });
+	console.log('State changed:', {
+		isConnected: commandCenterClient.isConnected,
+		socketState: commandCenterClient._socket?.readyState,
+		hasSocket: !!commandCenterClient._socket
+	});
 });
 ```
 
 ### Check for Memory Leaks
+
 ```javascript
 // Before fixes:
 // Multiple WebSocket objects stay in memory ❌

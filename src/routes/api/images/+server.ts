@@ -5,7 +5,6 @@ import { sql } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 
-
 export const GET: RequestHandler = async () => {
 	try {
 		// Fetch all images from the database
@@ -19,7 +18,6 @@ export const GET: RequestHandler = async () => {
 		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
 	}
 };
-
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {

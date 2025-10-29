@@ -3,7 +3,6 @@ import { api } from '../utils/api';
 import { createImageFixture } from '../fixtures/image';
 import { createDetectionFixture } from '../fixtures/detection';
 
-
 describe('GET /api/detections', () => {
 	it('retrieves all detections', async () => {
 		const detection1 = await createDetectionFixture();
@@ -20,7 +19,6 @@ describe('GET /api/detections', () => {
 		);
 	});
 });
-
 
 describe('POST /api/detections', () => {
 	it('creates a detection', async () => {
@@ -39,7 +37,6 @@ describe('POST /api/detections', () => {
 		expect(res.body).toHaveProperty('detection_id');
 	});
 });
-
 
 describe('PATCH /api/detections/:id', () => {
 	it('updates detection values', async () => {
@@ -67,7 +64,6 @@ describe('PATCH /api/detections/:id', () => {
 	});
 });
 
-
 describe('GET /api/detections/:id', () => {
 	it('retrieves a specific detection', async () => {
 		const detection = await createDetectionFixture();
@@ -78,7 +74,6 @@ describe('GET /api/detections/:id', () => {
 		expect(res.body).toHaveProperty('id', detectionId);
 	});
 });
-
 
 describe('DELETE /api/detections/:id', () => {
 	it('deletes a detection', async () => {

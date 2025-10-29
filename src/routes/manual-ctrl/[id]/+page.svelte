@@ -15,11 +15,11 @@
 	// Create controller with update callback
 	const params = get(page).params;
 	const roverId: string = params.id ?? '';
-	
+
 	let controller = $state<RoverController | undefined>(undefined);
 	let component: any;
 	let connecting = $state(false);
-	
+
 	// Lidar visualization
 	let lidarController: LidarMiniController | null = null;
 	let commandCenterClient: ROS2CommandCentreClient | null = null;
@@ -46,7 +46,7 @@
 				: 'Connecting to camera...'
 			: 'Connecting to rover...';
 	}
-	
+
 	// Obstacle detection state
 	let obstacleDetected = $state(false);
 	let obstacleDistance = $state(0);
@@ -75,20 +75,20 @@
 		window.addEventListener('keydown', handleKeyDown);
 		window.addEventListener('keyup', handleKeyUp);
 
-	// Auto-connect to ROS node
-	connectToRover();
-	
+		// Auto-connect to ROS node
+		connectToRover();
+
 		// Initialize lidar visualization and video with command center
 		if (browser) {
 			setTimeout(() => {
 				// Create lidar visualization controller
 				lidarController = createMiniLidar({ canvas: 'lidarCanvas' });
-				
+
 				// Get command center client for this rover
 				commandCenterClient = commandCenterManager.getClient(roverId);
 				cleanupWebRTCListener?.();
 				cleanupWebRTCListener = commandCenterClient.onWebRTCStatusChange(updateWebRTCStatus);
-				
+
 				const setupCommandCenter = async () => {
 					if (!commandCenterClient) {
 						return;
@@ -147,7 +147,7 @@
 			if (controller?.isConnected) {
 				controller.disconnectFromRover();
 			}
-			
+
 			// Clean up command center client
 			if (commandCenterClient) {
 				commandCenterClient.setVideoElement(null);
@@ -166,7 +166,7 @@
 			}
 			isWebRTCReady = false;
 			webRTCStatusMessage = 'Connecting to rover...';
-			
+
 			lidarController = null;
 		};
 	});
@@ -206,7 +206,7 @@
 
 	const connectToRover = async () => {
 		if (!controller) return;
-		
+
 		connecting = true;
 
 		// Force immediate UI update to show "Connecting..." state
@@ -240,7 +240,7 @@
 
 	const disconnectFromRover = async () => {
 		if (!controller) return;
-		
+
 		try {
 			await controller.disconnectFromRover();
 		} catch (error) {
@@ -249,13 +249,20 @@
 	};
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4" bind:this={component}>
-	<div class="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-lg border border-blue-100">
+<div
+	class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4"
+	bind:this={component}
+>
+	<div
+		class="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-lg"
+	>
 		<div class="p-6">
 			<h1 class="mb-6 text-center text-2xl font-bold text-blue-900">Manual Control</h1>
 
 			<!-- Connection status -->
-			<div class="mb-6 flex items-center justify-between rounded-lg bg-blue-50 border border-blue-200 p-4">
+			<div
+				class="mb-6 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-4"
+			>
 				<div>
 					<span class="font-semibold text-blue-900">Status:</span>
 					<span class={statusColor}> {connectionStatus}</span>
@@ -286,7 +293,7 @@
 									on:touchstart={() => handleDirectionPress('forward')}
 									on:touchend={handleDirectionRelease}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 border border-blue-300 text-2xl hover:bg-blue-200 active:bg-blue-300 text-blue-600 disabled:opacity-50"
+									class="flex h-16 w-16 items-center justify-center rounded-lg border border-blue-300 bg-blue-100 text-2xl text-blue-600 hover:bg-blue-200 active:bg-blue-300 disabled:opacity-50"
 								>
 									↑
 								</button>
@@ -300,7 +307,7 @@
 									on:touchstart={() => handleDirectionPress('left')}
 									on:touchend={handleDirectionRelease}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 border border-blue-300 text-2xl hover:bg-blue-200 active:bg-blue-300 text-blue-600 disabled:opacity-50"
+									class="flex h-16 w-16 items-center justify-center rounded-lg border border-blue-300 bg-blue-100 text-2xl text-blue-600 hover:bg-blue-200 active:bg-blue-300 disabled:opacity-50"
 								>
 									←
 								</button>
@@ -309,7 +316,7 @@
 									on:mousedown={() => handleDirectionPress('stop')}
 									on:touchstart={() => handleDirectionPress('stop')}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-red-200 border border-red-300 text-sm font-bold hover:bg-red-300 active:bg-red-400 text-red-700 disabled:opacity-50"
+									class="flex h-16 w-16 items-center justify-center rounded-lg border border-red-300 bg-red-200 text-sm font-bold text-red-700 hover:bg-red-300 active:bg-red-400 disabled:opacity-50"
 								>
 									STOP
 								</button>
@@ -321,7 +328,7 @@
 									on:touchstart={() => handleDirectionPress('right')}
 									on:touchend={handleDirectionRelease}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 border border-blue-300 text-2xl hover:bg-blue-200 active:bg-blue-300 text-blue-600 disabled:opacity-50"
+									class="flex h-16 w-16 items-center justify-center rounded-lg border border-blue-300 bg-blue-100 text-2xl text-blue-600 hover:bg-blue-200 active:bg-blue-300 disabled:opacity-50"
 								>
 									→
 								</button>
@@ -335,7 +342,7 @@
 									on:touchstart={() => handleDirectionPress('backward')}
 									on:touchend={handleDirectionRelease}
 									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 border border-blue-300 text-2xl hover:bg-blue-200 active:bg-blue-300 text-blue-600 disabled:opacity-50"
+									class="flex h-16 w-16 items-center justify-center rounded-lg border border-blue-300 bg-blue-100 text-2xl text-blue-600 hover:bg-blue-200 active:bg-blue-300 disabled:opacity-50"
 								>
 									↓
 								</button>
@@ -344,38 +351,41 @@
 					</div>
 
 					<!-- Video Stream Section (Right side) -->
-					<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200 relative">
-			<video
-				id="roverVideo"
-				autoplay
-				playsinline
-				muted
-				class="h-full w-full object-cover"
-				style="max-height: 720px;"
-			>
-				Your browser does not support the video tag.
-			</video>
-			
-			<!-- Fallback when no stream is available -->
-			{#if !isWebRTCReady}
-				<div class="absolute inset-0 flex items-center justify-center text-center text-blue-600 bg-blue-50">
-					<div>
-						<img
-							src="/video_cam.png"
-							alt="Camera connection placeholder"
-							class="mx-auto mb-2 h-16 w-16 object-contain"
-							loading="lazy"
-						/>
-						<p class="font-medium">Rover Camera Feed</p>
-						<p class="text-sm text-blue-500">{webRTCStatusMessage}</p>
+					<div class="relative w-2/3 overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+						<video
+							id="roverVideo"
+							autoplay
+							playsinline
+							muted
+							class="h-full w-full object-cover"
+							style="max-height: 720px;"
+						>
+							Your browser does not support the video tag.
+						</video>
+
+						<!-- Fallback when no stream is available -->
+						{#if !isWebRTCReady}
+							<div
+								class="absolute inset-0 flex items-center justify-center bg-blue-50 text-center text-blue-600"
+							>
+								<div>
+									<img
+										src="/video_cam.png"
+										alt="Camera connection placeholder"
+										class="mx-auto mb-2 h-16 w-16 object-contain"
+										loading="lazy"
+									/>
+									<p class="font-medium">Rover Camera Feed</p>
+									<p class="text-sm text-blue-500">{webRTCStatusMessage}</p>
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
-			{/if}
-		</div>
-	</div>				<!-- Lidar Visualization and Obstacle Detection Information -->
+				<!-- Lidar Visualization and Obstacle Detection Information -->
 				<div class="flex space-x-6">
 					<!-- Obstacle Detection Information (Left side) -->
-					<div class="w-1/3 rounded-lg bg-blue-50 border border-blue-200 p-4">
+					<div class="w-1/3 rounded-lg border border-blue-200 bg-blue-50 p-4">
 						<h2 class="mb-4 text-xl font-semibold text-blue-900">Obstacles Forward Corridor</h2>
 						<div class="flex flex-col space-y-4">
 							<div class="flex items-center">
@@ -417,8 +427,8 @@
 					</div>
 
 					<!-- Lidar Visualization (Right side) -->
-					<div class="w-2/3 overflow-hidden rounded-lg bg-blue-50 border border-blue-200">
-						<div class="bg-blue-100 border-b border-blue-200 p-2">
+					<div class="w-2/3 overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+						<div class="border-b border-blue-200 bg-blue-100 p-2">
 							<h2 class="text-xl font-semibold text-blue-900">Lidar Point Cloud</h2>
 						</div>
 						<div class="relative h-64 w-full">
@@ -431,13 +441,10 @@
 			</div>
 		</div>
 	</div>
-	
+
 	<!-- Fixed back button bottom-left -->
 	<div class="bottom-left">
-		<button
-			on:click={() => goto(`/rovers/${roverId}`)}
-			class="back-button"
-		>
+		<button on:click={() => goto(`/rovers/${roverId}`)} class="back-button">
 			← Back to Rover
 		</button>
 	</div>

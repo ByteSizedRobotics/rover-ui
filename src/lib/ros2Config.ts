@@ -57,6 +57,7 @@ export function getROSWebSocketURL(ip?: string, port?: number): string {
 // Helper function to get WebRTC WebSocket URL
 export function getWebRTCWebSocketURL(cameraType: 'csi' | 'usb' = 'csi', ip?: string): string {
 	const rosIP = ip || ROS2_CONFIG.RASPBERRY_PI_IP;
-	const webrtcPort = cameraType === 'csi' ? ROS2_CONFIG.WEBRTC_PORT_CSI : ROS2_CONFIG.WEBRTC_PORT_USB;
+	const webrtcPort =
+		cameraType === 'csi' ? ROS2_CONFIG.WEBRTC_PORT_CSI : ROS2_CONFIG.WEBRTC_PORT_USB;
 	return `ws://${rosIP}:${webrtcPort}`;
 }

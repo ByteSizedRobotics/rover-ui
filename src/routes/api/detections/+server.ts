@@ -3,7 +3,6 @@ import { detections } from '$lib/server/db/schema';
 import { desc } from 'drizzle-orm';
 import type { RequestHandler } from '@sveltejs/kit';
 
-
 export const GET: RequestHandler = async () => {
 	try {
 		const allDetections = await db.select().from(detections).orderBy(desc(detections.id));
@@ -16,8 +15,7 @@ export const GET: RequestHandler = async () => {
 		console.error('Error fetching detections:', err);
 		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
 	}
-}
-
+};
 
 export const POST: RequestHandler = async ({ request }) => {
 	const { image_id, confidence, bbox } = await request.json();
