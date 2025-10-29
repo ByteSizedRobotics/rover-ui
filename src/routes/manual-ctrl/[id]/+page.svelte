@@ -6,7 +6,11 @@
 	import { browser } from '$app/environment';
 	import { RoverController, type LogEntry } from './manualControl';
 	import { createMiniLidar, type LidarMiniController } from '../../rovers/[id]/lidarController';
-	import { commandCenterManager, type ROS2CommandCentreClient, type WebRTCStatus } from '$lib/ros2CommandCentre';
+	import {
+		commandCenterManager,
+		type ROS2CommandCentreClient,
+		type CameraStreamStatus
+	} from '$lib/ros2CommandCentre';
 
 	// Create controller with update callback
 	const params = get(page).params;
@@ -23,13 +27,22 @@
 	let webRTCStatusMessage = $state('Connecting to rover...');
 	let cleanupWebRTCListener: (() => void) | null = null;
 
-	function updateWebRTCStatus(status: WebRTCStatus) {
-		const boundToVideo = status.videoElementId === 'roverVideo';
-		const hasStream = status.hasRemoteStream && boundToVideo;
+	function updateWebRTCStatus(status: CameraStreamStatus) {
+		const activeCamera =
+			status.csi.videoElementId === 'roverVideo'
+				? status.csi
+				: status.usb.videoElementId === 'roverVideo'
+					? status.usb
+					: status.csi;
+
+		const boundToVideo = activeCamera.videoElementId === 'roverVideo';
+		const hasStream = activeCamera.hasRemoteStream && boundToVideo;
 		isWebRTCReady = hasStream;
-		webRTCStatusMessage = status.isConnected
-			? status.hasRemoteStream
-				? (hasStream ? 'Camera feed connected' : 'Switching camera...')
+		webRTCStatusMessage = activeCamera.isConnected
+			? activeCamera.hasRemoteStream
+				? hasStream
+					? 'Camera feed connected'
+					: 'Switching camera...'
 				: 'Connecting to camera...'
 			: 'Connecting to rover...';
 	}

@@ -62,7 +62,7 @@
 				connecting = true;
 
 				try {
-					await commandCenterClient.connect({ enableVideo: false });
+					await commandCenterClient.connect({ enableCSICamera: false, enableUSBCamera: false });
 					addLog('Successfully connected to ROS2 Command Center', 'success');
 				} catch (error) {
 					const errorMsg = error instanceof Error ? error.message : 'Unknown error';
