@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
+	import { calculateTravelTimeSeconds, formatDuration } from '$lib/utils/roverEnergy';
 
 	const params = get(page).params;
 	const roverId = params.id;
@@ -17,6 +18,14 @@
 	let showEndSuggestions = false;
 	let routeSelected = false;
 	let lastRoutes: any[] = [];
+	let routeDistanceMeters = 0;
+	let roverSpeed = 0.5;
+
+	// Derived metrics for informing the operator about the planned route
+	let estimatedTravelSeconds = 0;
+	let durationBreakdown = { hours: 0, minutes: 0, seconds: 0 };
+
+	const MAX_OPERATION_SECONDS = 3600; // 1 hour threshold for warnings
 
 	// Type definitions for Nominatim results
 	interface NominatimAddress {
@@ -92,6 +101,8 @@
 		// store routes when found so we can extract full geometry later
 		routingControl.on('routesfound', (e: any) => {
 			lastRoutes = e.routes || [];
+			routeDistanceMeters = extractRouteDistance(lastRoutes);
+			updateRouteEstimates();
 			console.log('routesfound event, saved lastRoutes', lastRoutes);
 		});
 
@@ -125,6 +136,8 @@
 
 				// Mark that a route has been selected so UI can show Launch button
 				routeSelected = true;
+				routeDistanceMeters = 0;
+				updateRouteEstimates();
 
 				// Check if route is actually drawn
 				console.log('Waypoints set:', routingControl.getWaypoints());
@@ -172,7 +185,13 @@
 
 		// Save waypoints and start/end to sessionStorage under a key the next page can read
 		const key = `launch_waypoints_${roverId}`;
-		const payload = { waypoints, start: startAddress, end: endAddress };
+		const payload = {
+			waypoints,
+			start: startAddress,
+			end: endAddress,
+			roverSpeed,
+			estimatedTravelSeconds
+		};
 		try {
 			sessionStorage.setItem(key, JSON.stringify(payload));
 		} catch (err) {
@@ -345,6 +364,63 @@
 		showEndSuggestions = false;
 		endSuggestions = [];
 	}
+
+	function updateRouteEstimates(): void {
+		estimatedTravelSeconds = calculateTravelTimeSeconds(routeDistanceMeters, roverSpeed);
+		durationBreakdown = formatDuration(estimatedTravelSeconds);
+	}
+
+	function extractRouteDistance(routes: any[]): number {
+		const primaryRoute = routes && routes.length > 0 ? routes[0] : null;
+
+		if (!primaryRoute) return 0;
+
+		const summaryDistance = primaryRoute.summary?.totalDistance;
+		if (typeof summaryDistance === 'number' && summaryDistance > 0) {
+			return summaryDistance;
+		}
+
+		// Fallback: approximate distance from coordinate pairs if summary missing
+		const coords = primaryRoute.coordinates || primaryRoute.geometry?.coordinates;
+		if (!Array.isArray(coords) || coords.length < 2) {
+			return 0;
+		}
+
+		let distance = 0;
+		for (let i = 1; i < coords.length; i += 1) {
+			const prev = coords[i - 1];
+			const curr = coords[i];
+			const prevLat = prev.lat ?? prev[1];
+			const prevLng = prev.lng ?? prev[0];
+			const currLat = curr.lat ?? curr[1];
+			const currLng = curr.lng ?? curr[0];
+
+			if ([prevLat, prevLng, currLat, currLng].some((v) => typeof v !== 'number')) continue;
+
+			distance += haversine(prevLat, prevLng, currLat, currLng);
+		}
+
+		return distance;
+	}
+
+	function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+		const R = 6371000; // Earth radius in meters
+		const toRad = (deg: number) => (deg * Math.PI) / 180;
+		const dLat = toRad(lat2 - lat1);
+		const dLon = toRad(lon2 - lon1);
+		const a =
+			Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+			Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		return R * c;
+	}
+
+	function handleSpeedInput(e: Event): void {
+		const target = e.target as HTMLInputElement;
+		const next = parseFloat(target.value);
+		roverSpeed = Number.isFinite(next) && next > 0 ? next : 0;
+		updateRouteEstimates();
+	}
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4">
@@ -405,9 +481,37 @@
 			</div>
 		{/if}
 	</div>
+	<div class="speed-input">
+		<label for="rover-speed">Rover speed (m/s)</label>
+		<input
+			id="rover-speed"
+			type="number"
+			min="0.1"
+			step="0.1"
+			value={roverSpeed}
+			on:input={handleSpeedInput}
+			on:blur={() => {
+				if (!roverSpeed || roverSpeed <= 0) {
+					roverSpeed = 0.1;
+					updateRouteEstimates();
+				}
+			}}
+		/>
+	</div>
 	<button class="set-route-btn" on:click={setRoute}>Set Route</button>
 	{#if routeSelected}
 		<button class="launch-btn" on:click={launchRover}>Launch Rover</button>
+	{/if}
+	{#if routeSelected && routeDistanceMeters > 0}
+		<div class="route-details">
+			<p>
+				Estimated travel time: {durationBreakdown.hours}h {durationBreakdown.minutes}m {durationBreakdown.seconds}s
+			</p>
+			<p>Planned distance: {routeDistanceMeters.toFixed(0)} m</p>
+			{#if estimatedTravelSeconds > MAX_OPERATION_SECONDS}
+				<p class="warning">⚠️ Route exceeds 1 hour. Consider adjusting the plan or recharging.</p>
+			{/if}
+		</div>
 	{/if}
 </div>
 
@@ -467,6 +571,8 @@ and an API route `src/routes/api/launch/[id].ts` that accepts POST and returns s
 	.controls {
 		display: flex;
 		gap: 12px;
+		flex-wrap: wrap;
+		align-items: flex-end;
 		margin-bottom: 16px;
 		padding: 20px;
 		background: white;
@@ -519,6 +625,47 @@ and an API route `src/routes/api/launch/[id].ts` that accepts POST and returns s
 
 	.launch-btn:hover {
 		background: #b91c1c;
+	}
+
+	.speed-input {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		color: #1e3a8a;
+		font-size: 14px;
+	}
+
+	.speed-input input {
+		padding: 12px 16px;
+		border: 2px solid #cbd5e1;
+		border-radius: 0.5rem;
+		width: 150px;
+		font-size: 14px;
+		transition: border-color 0.2s, box-shadow 0.2s;
+		background: white;
+	}
+
+	.speed-input input:focus {
+		outline: none;
+		border-color: #3b82f6;
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+	}
+
+	.route-details {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 12px 16px;
+		background: #eff6ff;
+		border-radius: 0.75rem;
+		border: 1px solid #bfdbfe;
+		color: #1e3a8a;
+		font-size: 14px;
+	}
+
+	.warning {
+		color: #b91c1c;
+		font-weight: 600;
 	}
 
 	/* Fixed back button in bottom-left */
