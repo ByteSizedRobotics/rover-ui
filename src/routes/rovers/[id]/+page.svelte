@@ -43,6 +43,8 @@
 	let roverPosition = $state({ x: 50, y: 40 }); // Percentage position on map
 	let roverGpsPosition = $state({ lat: 45.419510, lng: -75.678772 }); // GPS coordinates (Ottawa default)
 	let connectionStatus = $state('Disconnected');
+	const DETECTION_POLL_INTERVAL_MS = 5000;
+	let detectionPoller: ReturnType<typeof setInterval> | null = null;
 	
 	// Leaflet map variables
 	let mapContainer: HTMLElement;
@@ -91,6 +93,19 @@
 	function fahrenheitToCelsius(fahrenheit: number): number {
 		return (fahrenheit - 32) * 5 / 9;
 	}
+
+		async function loadDetections() {
+			try {
+				const res = await fetch('/api/detections', { cache: 'no-store' });
+				if (!res.ok) {
+					console.error('Failed to fetch detection data:', res.statusText);
+					return;
+				}
+				tableData = await res.json();
+			} catch (err) {
+				console.error('Error fetching detection data:', err);
+			}
+		}
 
 	onMount(async () => {
 		// Import Leaflet CSS
@@ -208,18 +223,8 @@
 			}, 80);
 		}
 
-		// Fetch detection data
-		try {
-			const res = await fetch('/api/detections');
-			if (res.ok) {
-				tableData = await res.json();
-			} else {
-				console.error('Failed to fetch detection data:', res.statusText);
-			}
-		} catch (err) {
-			console.error('Error fetching detection data:', err);
-		}
-
+		await loadDetections();
+		detectionPoller = setInterval(loadDetections, DETECTION_POLL_INTERVAL_MS);
 	});
 
 	onDestroy(() => {
@@ -244,6 +249,10 @@
 			commandCenterClient.onLidarData(null);
 			commandCenterClient.onStateChange(null);
 			commandCenterClient = null;
+		}
+		if (detectionPoller) {
+			clearInterval(detectionPoller);
+			detectionPoller = null;
 		}
 	});
 
