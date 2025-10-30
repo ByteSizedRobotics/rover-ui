@@ -74,34 +74,6 @@
 				connecting = false;
 			}
 
-			// Send to the existing API endpoint (for logging/database)
-			// try {
-			// 	const res = await fetch(`/api/launch/${encodeURIComponent(roverId)}`, {
-			// 		method: 'POST',
-			// 		headers: { 'Content-Type': 'application/json' },
-			// 		body: JSON.stringify({ waypoints })
-			// 	});
-
-			// 	if (!res.ok) {
-			// 		throw new Error(`API request failed with status ${res.status}`);
-			// 	}
-
-			// 	const contentType = res.headers.get('content-type');
-			// 	if (!contentType || !contentType.includes('application/json')) {
-			// 		const text = await res.text();
-			// 		throw new Error(`Expected JSON response, got: ${text.substring(0, 100)}...`);
-			// 	}
-
-			// 	const j = await res.json();
-			// 	addLog('Launch logged to database', 'info');
-			// } catch (error) {
-			// 	// Log API error but don't fail the launch
-			// 	addLog(
-			// 		`Database logging failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-			// 		'error'
-			// 	);
-			// }
-
 			// Now send launch command and waypoints to ROS2 Command Center
 			if (commandCenterClient.isConnected && waypoints.length > 0) {
 				addLog(`Sending launch command with ${waypoints.length} waypoints to rover...`, 'info');
@@ -121,13 +93,24 @@
 						})
 					);
 
-					// Add log about redirect
+					// Attempt to save the launched path to the database (non-blocking)
+					createPathFromWaypoints(waypoints)
+						.then((created) => {
+							if (created && created.id) {
+								addLog(`Saved path (id: ${created.id}) to database`, 'success');
+								sessionStorage.setItem(`last_saved_path_${roverId}`, JSON.stringify({ id: created.id, timestamp: Date.now() }));
+							} else {
+								addLog('Path was not saved to the database', 'error');
+							}
+						})
+						.catch((err) => {
+							addLog(`Failed to save path: ${err instanceof Error ? err.message : String(err)}`, 'error');
+						});
+
 					addLog('Redirecting to rover control panel...', 'success');
 
-					// add wait for 10 seconds before redirecting
 					await new Promise((resolve) => setTimeout(resolve, 1000));
 
-					// Redirect to rover page after a short delay to show the success message
 					setTimeout(() => {
 						goto(`/rovers/${encodeURIComponent(roverId)}`);
 					}, 2000);
@@ -148,6 +131,38 @@
 			const errorMsg = err instanceof Error ? err.message : 'Unknown error';
 			addLog(`Launch failed: ${errorMsg}`, 'error');
 			status = 'Launch failed.';
+		}
+	}
+
+	/**
+	 * Create a new path in the database from the provided waypoints.
+	 * Builds a LINESTRING WKT in EPSG:4326 (lng lat pairs) and POSTs to /api/paths.
+	 * Returns the created path object on success or null on failure.
+	 */
+	async function createPathFromWaypoints(wps: { lat: number; lng: number }[]) {
+		if (!wps || wps.length === 0) return null;
+
+		// Build WKT LINESTRING with 'lng lat' pairs
+		const coords = wps.map((wp) => `${wp.lng} ${wp.lat}`).join(', ');
+		const routeWKT = `LINESTRING(${coords})`;
+
+		try {
+			const res = await fetch('/api/paths', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ rover_id: roverId, routeWKT })
+			});
+
+			if (!res.ok) {
+				const text = await res.text();
+				throw new Error(`Failed to create path (status ${res.status}): ${text.substring(0, 200)}`);
+			}
+
+			const json = await res.json();
+			return json;
+		} catch (error) {
+			console.error('Error creating path:', error);
+			throw error;
 		}
 	}
 
