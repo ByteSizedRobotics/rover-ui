@@ -1,11 +1,24 @@
 import { db } from '$lib/server/db';
 import { detections } from '$lib/server/db/schema';
-import { desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import type { RequestHandler } from '@sveltejs/kit';
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url }) => {
 	try {
-		const allDetections = await db.select().from(detections).orderBy(desc(detections.id));
+		const imageId = url.searchParams.get('imageId');
+		
+		let allDetections;
+		if (imageId) {
+			// Filter by imageId if provided
+			allDetections = await db
+				.select()
+				.from(detections)
+				.where(eq(detections.imageId, parseInt(imageId)))
+				.orderBy(desc(detections.id));
+		} else {
+			// Otherwise return all detections
+			allDetections = await db.select().from(detections).orderBy(desc(detections.id));
+		}
 
 		return new Response(JSON.stringify(allDetections), {
 			status: 200,

@@ -3,12 +3,19 @@
 
 	export let data: { images: Image[] };
 
+	interface Detection {
+		id: number;
+		areaScore: number | null;
+		depthScore: number | null;
+	}
+
 	interface Image {
 		id: number;
 		pathId: number;
 		location: [number, number];
 		timestamp: Date;
 		imageUrl: string;
+		detections?: Detection[];
 	}
 
 	function viewDetails(id: number) {
@@ -23,6 +30,45 @@
 		}
 		const normalized = timestamp.replace('T', ' ');
 		return normalized.length >= 19 ? normalized.slice(0, 19) : normalized;
+	}
+
+	function calculateSeverity(detections: Detection[] | undefined): { category: string; color: string } {
+		// Calculate the maximum total score from all detections
+		let maxTotalScore = -1;
+		
+		if (detections && detections.length > 0) {
+			for (const detection of detections) {
+				const areaScore = detection.areaScore ?? 0;
+				const depthScore = detection.depthScore ?? 0;
+				const totalScore = areaScore + depthScore;
+				if (totalScore > maxTotalScore) {
+					maxTotalScore = totalScore;
+				}
+			}
+		}
+
+		// Determine category based on total score
+		let category: string;
+		let color: string;
+
+		if (maxTotalScore >= 1.5 && maxTotalScore <= 2.0) {
+			category = "Critical Risk ";
+			color = "bg-red-600";
+		} else if (maxTotalScore >= 1.0 && maxTotalScore < 1.5) {
+			category = "High Risk";
+			color = "bg-orange-500";
+		} else if (maxTotalScore >= 0.6 && maxTotalScore < 1.0) {
+			category = "Moderate Risk";
+			color = "bg-yellow-500";
+		} else if (maxTotalScore >= 0.0 && maxTotalScore < 0.6) {
+			category = "Low Risk";
+			color = "bg-green-500";
+		} else {
+			category = "NA";
+			color = "bg-gray-400";
+		}
+
+		return { category, color };
 	}
 
 </script>
@@ -53,9 +99,14 @@
 								/>
 							</div>
 							<div class="p-4">
-								<div class="mb-2">
-									<span class="font-semibold text-purple-600">ID:</span>
-									<span class="ml-1 text-purple-900">{pothole.id}</span>
+								<div class="mb-2 flex items-center justify-between">
+									<div>
+										<span class="font-semibold text-purple-600">ID:</span>
+										<span class="ml-1 text-purple-900">{pothole.id}</span>
+									</div>
+									<span class="{calculateSeverity(pothole.detections).color} text-white px-2 py-1 rounded-full text-xs font-semibold">
+										{calculateSeverity(pothole.detections).category}
+									</span>
 								</div>
 								<div class="mb-2">
 									<span class="font-semibold text-purple-600">Path ID:</span>
