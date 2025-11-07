@@ -366,14 +366,6 @@
 				href={`/map/${encodeURIComponent(roverId)}`}>← Back to Map</a
 			>
 		</div>
-
-		<!-- Live Metrics (bottom-right) -->
-		<div class="bottom-right fixed bottom-4 right-4 z-10">
-			<a
-				class="btn rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow-lg transition-colors hover:bg-green-600"
-				href={`/rovers/${encodeURIComponent(roverId)}`}>View Live Metrics →</a
-			>
-		</div>
 	</div>
 </div>
 
@@ -665,13 +657,6 @@
 	.bottom-left {
 		position: fixed;
 		left: 16px;
-		bottom: 16px;
-		z-index: 1002;
-	}
-
-	.bottom-right {
-		position: fixed;
-		right: 16px;
 		bottom: 16px;
 		z-index: 1002;
 	}
