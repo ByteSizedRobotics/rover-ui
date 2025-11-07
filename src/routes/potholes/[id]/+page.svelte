@@ -92,13 +92,19 @@
 									<span class="font-semibold text-purple-600">Detection ID:</span>
 									<span class="ml-2 text-purple-900">{d.id}</span>
 								</div>
-								<div class="text-2xl text-purple-600">Confidence: {d.confidence != null ? d.confidence.toFixed(3) : 'N/A'}</div>
+								<div class="text-2xl text-purple-600">Confidence: {d.confidence != null ? (d.confidence * 100).toFixed(1) : 'N/A'}%</div>
 							</div>
 							<div class="mt-3 text-xl text-purple-700">
-								Area Score: {d.areaScore != null ? d.areaScore.toFixed(2) : 'N/A'} Depth Score: {d.depthScore != null ? d.depthScore.toFixed(2) : 'N/A'}
+								Area Severity: {d.areaScore != null ? d.areaScore.toFixed(2) : 'N/A'} / 1
 							</div>
-							<div class="mt-3 text-lg text-gray-500">
+							<div class="mt-2 text-xl text-purple-700">
+								Depth Severity: {d.depthScore != null ? d.depthScore.toFixed(2) : 'N/A'} / 1
+							</div>
+							<div class="mt-3 text-xl text-gray-500">
 								False Positive: {d.falsePositive === 1 ? 'Yes' : d.falsePositive === 0 ? 'No' : 'Unknown'}
+							</div>
+							<div class="mt-1 text-sm text-gray-400 italic">
+								* False Positive is detected based on the Segmentation of the road to ensure the detected pothole is valid (i.e., on the road).
 							</div>
 						</div>
 					{/each}

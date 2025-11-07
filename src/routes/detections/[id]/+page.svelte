@@ -226,58 +226,43 @@
 							>
 								<span class="font-semibold text-purple-800">Confidence Score</span>
 								<span class="text-xl font-bold text-purple-900"
-									>{formatPercentage(data.detection.confidence)}</span
+									>{(data.detection.confidence * 100).toFixed(1)}%</span
 								>
 							</div>
 
-							<!-- Area Score -->
+							<!-- Area Severity -->
 							{#if data.detection.areaScore !== null}
 								<div
 									class="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 shadow-sm"
 								>
-									<span class="font-semibold text-purple-800">Area Score</span>
+									<span class="font-semibold text-purple-800">Area Severity</span>
 									<span class="text-xl font-bold text-purple-900"
-										>{formatPercentage(data.detection.areaScore)}</span
+										>{data.detection.areaScore.toFixed(2)} / 1</span
 									>
 								</div>
 							{/if}
 
-							<!-- Depth Score -->
+							<!-- Depth Severity -->
 							{#if data.detection.depthScore !== null}
 								<div
 									class="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 shadow-sm"
 								>
-									<span class="font-semibold text-purple-800">Depth Score</span>
+									<span class="font-semibold text-purple-800">Depth Severity</span>
 									<span class="text-xl font-bold text-purple-900"
-										>{formatPercentage(data.detection.depthScore)}</span
+										>{data.detection.depthScore.toFixed(2)} / 1</span
 									>
 								</div>
 							{/if}
 
 							<!-- False Positive Status -->
 							{#if data.detection.falsePositive !== null}
-								<div class="pt-2">
-									<div
-										class="flex items-center gap-2 rounded-lg px-4 py-3 {data.detection
-											.falsePositive === 1
-											? 'border border-amber-200 bg-amber-50'
-											: 'border border-blue-200 bg-blue-50'}"
-									>
-										<div
-											class="h-3 w-3 rounded-full {data.detection.falsePositive === 1
-												? 'bg-amber-500'
-												: 'bg-blue-500'}"
-										></div>
-										<span
-											class="font-semibold {data.detection.falsePositive === 1
-												? 'text-amber-800'
-												: 'text-blue-800'}"
-										>
-											{data.detection.falsePositive === 1
-												? 'Possibly False Positive'
-												: 'Likely Valid Detection'}
-										</span>
-									</div>
+								<div
+									class="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 shadow-sm"
+								>
+									<span class="font-semibold text-purple-800">False Positive</span>
+									<span class="text-xl font-bold text-purple-900">
+										{data.detection.falsePositive === 1 ? 'Yes' : 'No'}
+									</span>
 								</div>
 							{/if}
 						</div>
