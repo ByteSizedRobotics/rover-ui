@@ -9,7 +9,7 @@
 	};
 
 	function goBack() {
-		history.back();
+		goto('/potholes');
 	}
 
 	function viewDetection(id: number) {
