@@ -15,6 +15,16 @@
 	function viewDetails(id: number) {
 		goto(`/paths/${id}`);
 	}
+
+	function formatTimestamp(timestamp: Date | string | null | undefined) {
+		if (!timestamp) return 'N/A';
+		if (timestamp instanceof Date) {
+			if (Number.isNaN(timestamp.getTime())) return 'N/A';
+			return timestamp.toISOString().replace('T', ' ').slice(0, 19);
+		}
+		const normalized = timestamp.replace('T', ' ');
+		return normalized.length >= 19 ? normalized.slice(0, 19) : normalized;
+	}
 </script>
 
 <main class="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 p-8">
@@ -37,7 +47,7 @@
 						>
 							<div class="p-4">
 								<div class="mb-2">
-									<span class="font-semibold text-green-600">ID:</span>
+									<span class="font-semibold text-green-600">Path ID:</span>
 									<span class="ml-1 text-green-900">{p.id}</span>
 								</div>
 								<div class="mb-2">
@@ -58,7 +68,7 @@
 								</div>
 								<div>
 									<span class="font-semibold text-green-600">Timestamp:</span>
-									<span class="ml-1 text-sm text-green-900">{p.timestamp ? p.timestamp.toString() : 'N/A'}</span>
+									<span class="ml-1 text-sm text-green-900">{formatTimestamp(p.timestamp)}</span>
 								</div>
 								<div class="mt-4">
 									<div class="inline-block rounded-full bg-green-500 px-3 py-1 text-sm font-medium text-white">View Details →</div>
