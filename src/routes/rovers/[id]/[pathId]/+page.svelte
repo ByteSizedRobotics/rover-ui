@@ -4,7 +4,7 @@
 	import { get } from 'svelte/store';
 	import type { PageServerData } from './$types';
 	import { browser } from '$app/environment';
-	import { createMiniLidar, LidarMiniController } from './lidarController';
+	import { createMiniLidar, LidarMiniController } from '../lidarController';
 	import {
 		commandCenterManager,
 		type ROS2CommandCentreClient,
@@ -23,6 +23,7 @@
 
 	const params = get(page).params;
 	const roverId: string = params.id ?? '';
+	const pathId: string = params.pathId ?? '';
 
 	// Live metrics state
 	let currentCamera = $state(1);
@@ -107,12 +108,34 @@
 
 	async function loadDetections() {
 		try {
+			// Filter detections by pathId - we need to get images for this path first
+			// Then get detections for those images
+			const imagesRes = await fetch(`/api/images?pathId=${pathId}`, { cache: 'no-store' });
+			if (!imagesRes.ok) {
+				console.error('Failed to fetch images for path:', imagesRes.statusText);
+				return;
+			}
+			const images = await imagesRes.json();
+			const imageIds = images.map((img: any) => img.id);
+			
+			if (imageIds.length === 0) {
+				console.log('No images found for this path');
+				tableData = [];
+				return;
+			}
+
+			// Fetch all detections and filter by imageIds
 			const res = await fetch('/api/detections', { cache: 'no-store' });
 			if (!res.ok) {
 				console.error('Failed to fetch detection data:', res.statusText);
 				return;
 			}
-			tableData = await res.json();
+			const allDetections = await res.json();
+			
+			// Filter to only detections from images in this path
+			tableData = allDetections.filter((detection: any) => 
+				imageIds.includes(detection.imageId)
+			);
 		} catch (err) {
 			console.error('Error fetching detection data:', err);
 		}
@@ -393,6 +416,28 @@
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4">
+	<!-- Path Info Header -->
+	{#if data.pathTimestamp}
+		<div class="mx-4 mb-4 rounded-lg border border-blue-200 bg-white p-4 shadow-sm">
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-2xl font-bold text-blue-900">
+						{data.name || `Rover ${roverId}`} - Path #{pathId}
+					</h1>
+					<p class="text-sm text-blue-600">
+						Path started: {new Date(data.pathTimestamp).toLocaleString()}
+					</p>
+				</div>
+				<a
+					href="/rovers/{roverId}"
+					class="rounded-lg border border-blue-300 px-4 py-2 text-blue-600 transition-colors hover:bg-blue-50"
+				>
+					View All Paths
+				</a>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Launch Success Notification -->
 	{#if notification?.show}
 		<div class="notification-banner">

@@ -55,6 +55,84 @@
 		status = 'Launching...';
 		addLog('Starting launch sequence...', 'info');
 
+		/* ============================================================================
+		   TEMPORARY BYPASS: Force successful launch without ROS2 connection
+		   
+		   To re-enable ROS2 connection:
+		   1. Comment out or remove the entire "TEMPORARY BYPASS" section (lines below)
+		   2. Set FORCE_SUCCESS to false, or remove the if(FORCE_SUCCESS) block entirely
+		   3. The code will then use the real ROS2 connection logic that follows
+		   ============================================================================ */
+		const FORCE_SUCCESS = false; // TODO: Set to false to restore normal ROS2 behavior
+
+		if (FORCE_SUCCESS) {
+			addLog('[TEMP] Bypassing ROS2 - forcing successful launch', 'info');
+			await new Promise((resolve) => setTimeout(resolve, 500));
+			
+			addLog('Launch command and waypoints successfully sent to rover', 'success');
+			status = 'Navigation started - Rover is heading to destination';
+
+			// Create path entry in database
+			addLog('Creating path entry in database...', 'info');
+			const lineString = waypoints.map(wp => `${wp.lng} ${wp.lat}`).join(', ');
+			const routeWKT = `LINESTRING(${lineString})`;
+			
+			addLog(`Waypoints: ${waypoints.length}, RouteWKT: ${routeWKT.substring(0, 50)}...`, 'info');
+			addLog(`Rover ID: ${roverId} (type: ${typeof roverId})`, 'info');
+			
+			try {
+				const pathRes = await fetch('/api/paths', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						rover_id: Number(roverId),
+						routeWKT
+					})
+				});
+
+				addLog(`API Response Status: ${pathRes.status} ${pathRes.statusText}`, 'info');
+
+				if (!pathRes.ok) {
+					const errorText = await pathRes.text();
+					addLog(`API Error Response: ${errorText}`, 'error');
+					throw new Error(`Failed to create path entry: ${pathRes.status} - ${errorText}`);
+				}
+
+				const pathData = await pathRes.json();
+				const pathId = pathData.id;
+				addLog(`Path created with ID: ${pathId}`, 'success');
+
+				// Store success notification for the rover page
+				sessionStorage.setItem(
+					`rover_launch_success_${roverId}`,
+					JSON.stringify({
+						message: `Rover ${roverId} is now navigating along its planned path with ${waypoints.length} waypoints.`,
+						timestamp: Date.now(),
+						waypointCount: waypoints.length
+					})
+				);
+
+				// Add log about redirect
+				addLog('Redirecting to rover control panel...', 'success');
+
+				// add wait for 1 second before redirecting
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+
+				// Redirect to rover page with pathId
+				setTimeout(() => {
+					goto(`/rovers/${encodeURIComponent(roverId)}/${pathId}`);
+				}, 2000);
+			} catch (pathError) {
+				const errorMsg = pathError instanceof Error ? pathError.message : 'Unknown error';
+				addLog(`Failed to create path entry: ${errorMsg}`, 'error');
+				status = 'Launch failed - Could not create path';
+			}
+			return;
+		}
+		/* ============================================================================
+		   END TEMPORARY BYPASS
+		   ============================================================================ */
+
 		try {
 			// First, connect to ROS2 Command Center if not already connected
 			if (!commandCenterClient.isConnected) {
@@ -286,14 +364,6 @@
 			<a
 				class="btn rounded-lg bg-blue-500 px-4 py-2 font-medium text-white shadow-lg transition-colors hover:bg-blue-600"
 				href={`/map/${encodeURIComponent(roverId)}`}>← Back to Map</a
-			>
-		</div>
-
-		<!-- Live Metrics (bottom-right) -->
-		<div class="bottom-right fixed bottom-4 right-4 z-10">
-			<a
-				class="btn rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow-lg transition-colors hover:bg-green-600"
-				href={`/rovers/${encodeURIComponent(roverId)}`}>View Live Metrics →</a
 			>
 		</div>
 	</div>
@@ -587,13 +657,6 @@
 	.bottom-left {
 		position: fixed;
 		left: 16px;
-		bottom: 16px;
-		z-index: 1002;
-	}
-
-	.bottom-right {
-		position: fixed;
-		right: 16px;
 		bottom: 16px;
 		z-index: 1002;
 	}

@@ -1,14 +1,22 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { images } from '$lib/server/db/schema';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url }) => {
 	try {
-		// Fetch all images from the database
-		const allImages = await db.select().from(images);
+		const pathId = url.searchParams.get('pathId');
+		
+		// Fetch images, optionally filtered by pathId
+		let allImages;
+		if (pathId) {
+			allImages = await db.select().from(images).where(eq(images.pathId, Number(pathId)));
+		} else {
+			allImages = await db.select().from(images);
+		}
+		
 		return new Response(JSON.stringify(allImages), {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
