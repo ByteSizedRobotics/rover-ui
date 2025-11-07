@@ -98,6 +98,13 @@
 		return ((fahrenheit - 32) * 5) / 9;
 	}
 
+	// Calculate battery percentage from voltage
+	function calculateBatteryPercentage(voltage: number): number {
+		let level = (voltage - 9.0) / (12.6 - 9.0) * 100.0;
+		level = Math.max(0.0, Math.min(100.0, level));
+		return level;
+	}
+
 	async function loadDetections() {
 		try {
 			const res = await fetch('/api/detections', { cache: 'no-store' });
@@ -564,7 +571,9 @@
 						<div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
 							<div class="text-sm font-medium text-blue-600">Battery</div>
 							<div class="text-lg font-bold text-blue-900">
-								{sensorData.isConnected ? `${sensorData.batteryVoltage.toFixed(1)}V` : 'N/A'}
+								{sensorData.isConnected 
+									? `${sensorData.batteryVoltage.toFixed(1)}V (${calculateBatteryPercentage(sensorData.batteryVoltage).toFixed(0)}%)` 
+									: 'N/A'}
 							</div>
 						</div>
 						<!-- <div class="bg-blue-50 p-3 rounded-lg border border-blue-200 col-span-2">
