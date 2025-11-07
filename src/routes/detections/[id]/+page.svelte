@@ -30,8 +30,9 @@
 		};
 	};
 
-	// Get the rover ID from the URL query parameter (where we came from)
+	// Get the query parameters from the URL (where we came from)
 	$: roverId = $page.url.searchParams.get('roverId');
+	$: imageId = $page.url.searchParams.get('imageId');
 
 	// Leaflet map variables
 	let mapContainer: HTMLElement;
@@ -59,9 +60,14 @@
 	}
 
 	function goBack() {
-		// Use the rover ID from query param if available, otherwise use the one from detection data
-		const targetRoverId = roverId || data.rover.id;
-		goto(`/rovers/${targetRoverId}`);
+		// If we came from a pothole page (imageId present), go back to that pothole page
+		if (imageId) {
+			goto(`/potholes/${imageId}`);
+		} else {
+			// Otherwise, go to the rover page (from the data table on rover live metrics)
+			const targetRoverId = roverId || data.rover.id;
+			goto(`/rovers/${targetRoverId}`);
+		}
 	}
 
 	onMount(async () => {
@@ -135,7 +141,7 @@
 						clip-rule="evenodd"
 					/>
 				</svg>
-				Back to Rover
+				Back
 			</button>
 		</div>
 
