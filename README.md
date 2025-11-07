@@ -1,56 +1,176 @@
 # Rover UI
 
-Web app to interact with rover. Includes a docker-compose to get a working example running quickly.
+A full-stack web application for autonomous rover control and monitoring, built as part of a capstone project. This platform provides real-time telemetry, autonomous navigation, manual control, and pothole detection capabilities through a modern web interface communicating with ROS2-based rovers.
 
-## Features
+## 🎓 About
 
-- Login and registration
-- List of rovers
+This project is part of a capstone initiative to develop an autonomous rover system for infrastructure inspection. The web interface serves as the mission control center, enabling operators to plan routes, monitor rover status, and analyze collected data in real-time.
 
-## Developing
+**Project Wiki:** [https://github.com/ByteSizedRobotics/rover-ui/wiki](https://github.com/ByteSizedRobotics/rover-ui/wiki)
 
-To start the development server. If you are developing locally, make sure to have a working database as well. You can start the postgres service in the docker-compose on its own and it should be fine. Make sure to specify the same `DATABASE_URL` variable within a .env file or as an environmental variable.
+## ✨ Features
+
+- **🔐 User Authentication** - Secure login and registration system
+- **🤖 Rover Management** - Monitor and manage multiple rovers
+- **🗺️ Autonomous Navigation** - Plan and execute waypoint-based missions
+- **🎮 Manual Control** - Real-time joystick control with live camera feeds
+- **📡 Live Telemetry** - GPS, IMU, battery, and sensor data visualization
+- **🚨 Pothole Detection** - AI-powered infrastructure analysis and tracking
+- **📊 Path History** - Review past missions and collected data
+- **📹 Dual Camera Support** - CSI and USB camera streams via WebRTC
+- **🔍 LiDAR Visualization** - Real-time obstacle detection and mapping
+
+## 🛠️ Technologies
+
+- **Frontend:** [SvelteKit 5](https://kit.svelte.dev/docs) (Runes), [TailwindCSS](https://tailwindcss.com/), [DaisyUI](https://daisyui.com/)
+- **Backend:** [Node.js](https://nodejs.org/), [PostgreSQL](https://www.postgresql.org/), [Drizzle ORM](https://orm.drizzle.team/)
+- **Robotics:** [ROS2 Humble](https://docs.ros.org/en/humble/), WebRTC, rosbridge
+- **Mapping:** [Leaflet](https://leafletjs.com/)
+- **Deployment:** [Docker](https://www.docker.com/), Docker Compose
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18+)
+- [Docker](https://www.docker.com/get-started) & Docker Compose
+- [PostgreSQL](https://www.postgresql.org/) (or use Docker setup)
+
+### Using Docker Compose (Recommended)
+
+The easiest way to run the entire stack with database and sample data:
 
 ```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building the Docker image
-
-To build the Docker image of the app. Note that a `DATABASE_URL` environmental variable has to be set during creation, however you must again specify the environmental variable when running it.
-
-```bash
-docker build --build-arg DATABASE_URL="postgres://root:mysecretpassword@localhost:5432/local" -t bytesizedrobotics/rover-ui .
-```
-
-## Running the Docker image
-
-To run the Docker image. Note that the database must already have the database properly initalized with the schema. The ORIGIN environmental variable is very important as server sided calls will not fonction otherwise. It needs to point to where the web app is running. To access the page you must then go to `http://localhost:3000` specifically. The recommended approach to run the app is to use the docker-compose unless you know what you are doing.
-
-```bash
- docker run -e DATABASE_URL="postgres://root:mysecretpassword@localhost:5432/local" -e ORIGIN=http://localhost:3000 --network rover-ui_default -p 3000:3000 syeadz/rover-ui
-```
-
-## Running the image with docker-compose (Recommended)
-
-The recommended approach is to use the docker-compose to automatically start up the app and the database. It will also set up some sample data. You will need to register as a new user in order to see it. Make sure to head to `http://localhost:3000`.
-
-```
 docker compose up
-
-# or
-
-docker compose up -d # detached mode (won't attach to terminal)
-
-# to stop, if attached: crtl+c, if detached: `docker compose down`
-# and `docker compose down -v` to delete volume
 ```
 
-## Notes
+Navigate to **[http://localhost:3000](http://localhost:3000)** and register a new user account.
 
-- Image can be found here: https://hub.docker.com/r/bytesizedrobotics/rover-ui
-- There is an automated Github Actions workflow to build and push the image to Docker Hub whenver there is a published release
-- Schema for the database can be found at drizzle/schema.sql
+To stop:
+```bash
+docker compose down          # Stop services
+docker compose down -v       # Stop and remove volumes
+```
+
+### Local Development
+
+1. **Start the database:**
+   ```bash
+   docker compose up -d postgres
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+   Create a `.env` file:
+   ```env
+   DATABASE_URL="postgres://root:mysecretpassword@localhost:5432/local"
+   ```
+
+4. **Start the dev server:**
+   ```bash
+   npm run dev
+   ```
+
+5. **Navigate to the URL printed in terminal** (typically **[http://localhost:5173](http://localhost:5173)**)
+
+## 📚 Useful Commands
+
+### Development
+```bash
+npm run dev              # Start dev server
+npm run build            # Build for production
+npm run preview          # Preview production build
+npm run lint             # Check code quality
+npm run format           # Format code with Prettier
+```
+
+### Database
+```bash
+npx drizzle-kit studio   # Open Drizzle Studio database viewer
+npm run db:push          # Push schema changes
+npm run db:migrate       # Run migrations
+```
+
+### Testing
+```bash
+npm run test             # Run all tests
+npm run test:unit        # Run unit tests
+npm run test:e2e         # Run E2E tests with Playwright
+```
+
+### Docker
+```bash
+docker compose up -d     # Start in detached mode
+docker compose logs -f   # Follow logs
+docker compose down -v   # Stop and remove everything
+```
+
+## 🤝 ROS2 Integration
+
+The application communicates with rover hardware through ROS2 Humble. Key integration points:
+
+- **rosbridge WebSocket** - Real-time bidirectional communication
+- **WebRTC** - Low-latency camera streaming
+- **Topics:** GPS (`/fix`), IMU (`/imu/raw`), LiDAR (`/scan`), commands (`/command`), etc.
+
+Configure the rover connection in `src/lib/ros2Config.ts`.
+
+**ROS2 Documentation:** [https://docs.ros.org/en/humble/](https://docs.ros.org/en/humble/)
+
+## 📖 Documentation
+
+- **Project Wiki:** [github.com/ByteSizedRobotics/rover-ui/wiki](https://github.com/ByteSizedRobotics/rover-ui/wiki)
+- **Docker Hub:** [hub.docker.com/r/bytesizedrobotics/rover-ui](https://hub.docker.com/r/bytesizedrobotics/rover-ui)
+- **Database Schema:** `drizzle/schema.sql`
+
+## 🏗️ Project Structure
+
+```
+src/
+├── lib/
+│   ├── components/       # Reusable Svelte components
+│   ├── server/          # Backend logic and database
+│   ├── ros2CommandCentre.ts  # ROS2 WebSocket client
+│   └── ros2Config.ts    # ROS2 connection settings
+├── routes/              # SvelteKit pages and API routes
+│   ├── api/            # REST API endpoints
+│   ├── rovers/         # Rover management pages
+│   ├── manual-ctrl/    # Manual control interface
+│   └── map/            # Mission planning
+└── app.html            # HTML template
+```
+
+## 🔧 Building & Deployment
+
+### Build Docker Image
+```bash
+docker build --build-arg DATABASE_URL="postgres://root:mysecretpassword@localhost:5432/local" \
+  -t bytesizedrobotics/rover-ui .
+```
+
+### Run Docker Image
+```bash
+docker run -e DATABASE_URL="postgres://..." \
+  -e ORIGIN=http://localhost:3000 \
+  --network rover-ui_default \
+  -p 3000:3000 \
+  bytesizedrobotics/rover-ui
+```
+
+**Note:** The `ORIGIN` environment variable is required for server-side functionality.
+
+## 📦 Automated Releases
+
+GitHub Actions automatically builds and publishes Docker images to Docker Hub when a new release is published.
+
+## 📄 License
+
+Developed for CEG4912/4913 (4th year Computer Engineering Capstone Project)
+
+## 👥 Contributors
+
+Built by ByteSized Robotics capstone team.
