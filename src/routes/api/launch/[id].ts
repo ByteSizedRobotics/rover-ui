@@ -33,6 +33,7 @@ class ROS2Bridge {
 							timestamp: Date.now()
 						}
 					};
+					//console.log('Sending waypoints to ROS2:', message);
 
 					socket.send(JSON.stringify(message));
 

@@ -700,7 +700,7 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Wait for WebRTC connection to be ready, then apply stream
 	 */
-	private waitForWebRTCAndApply(cameraType: 'csi' | 'usb', retries = 0, maxRetries = 100): void {
+	private waitForWebRTCAndApply(cameraType: 'csi' | 'usb', retries = 0, maxRetries = 300): void {
 		const peerConnection = this._peerConnections.get(cameraType);
 		const remoteStream = this._remoteStreams.get(cameraType);
 
