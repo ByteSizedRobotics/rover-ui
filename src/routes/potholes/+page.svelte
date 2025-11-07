@@ -14,6 +14,17 @@
 	function viewDetails(id: number) {
 		goto(`/potholes/${id}`);
 	}
+
+	function formatTimestamp(timestamp: Date | string | null | undefined) {
+		if (!timestamp) return 'N/A';
+		if (timestamp instanceof Date) {
+			if (Number.isNaN(timestamp.getTime())) return 'N/A';
+			return timestamp.toISOString().replace('T', ' ').slice(0, 19);
+		}
+		const normalized = timestamp.replace('T', ' ');
+		return normalized.length >= 19 ? normalized.slice(0, 19) : normalized;
+	}
+
 </script>
 
 <main class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 p-8">
@@ -58,9 +69,7 @@
 								</div>
 								<div>
 									<span class="font-semibold text-purple-600">Timestamp:</span>
-									<span class="ml-1 text-sm text-purple-900">
-										{pothole.timestamp ? pothole.timestamp.toString() : 'N/A'}
-									</span>
+									<span class="ml-1 text-sm text-purple-900">{formatTimestamp(pothole.timestamp)}</span>
 								</div>
 								<div class="mt-4">
 									<div
