@@ -1,6 +1,6 @@
 # Rover UI
 
-A full-stack web application for autonomous rover control and monitoring, built as part of a capstone project. This platform provides real-time telemetry, autonomous navigation, manual control, and pothole detection capabilities through a modern web interface communicating with ROS2-based rovers.
+A full-stack web application for autonomous rover control and monitoring, built as part of the CEG4912/4913 capstone project. This platform provides real-time telemetry, autonomous navigation, manual control, and pothole detection capabilities through a modern web interface communicating with ROS2-based rovers.
 
 ## 🎓 About
 
@@ -13,18 +13,18 @@ This project is part of a capstone initiative to develop an autonomous rover sys
 - **🔐 User Authentication** - Secure login and registration system
 - **🤖 Rover Management** - Monitor and manage multiple rovers
 - **🗺️ Autonomous Navigation** - Plan and execute waypoint-based missions
-- **🎮 Manual Control** - Real-time joystick control with live camera feeds
+- **🎮 Manual Control** - Real-time control with live camera feeds
 - **📡 Live Telemetry** - GPS, IMU, battery, and sensor data visualization
 - **🚨 Pothole Detection** - AI-powered infrastructure analysis and tracking
 - **📊 Path History** - Review past missions and collected data
-- **📹 Dual Camera Support** - CSI and USB camera streams via WebRTC
+- **📹 Triple Camera Support** - CSI and USB camera streams via WebRTC
 - **🔍 LiDAR Visualization** - Real-time obstacle detection and mapping
 
 ## 🛠️ Technologies
 
 - **Frontend:** [SvelteKit 5](https://kit.svelte.dev/docs) (Runes), [TailwindCSS](https://tailwindcss.com/), [DaisyUI](https://daisyui.com/)
 - **Backend:** [Node.js](https://nodejs.org/), [PostgreSQL](https://www.postgresql.org/), [Drizzle ORM](https://orm.drizzle.team/)
-- **Robotics:** [ROS2 Humble](https://docs.ros.org/en/humble/), WebRTC, rosbridge
+- **Robotics:** [ROS2 Jazzy](https://docs.ros.org/en/jazzy/), WebRTC, rosbridge
 - **Mapping:** [Leaflet](https://leafletjs.com/)
 - **Deployment:** [Docker](https://www.docker.com/), Docker Compose
 
@@ -111,7 +111,7 @@ docker compose down -v   # Stop and remove everything
 
 ## 🤝 ROS2 Integration
 
-The application communicates with rover hardware through ROS2 Humble. Key integration points:
+The application communicates with rover hardware through ROS2 Jazzy. Key integration points:
 
 - **rosbridge WebSocket** - Real-time bidirectional communication
 - **WebRTC** - Low-latency camera streaming
@@ -119,7 +119,7 @@ The application communicates with rover hardware through ROS2 Humble. Key integr
 
 Configure the rover connection in `src/lib/ros2Config.ts`.
 
-**ROS2 Documentation:** [https://docs.ros.org/en/humble/](https://docs.ros.org/en/humble/)
+**ROS2 Documentation:** [https://docs.ros.org/en/jazzy/](https://docs.ros.org/en/jazzy/)
 
 ## 📖 Documentation
 
