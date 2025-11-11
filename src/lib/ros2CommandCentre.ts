@@ -32,12 +32,13 @@ export interface WebRTCStatus {
 	isConnected: boolean;
 	hasRemoteStream: boolean;
 	videoElementId: string | null;
-	cameraType: 'csi' | 'usb';
+	cameraType: 'csi' | 'usb' | 'csi2';
 }
 
 export interface CameraStreamStatus {
 	csi: WebRTCStatus;
 	usb: WebRTCStatus;
+	csi2: WebRTCStatus;
 }
 
 export interface GPSData {
@@ -139,29 +140,35 @@ export class ROS2CommandCentreClient {
 	private _webRTCStatusListeners: Set<(status: CameraStreamStatus) => void> = new Set();
 
 	// WebRTC camera stream properties - now supporting multiple cameras
-	private _webrtcSockets: Map<'csi' | 'usb', WebSocket | null> = new Map([
+	private _webrtcSockets: Map<'csi' | 'usb' | 'csi2', WebSocket | null> = new Map([
 		['csi', null],
-		['usb', null]
+		['usb', null],
+		['csi2', null]
 	]);
-	private _peerConnections: Map<'csi' | 'usb', RTCPeerConnection | null> = new Map([
+	private _peerConnections: Map<'csi' | 'usb' | 'csi2', RTCPeerConnection | null> = new Map([
 		['csi', null],
-		['usb', null]
+		['usb', null],
+		['csi2', null]
 	]);
-	private _isWebRTCConnected: Map<'csi' | 'usb', boolean> = new Map([
+	private _isWebRTCConnected: Map<'csi' | 'usb' | 'csi2', boolean> = new Map([
 		['csi', false],
-		['usb', false]
+		['usb', false],
+		['csi2', false]
 	]);
-	private _remoteStreams: Map<'csi' | 'usb', MediaStream | null> = new Map([
+	private _remoteStreams: Map<'csi' | 'usb' | 'csi2', MediaStream | null> = new Map([
 		['csi', null],
-		['usb', null]
+		['usb', null],
+		['csi2', null]
 	]);
-	private _currentVideoElementIds: Map<'csi' | 'usb', string | null> = new Map([
+	private _currentVideoElementIds: Map<'csi' | 'usb' | 'csi2', string | null> = new Map([
 		['csi', null],
-		['usb', null]
+		['usb', null],
+		['csi2', null]
 	]);
-	private _autoStartWebRTC: Map<'csi' | 'usb', boolean> = new Map([
+	private _autoStartWebRTC: Map<'csi' | 'usb' | 'csi2', boolean> = new Map([
 		['csi', true],
-		['usb', true]
+		['usb', true],
+		['csi2', true]
 	]);
 
 	// Topic data storage
@@ -223,13 +230,16 @@ export class ROS2CommandCentreClient {
 	}
 	get isWebRTCConnected(): boolean {
 		// Return true if any camera is connected
-		return this._isWebRTCConnected.get('csi') || this._isWebRTCConnected.get('usb') || false;
+		return this._isWebRTCConnected.get('csi') || this._isWebRTCConnected.get('usb') || this._isWebRTCConnected.get('csi2') || false;
 	}
 	get isCSICameraConnected(): boolean {
 		return this._isWebRTCConnected.get('csi') || false;
 	}
 	get isUSBCameraConnected(): boolean {
 		return this._isWebRTCConnected.get('usb') || false;
+	}
+	get isCSI2CameraConnected(): boolean {
+		return this._isWebRTCConnected.get('csi2') || false;
 	}
 	get obstacleDetected(): boolean {
 		return this._obstacleData?.detected || false;
@@ -255,17 +265,21 @@ export class ROS2CommandCentreClient {
 	 * Connect to the ROS2 Command Center
 	 */
 	async connect(
-		options: { enableCSICamera?: boolean; enableUSBCamera?: boolean } = {}
+		options: { enableCSICamera?: boolean; enableUSBCamera?: boolean; enableCSI2Camera?: boolean } = {}
 	): Promise<void> {
-		const { enableCSICamera = true, enableUSBCamera = true } = options;
+		const { enableCSICamera = true, enableUSBCamera = true, enableCSI2Camera = true } = options;
 		this._autoStartWebRTC.set('csi', enableCSICamera);
 		this._autoStartWebRTC.set('usb', enableUSBCamera);
+		this._autoStartWebRTC.set('csi2', enableCSI2Camera);
 
 		if (!enableCSICamera) {
 			this.disconnectWebRTC('csi');
 		}
 		if (!enableUSBCamera) {
 			this.disconnectWebRTC('usb');
+		}
+		if (!enableCSI2Camera) {
+			this.disconnectWebRTC('csi2');
 		}
 
 		// Check if already connected with valid socket
@@ -276,6 +290,9 @@ export class ROS2CommandCentreClient {
 			}
 			if (enableUSBCamera && !this._isWebRTCConnected.get('usb')) {
 				this.connectWebRTC('usb');
+			}
+			if (enableCSI2Camera && !this._isWebRTCConnected.get('csi2')) {
+				this.connectWebRTC('csi2');
 			}
 			return;
 		}
@@ -340,6 +357,12 @@ export class ROS2CommandCentreClient {
 						this.connectWebRTC('usb');
 					} else {
 						this.setWebRTCConnected('usb', false);
+					}
+
+					if (this._autoStartWebRTC.get('csi2')) {
+						this.connectWebRTC('csi2');
+					} else {
+						this.setWebRTCConnected('csi2', false);
 					}
 
 					this.notifyStateChange();
@@ -428,7 +451,7 @@ export class ROS2CommandCentreClient {
 		}
 	}
 
-	private setWebRTCConnected(cameraType: 'csi' | 'usb', isConnected: boolean): void {
+	private setWebRTCConnected(cameraType: 'csi' | 'usb' | 'csi2', isConnected: boolean): void {
 		const wasConnected = this._isWebRTCConnected.get(cameraType) || false;
 		if (wasConnected !== isConnected) {
 			this._isWebRTCConnected.set(cameraType, isConnected);
@@ -443,7 +466,7 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Connect WebRTC for camera streaming
 	 */
-	private async connectWebRTC(cameraType: 'csi' | 'usb'): Promise<void> {
+	private async connectWebRTC(cameraType: 'csi' | 'usb' | 'csi2'): Promise<void> {
 		try {
 			const webrtcUrl = getWebRTCWebSocketURL(cameraType);
 			const socket = new WebSocket(webrtcUrl);
@@ -486,8 +509,8 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Disconnect WebRTC for specific camera or all cameras
 	 */
-	private disconnectWebRTC(cameraType?: 'csi' | 'usb'): void {
-		const camerasToDisconnect: ('csi' | 'usb')[] = cameraType ? [cameraType] : ['csi', 'usb'];
+	private disconnectWebRTC(cameraType?: 'csi' | 'usb' | 'csi2'): void {
+		const camerasToDisconnect: ('csi' | 'usb' | 'csi2')[] = cameraType ? [cameraType] : ['csi', 'usb', 'csi2'];
 
 		for (const camera of camerasToDisconnect) {
 			// Clear video element before disconnecting
@@ -523,7 +546,7 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Start WebRTC peer connection for a specific camera
 	 */
-	private async startWebRTC(cameraType: 'csi' | 'usb'): Promise<void> {
+	private async startWebRTC(cameraType: 'csi' | 'usb' | 'csi2'): Promise<void> {
 		try {
 			console.log(
 				`Starting ${cameraType.toUpperCase()} camera WebRTC connection for rover ${this._roverId}...`
@@ -608,7 +631,7 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Handle WebRTC signaling messages
 	 */
-	private handleWebRTCMessage(cameraType: 'csi' | 'usb', event: MessageEvent): void {
+	private handleWebRTCMessage(cameraType: 'csi' | 'usb' | 'csi2', event: MessageEvent): void {
 		try {
 			const data = JSON.parse(event.data);
 			const peerConnection = this._peerConnections.get(cameraType);
@@ -650,7 +673,7 @@ export class ROS2CommandCentreClient {
 	 * Set video element for WebRTC stream (CSI camera by default for backward compatibility)
 	 * This will wait for WebRTC to be ready and retry binding if needed
 	 */
-	public setVideoElement(videoElementId: string | null, cameraType: 'csi' | 'usb' = 'csi'): void {
+	public setVideoElement(videoElementId: string | null, cameraType: 'csi' | 'usb' | 'csi2' = 'csi'): void {
 		const previousElementId = this._currentVideoElementIds.get(cameraType);
 		this._currentVideoElementIds.set(cameraType, videoElementId);
 		console.log(
@@ -700,7 +723,7 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Wait for WebRTC connection to be ready, then apply stream
 	 */
-	private waitForWebRTCAndApply(cameraType: 'csi' | 'usb', retries = 0, maxRetries = 300): void {
+	private waitForWebRTCAndApply(cameraType: 'csi' | 'usb' | 'csi2', retries = 0, maxRetries = 300): void {
 		const peerConnection = this._peerConnections.get(cameraType);
 		const remoteStream = this._remoteStreams.get(cameraType);
 
@@ -736,7 +759,7 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Apply currently stored remote stream to the registered video element
 	 */
-	private applyStreamToVideo(cameraType: 'csi' | 'usb'): void {
+	private applyStreamToVideo(cameraType: 'csi' | 'usb' | 'csi2'): void {
 		const elementId = this._currentVideoElementIds.get(cameraType);
 		const remoteStream = this._remoteStreams.get(cameraType);
 
@@ -1015,6 +1038,12 @@ export class ROS2CommandCentreClient {
 				hasRemoteStream: !!this._remoteStreams.get('usb'),
 				videoElementId: this._currentVideoElementIds.get('usb') || null,
 				cameraType: 'usb'
+			},
+			csi2: {
+				isConnected: this._isWebRTCConnected.get('csi2') || false,
+				hasRemoteStream: !!this._remoteStreams.get('csi2'),
+				videoElementId: this._currentVideoElementIds.get('csi2') || null,
+				cameraType: 'csi2'
 			}
 		};
 	}

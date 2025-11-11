@@ -3,8 +3,9 @@ export const ROS2_CONFIG = {
 	// Raspberry Pi connection settings
 	RASPBERRY_PI_IP: '100.85.202.20', // Tailscale IP address of the Raspberry Pi
 	ROS_BRIDGE_PORT: 9090,
-	WEBRTC_PORT_CSI: 8765, // CSI Camera WebRTC port
+	WEBRTC_PORT_CSI: 8765, // CSI Camera 1 WebRTC port
 	WEBRTC_PORT_USB: 8766, // USB Camera WebRTC port
+	WEBRTC_PORT_CSI2: 8767, // CSI Camera 2 WebRTC port
 
 	// ROS2 Topics
 	TOPICS: {
@@ -55,9 +56,17 @@ export function getROSWebSocketURL(ip?: string, port?: number): string {
 }
 
 // Helper function to get WebRTC WebSocket URL
-export function getWebRTCWebSocketURL(cameraType: 'csi' | 'usb' = 'csi', ip?: string): string {
+export function getWebRTCWebSocketURL(cameraType: 'csi' | 'usb' | 'csi2' = 'csi', ip?: string): string {
 	const rosIP = ip || ROS2_CONFIG.RASPBERRY_PI_IP;
-	const webrtcPort =
-		cameraType === 'csi' ? ROS2_CONFIG.WEBRTC_PORT_CSI : ROS2_CONFIG.WEBRTC_PORT_USB;
+	let webrtcPort: number;
+	
+	if (cameraType === 'csi') {
+		webrtcPort = ROS2_CONFIG.WEBRTC_PORT_CSI;
+	} else if (cameraType === 'usb') {
+		webrtcPort = ROS2_CONFIG.WEBRTC_PORT_USB;
+	} else {
+		webrtcPort = ROS2_CONFIG.WEBRTC_PORT_CSI2;
+	}
+	
 	return `ws://${rosIP}:${webrtcPort}`;
 }
