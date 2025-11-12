@@ -299,13 +299,12 @@
 
 			<!-- Three Camera Views Section -->
 			<div class="mb-6">
-				<h2 class="mb-4 text-xl font-semibold text-blue-900">Camera Views</h2>
 				<div class="grid grid-cols-3 gap-4">
 					<!-- CSI Camera 1 (Left) -->
 					<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
 						<div class="border-b border-blue-200 bg-blue-100 p-2 text-center">
-							<h3 class="text-sm font-semibold text-blue-900">CSI Camera 1</h3>
-							<p class="text-xs text-blue-600">{csiStatusMessage}</p>
+							<h3 class="text-xl font-semibold text-blue-900">CSI Camera 1</h3>
+							<!-- <p class="text-xs text-blue-600">{csiStatusMessage}</p> -->
 						</div>
 						<div class="relative flex items-center justify-center bg-black" style="height: 300px;">
 							<video
@@ -342,8 +341,8 @@
 					<!-- USB Camera (Middle/Front) -->
 					<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
 						<div class="border-b border-blue-200 bg-blue-100 p-2 text-center">
-							<h3 class="text-sm font-semibold text-blue-900">USB Camera (Front)</h3>
-							<p class="text-xs text-blue-600">{usbStatusMessage}</p>
+							<h3 class="text-xl font-semibold text-blue-900">USB Camera (Front)</h3>
+							<!-- <p class="text-xs text-blue-600">{usbStatusMessage}</p> -->
 						</div>
 						<div class="relative flex items-center justify-center bg-black" style="height: 300px;">
 							<video
@@ -380,8 +379,8 @@
 					<!-- CSI Camera 2 (Right) -->
 					<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
 						<div class="border-b border-blue-200 bg-blue-100 p-2 text-center">
-							<h3 class="text-sm font-semibold text-blue-900">CSI Camera 2</h3>
-							<p class="text-xs text-blue-600">{csi2StatusMessage}</p>
+							<h3 class="text-xl font-semibold text-blue-900">CSI Camera 2</h3>
+							<!-- <p class="text-xs text-blue-600">{csi2StatusMessage}</p> -->
 						</div>
 						<div class="relative flex items-center justify-center bg-black" style="height: 300px;">
 							<video
@@ -420,8 +419,11 @@
 			<!-- Control Section -->
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<!-- Control Pad -->
-				<div class="flex flex-col items-center justify-center rounded-lg border border-blue-200 bg-blue-50 p-6">
-					<h2 class="mb-4 text-xl font-semibold text-blue-900">Controls</h2>
+				<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+					<div class="border-b border-blue-200 bg-blue-100 p-3 text-center">
+						<h3 class="text-xl font-semibold text-blue-900">Controls</h3>
+					</div>
+					<div class="flex flex-col items-center justify-center p-6">
 					<div class="mb-8">
 						<div class="mb-4 flex justify-center">
 							<button
@@ -431,7 +433,7 @@
 								ontouchstart={() => handleDirectionPress('forward')}
 								ontouchend={handleDirectionRelease}
 								disabled={!isConnected}
-								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-600 bg-blue-500 text-3xl text-white shadow-lg hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-800 bg-blue-600 text-3xl text-white shadow-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								↑
 							</button>
@@ -445,7 +447,7 @@
 								ontouchstart={() => handleDirectionPress('left')}
 								ontouchend={handleDirectionRelease}
 								disabled={!isConnected}
-								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-600 bg-blue-500 text-3xl text-white shadow-lg hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-800 bg-blue-600 text-3xl text-white shadow-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								←
 							</button>
@@ -454,7 +456,7 @@
 								onmousedown={() => handleDirectionPress('stop')}
 								ontouchstart={() => handleDirectionPress('stop')}
 								disabled={!isConnected}
-								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-red-600 bg-red-500 text-sm font-bold text-white shadow-lg hover:bg-red-600 active:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-red-800 bg-red-600 text-lg font-bold text-white shadow-xl hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								STOP
 							</button>
@@ -466,7 +468,7 @@
 								ontouchstart={() => handleDirectionPress('right')}
 								ontouchend={handleDirectionRelease}
 								disabled={!isConnected}
-								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-600 bg-blue-500 text-3xl text-white shadow-lg hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-800 bg-blue-600 text-3xl text-white shadow-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								→
 							</button>
@@ -480,7 +482,7 @@
 								ontouchstart={() => handleDirectionPress('backward')}
 								ontouchend={handleDirectionRelease}
 								disabled={!isConnected}
-								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-600 bg-blue-500 text-3xl text-white shadow-lg hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-800 bg-blue-600 text-3xl text-white shadow-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								↓
 							</button>
@@ -491,12 +493,15 @@
 					<div class="mt-4 rounded-lg border border-blue-300 bg-white p-3 text-center">
 						<p class="text-xs text-blue-700">Use Arrow Keys or WASD to control</p>
 					</div>
+					</div>
 				</div>
 
 				<!-- Obstacle Detection Information -->
-				<div class="rounded-lg border border-blue-200 bg-blue-50 p-6">
-					<h2 class="mb-4 text-xl font-semibold text-blue-900">Obstacles Forward Corridor</h2>
-					<div class="flex flex-col space-y-4">
+				<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+					<div class="border-b border-blue-200 bg-blue-100 p-3 text-center">
+						<h2 class="text-xl font-semibold text-blue-900">Obstacles Forward Corridor</h2>
+					</div>
+					<div class="flex flex-col space-y-4 p-6">
 						<div class="flex items-center">
 							<span class="mr-2 font-medium text-blue-700">Status:</span>
 							<span
@@ -518,7 +523,7 @@
 					</div>
 
 					<!-- Command Log -->
-					<div class="mt-6">
+					<div class="p-6 pt-0">
 						<h3 class="mb-2 font-bold text-blue-900">Command Log:</h3>
 						<div class="h-40 overflow-y-auto rounded border border-blue-300 bg-white p-2">
 							{#if logs.length === 0}
@@ -537,7 +542,7 @@
 
 				<!-- Lidar Visualization -->
 				<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
-					<div class="border-b border-blue-200 bg-blue-100 p-3">
+					<div class="border-b border-blue-200 bg-blue-100 p-3 text-center">
 						<h2 class="text-xl font-semibold text-blue-900">Lidar Point Cloud</h2>
 					</div>
 					<div class="relative" style="height: 400px;">
