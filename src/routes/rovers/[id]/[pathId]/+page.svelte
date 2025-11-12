@@ -442,12 +442,6 @@
 						Path started: {new Date(data.pathTimestamp).toLocaleString()}
 					</p>
 				</div>
-				<a
-					href="/rovers/{roverId}"
-					class="rounded-lg border border-blue-300 px-4 py-2 text-blue-600 transition-colors hover:bg-blue-50"
-				>
-					View All Paths
-				</a>
 			</div>
 		</div>
 	{/if}
