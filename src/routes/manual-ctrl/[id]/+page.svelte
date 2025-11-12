@@ -307,7 +307,7 @@
 							<h3 class="text-sm font-semibold text-blue-900">CSI Camera 1</h3>
 							<p class="text-xs text-blue-600">{csiStatusMessage}</p>
 						</div>
-						<div class="relative" style="aspect-ratio: 820/616;">
+						<div class="relative flex items-center justify-center bg-black" style="height: 300px;">
 							<video
 								id="roverVideoCSI"
 								autoplay
@@ -315,7 +315,7 @@
 								muted
 								width="820"
 								height="616"
-								class="h-full w-full object-contain bg-black"
+								class="h-full w-full object-contain"
 							>
 								Your browser does not support the video tag.
 							</video>
@@ -345,7 +345,7 @@
 							<h3 class="text-sm font-semibold text-blue-900">USB Camera (Front)</h3>
 							<p class="text-xs text-blue-600">{usbStatusMessage}</p>
 						</div>
-						<div class="relative" style="aspect-ratio: 1280/720;">
+						<div class="relative flex items-center justify-center bg-black" style="height: 300px;">
 							<video
 								id="roverVideoUSB"
 								autoplay
@@ -353,7 +353,7 @@
 								muted
 								width="1280"
 								height="720"
-								class="h-full w-full object-contain bg-black"
+								class="h-full w-full object-contain"
 							>
 								Your browser does not support the video tag.
 							</video>
@@ -383,7 +383,7 @@
 							<h3 class="text-sm font-semibold text-blue-900">CSI Camera 2</h3>
 							<p class="text-xs text-blue-600">{csi2StatusMessage}</p>
 						</div>
-						<div class="relative" style="aspect-ratio: 820/616;">
+						<div class="relative flex items-center justify-center bg-black" style="height: 300px;">
 							<video
 								id="roverVideoCSI2"
 								autoplay
@@ -391,7 +391,7 @@
 								muted
 								width="820"
 								height="616"
-								class="h-full w-full object-contain bg-black"
+								class="h-full w-full object-contain"
 							>
 								Your browser does not support the video tag.
 							</video>
