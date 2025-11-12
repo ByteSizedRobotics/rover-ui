@@ -519,7 +519,7 @@
 
 	<!-- Fixed back button bottom-left -->
 	<div class="bottom-left">
-		<a href="/" class="back-button">← Home</a>
+		<a href="/rovers" class="back-button">← Rovers</a>
 	</div>
 </div>
 
