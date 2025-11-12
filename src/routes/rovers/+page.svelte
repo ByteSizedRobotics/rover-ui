@@ -214,7 +214,7 @@
 						<div class="mt-auto flex gap-2">
 							{#if getRoverStatus(rover) === 'active'}
 								<a
-									href="/rovers/{rover.id}"
+									href={rover.latestPathId ? `/rovers/${rover.id}/${rover.latestPathId}` : `/map/${rover.id}`}
 									class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
 								>
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
