@@ -170,5 +170,57 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Logs section -->
+		{#if data.path.logs && data.path.logs.length > 0}
+			<div class="rounded-2xl border border-green-100 bg-white p-6 shadow-lg">
+				<h2 class="mb-4 text-xl font-bold text-green-900">Associated Logs ({data.path.logs.length})</h2>
+				
+				<div class="overflow-x-auto">
+					<table class="w-full border-collapse text-sm">
+						<thead>
+							<tr class="border-b-2 border-green-200 bg-green-50">
+								<th class="text-left px-4 py-2 font-semibold text-green-900">ID</th>
+								<th class="text-left px-4 py-2 font-semibold text-green-900">Timestamp</th>
+								<th class="text-left px-4 py-2 font-semibold text-green-900">Location</th>
+								<th class="text-right px-4 py-2 font-semibold text-green-900">Altitude (m)</th>
+								<th class="text-right px-4 py-2 font-semibold text-green-900">Roll (°)</th>
+								<th class="text-right px-4 py-2 font-semibold text-green-900">Pitch (°)</th>
+								<th class="text-right px-4 py-2 font-semibold text-green-900">Yaw (°)</th>
+								<th class="text-right px-4 py-2 font-semibold text-green-900">Temp (°C)</th>
+								<th class="text-right px-4 py-2 font-semibold text-green-900">Voltage (V)</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each data.path.logs as log, i}
+								<tr class={`border-b border-green-100 ${i % 2 === 0 ? 'bg-white' : 'bg-green-50/30'} hover:bg-green-100 transition-colors`}>
+									<td class="px-4 py-3 text-green-900">{log.id}</td>
+									<td class="px-4 py-3 text-green-900 font-mono text-xs">{log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</td>
+									<td class="px-4 py-3">
+										{#if log.location?.coordinates}
+											<span class="font-mono text-xs text-green-700">
+												{log.location.coordinates[1].toFixed(4)}, {log.location.coordinates[0].toFixed(4)}
+											</span>
+										{:else}
+											<span class="text-gray-400">N/A</span>
+										{/if}
+									</td>
+									<td class="px-4 py-3 text-right text-green-900">{log.altitude?.toFixed(2) ?? 'N/A'}</td>
+									<td class="px-4 py-3 text-right text-green-900">{log.roll?.toFixed(2) ?? 'N/A'}</td>
+									<td class="px-4 py-3 text-right text-green-900">{log.pitch?.toFixed(2) ?? 'N/A'}</td>
+									<td class="px-4 py-3 text-right text-green-900">{log.yaw?.toFixed(2) ?? 'N/A'}</td>
+									<td class="px-4 py-3 text-right text-green-900">{log.temperature?.toFixed(2) ?? 'N/A'}</td>
+									<td class="px-4 py-3 text-right text-green-900">{log.voltage?.toFixed(2) ?? 'N/A'}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		{:else}
+			<div class="rounded-2xl border border-green-100 bg-white p-6 shadow-lg">
+				<p class="text-green-600">No logs available for this path.</p>
+			</div>
+		{/if}
 	</div>
 </main>

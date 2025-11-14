@@ -19,6 +19,7 @@ CREATE TABLE "images" (
 CREATE TABLE "logs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"rover_id" integer NOT NULL,
+	"path_id" integer NOT NULL,
 	"timestamp" timestamp with time zone DEFAULT now(),
 	"location" geometry(point) NOT NULL,
 	"altitude" double precision NOT NULL,
@@ -59,6 +60,7 @@ CREATE TABLE "user" (
 ALTER TABLE "detections" ADD CONSTRAINT "detections_image_id_images_id_fk" FOREIGN KEY ("image_id") REFERENCES "public"."images"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "images" ADD CONSTRAINT "images_path_id_paths_id_fk" FOREIGN KEY ("path_id") REFERENCES "public"."paths"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "logs" ADD CONSTRAINT "logs_rover_id_rovers_id_fk" FOREIGN KEY ("rover_id") REFERENCES "public"."rovers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "logs" ADD CONSTRAINT "logs_path_id_paths_id_fk" FOREIGN KEY ("path_id") REFERENCES "public"."paths"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "paths" ADD CONSTRAINT "paths_rover_id_rovers_id_fk" FOREIGN KEY ("rover_id") REFERENCES "public"."rovers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "idx_images_location" ON "images" USING gist ("location" gist_geometry_ops_2d);--> statement-breakpoint

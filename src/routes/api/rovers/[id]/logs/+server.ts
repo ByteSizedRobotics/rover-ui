@@ -31,13 +31,14 @@ export const GET: RequestHandler = async ({ params }) => {
 export const POST: RequestHandler = async ({ request, params }) => {
 	const roverId = params.id;
 
-	const { latitude, longitude, altitude, roll, pitch, yaw, temperature, voltage } =
+	const { pathId, latitude, longitude, altitude, roll, pitch, yaw, temperature, voltage } =
 		await request.json();
 
 	if (!roverId) {
 		return new Response(JSON.stringify({ error: 'Rover ID is required' }), { status: 400 });
 	}
 	if (
+		!pathId ||
 		!latitude ||
 		!longitude ||
 		altitude === undefined ||
@@ -65,6 +66,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
 			.insert(logs)
 			.values({
 				roverId: Number(roverId),
+				pathId: Number(pathId),
 				location: sql`ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)`,
 				altitude,
 				roll,

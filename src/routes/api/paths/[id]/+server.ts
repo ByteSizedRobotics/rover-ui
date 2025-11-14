@@ -20,7 +20,19 @@ export const GET: RequestHandler = async ({ params }) => {
 			path.route = JSON.parse(path.route);
 		}
 
-		return new Response(JSON.stringify(path), {
+		// Fetch all logs associated with this path
+		const logsResult = await db.execute(
+			`SELECT id, rover_id, timestamp, ST_AsGeoJSON(location) AS location, altitude, roll, pitch, yaw, temperature, voltage FROM logs WHERE path_id = ${id} ORDER BY timestamp ASC`
+		);
+		
+		const logs = logsResult.map((log: any) => {
+			if (typeof log.location === 'string') {
+				log.location = JSON.parse(log.location);
+			}
+			return log;
+		});
+
+		return new Response(JSON.stringify({ ...path, logs }), {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});

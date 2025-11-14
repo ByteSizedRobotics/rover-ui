@@ -165,6 +165,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "path_id": {
+          "name": "path_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "timestamp": {
           "name": "timestamp",
           "type": "timestamp with time zone",
@@ -240,6 +246,19 @@
           "tableTo": "rovers",
           "columnsFrom": [
             "rover_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "logs_path_id_paths_id_fk": {
+          "name": "logs_path_id_paths_id_fk",
+          "tableFrom": "logs",
+          "tableTo": "paths",
+          "columnsFrom": [
+            "path_id"
           ],
           "columnsTo": [
             "id"
@@ -343,7 +362,7 @@
           "name": "last_heartbeat",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "default": "now()"
         },
         "ip_address": {

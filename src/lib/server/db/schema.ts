@@ -108,6 +108,9 @@ export const logs = pgTable(
 		roverId: integer('rover_id')
 			.notNull()
 			.references(() => rovers.id, { onDelete: 'cascade' }),
+		pathId: integer('path_id')
+			.notNull()
+			.references(() => paths.id, { onDelete: 'cascade' }),
 		timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow(),
 		location: geometry('location', { type: 'point', srid: 4326 }).notNull(),
 		altitude: doublePrecision('altitude').notNull(),

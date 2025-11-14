@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { api } from '../utils/api';
 import { createLogFixture } from '../fixtures/log';
 import { createRoverFixture } from '../fixtures/rover';
+import { createPathFixture } from '../fixtures/path';
 
 describe('GET /api/rovers/:id/logs', () => {
 	it('should return logs for a valid rover', async () => {
@@ -25,7 +26,9 @@ describe('GET /api/rovers/:id/logs', () => {
 describe('POST /api/rovers/:id/logs', () => {
 	it('should add a log entry for a valid rover', async () => {
 		const rover = await createRoverFixture();
+		const path = await createPathFixture(rover.id);
 		const logData = {
+			pathId: path.id,
 			latitude: 37.7749,
 			longitude: -122.4194,
 			altitude: 10.5,

@@ -22,6 +22,7 @@ CREATE TABLE "images" (
 CREATE TABLE "logs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"rover_id" integer NOT NULL,
+	"path_id" integer NOT NULL,
 	"timestamp" timestamp with time zone DEFAULT now(),
 	"location" geometry(point) NOT NULL,
 	"altitude" double precision NOT NULL,
@@ -62,6 +63,7 @@ CREATE TABLE "user" (
 ALTER TABLE "detections" ADD CONSTRAINT "detections_image_id_images_id_fk" FOREIGN KEY ("image_id") REFERENCES "public"."images"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "images" ADD CONSTRAINT "images_path_id_paths_id_fk" FOREIGN KEY ("path_id") REFERENCES "public"."paths"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "logs" ADD CONSTRAINT "logs_rover_id_rovers_id_fk" FOREIGN KEY ("rover_id") REFERENCES "public"."rovers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "logs" ADD CONSTRAINT "logs_path_id_paths_id_fk" FOREIGN KEY ("path_id") REFERENCES "public"."paths"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "paths" ADD CONSTRAINT "paths_rover_id_rovers_id_fk" FOREIGN KEY ("rover_id") REFERENCES "public"."rovers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "idx_images_location" ON "images" USING gist ("location" gist_geometry_ops_2d);--> statement-breakpoint
@@ -107,9 +109,9 @@ VALUES
   ('session-1', 'user-1', now() + interval '7 days');
 
 -- === Seed Logs ===
-INSERT INTO logs (rover_id, timestamp, location, altitude, roll, pitch, yaw, temperature, voltage)
+INSERT INTO logs (rover_id, path_id, timestamp, location, altitude, roll, pitch, yaw, temperature, voltage)
 VALUES
-  (1, now() - interval '2 hours', ST_SetSRID(ST_Point(-73.5701, 45.5001), 4326), 12.5, 0.1, -0.2, 1.5, 22.3, 11.8),
-  (1, now() - interval '1 hour', ST_SetSRID(ST_Point(-73.5705, 45.5005), 4326), 12.7, 0.2, -0.1, 1.6, 22.5, 11.7),
-  (2, now() - interval '3 hours', ST_SetSRID(ST_Point(-73.5502, 45.4902), 4326), 13.0, -0.1, 0.0, 1.4, 21.9, 12.0),
-  (2, now() - interval '30 minutes', ST_SetSRID(ST_Point(-73.5508, 45.4908), 4326), 13.2, 0.0, 0.1, 1.7, 22.1, 11.9);
+  (1, 1, now() - interval '2 hours', ST_SetSRID(ST_Point(-73.5701, 45.5001), 4326), 12.5, 0.1, -0.2, 1.5, 22.3, 11.8),
+  (1, 1, now() - interval '1 hour', ST_SetSRID(ST_Point(-73.5705, 45.5005), 4326), 12.7, 0.2, -0.1, 1.6, 22.5, 11.7),
+  (2, 2, now() - interval '3 hours', ST_SetSRID(ST_Point(-73.5502, 45.4902), 4326), 13.0, -0.1, 0.0, 1.4, 21.9, 12.0),
+  (2, 2, now() - interval '30 minutes', ST_SetSRID(ST_Point(-73.5508, 45.4908), 4326), 13.2, 0.0, 0.1, 1.7, 22.1, 11.9);
