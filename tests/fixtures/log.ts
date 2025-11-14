@@ -2,9 +2,11 @@ import { logs } from '$lib/server/db/schema';
 import { sql } from 'drizzle-orm';
 import { db } from '../vitest.setup';
 import { createRoverFixture } from './rover';
+import { createPathFixture } from './path';
 
 export const createLogFixture = async (
 	roverId?: number,
+	pathId?: number,
 	latitude: number = 0,
 	longitude: number = 0,
 	altitude: number = 0,
@@ -18,11 +20,16 @@ export const createLogFixture = async (
 		const rover = await createRoverFixture();
 		roverId = rover.id;
 	}
+	if (!pathId) {
+		const path = await createPathFixture(roverId);
+		pathId = path.id;
+	}
 
 	const result = await db
 		.insert(logs)
 		.values({
 			roverId,
+			pathId,
 			location: sql`ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)`,
 			altitude,
 			roll,

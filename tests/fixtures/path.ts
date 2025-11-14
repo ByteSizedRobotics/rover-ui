@@ -20,5 +20,11 @@ export const createPathFixture = async (rover_id?: number, routeWKT?: string) =>
 	if (typeof row.route === 'string') {
 		row.route = JSON.parse(row.route);
 	}
-	return row;
+
+	return row as {
+		id: number;
+		rover_id: number;
+		timestamp: string;
+		route: { type: 'LineString'; coordinates: number[][] };
+	};
 };
