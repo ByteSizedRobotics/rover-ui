@@ -67,7 +67,7 @@
 
 		if (FORCE_SUCCESS) {
 			addLog('[TEMP] Bypassing ROS2 - forcing successful launch', 'info');
-			await new Promise((resolve) => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 20000));
 			
 			addLog('Launch command and waypoints successfully sent to rover', 'success');
 			status = 'Navigation started - Rover is heading to destination';
@@ -189,26 +189,61 @@
 					addLog('Launch command and waypoints successfully sent to rover', 'success');
 					status = 'Navigation started - Rover is heading to destination';
 
-					// Store success notification for the rover page
-					sessionStorage.setItem(
-						`rover_launch_success_${roverId}`,
-						JSON.stringify({
-							message: `Rover ${roverId} is now navigating along its planned path with ${waypoints.length} waypoints.`,
-							timestamp: Date.now(),
-							waypointCount: waypoints.length
-						})
-					);
+					// Create path entry in database
+					addLog('Creating path entry in database...', 'info');
+					const lineString = waypoints.map(wp => `${wp.lng} ${wp.lat}`).join(', ');
+					const routeWKT = `LINESTRING(${lineString})`;
+					
+					addLog(`Waypoints: ${waypoints.length}, RouteWKT: ${routeWKT.substring(0, 50)}...`, 'info');
+					addLog(`Rover ID: ${roverId} (type: ${typeof roverId})`, 'info');
+					
+					try {
+						const pathRes = await fetch('/api/paths', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								rover_id: Number(roverId),
+								routeWKT
+							})
+						});
 
-					// Add log about redirect
-					addLog('Redirecting to rover control panel...', 'success');
+						addLog(`API Response Status: ${pathRes.status} ${pathRes.statusText}`, 'info');
 
-					// add wait for 10 seconds before redirecting
-					await new Promise((resolve) => setTimeout(resolve, 1000));
+						if (!pathRes.ok) {
+							const errorText = await pathRes.text();
+							addLog(`API Error Response: ${errorText}`, 'error');
+							throw new Error(`Failed to create path entry: ${pathRes.status} - ${errorText}`);
+						}
 
-					// Redirect to rover page after a short delay to show the success message
-					setTimeout(() => {
-						goto(`/rovers/${encodeURIComponent(roverId)}`);
-					}, 2000);
+						const pathData = await pathRes.json();
+						const pathId = pathData.id;
+						addLog(`Path created with ID: ${pathId}`, 'success');
+
+						// Store success notification for the rover page
+						sessionStorage.setItem(
+							`rover_launch_success_${roverId}`,
+							JSON.stringify({
+								message: `Rover ${roverId} is now navigating along its planned path with ${waypoints.length} waypoints.`,
+								timestamp: Date.now(),
+								waypointCount: waypoints.length
+							})
+						);
+
+						// Add log about redirect
+						addLog('Redirecting to rover control panel...', 'success');
+
+						// add wait for 1 second before redirecting
+						await new Promise((resolve) => setTimeout(resolve, 1000));
+
+						// Redirect to rover page with pathId
+						setTimeout(() => {
+							goto(`/rovers/${encodeURIComponent(roverId)}/${pathId}`);
+						}, 2000);
+					} catch (pathError) {
+						const errorMsg = pathError instanceof Error ? pathError.message : 'Unknown error';
+						addLog(`Failed to create path entry: ${errorMsg}`, 'error');
+						status = 'Launch failed - Could not create path';
+					}
 				} catch (error) {
 					const errorMsg = error instanceof Error ? error.message : 'Unknown error';
 					addLog(`Failed to send launch command: ${errorMsg}`, 'error');
