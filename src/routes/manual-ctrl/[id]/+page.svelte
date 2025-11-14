@@ -71,22 +71,16 @@
 
 	// Initialize the controller when component mounts
 	onMount(() => {
-		// Fetch the latest path ID for this rover
-		(async () => {
-			try {
-				const pathsRes = await fetch(`/api/paths`);
-				if (pathsRes.ok) {
-					const paths = await pathsRes.json();
-					const roverPaths = paths.filter((p: any) => p.rover_id === parseInt(roverId));
-					if (roverPaths.length > 0) {
-						// Sort by ID descending to get the most recent
-						latestPathId = roverPaths.sort((a: any, b: any) => b.id - a.id)[0].id;
-					}
-				}
-			} catch (error) {
-				console.error('Failed to fetch latest path:', error);
-			}
-		})();
+		// Get the latest path ID from cache or fetch it
+		const cachedPathId = commandCenterManager.getLatestPathId(roverId);
+		if (cachedPathId !== null) {
+			latestPathId = cachedPathId;
+		} else {
+			// Fetch and cache if not available
+			commandCenterManager.fetchAndCacheLatestPathId(roverId).then(pathId => {
+				latestPathId = pathId;
+			});
+		}
 
 		// Create controller with callback and custom ROS config if needed
 		controller = new RoverController(() => {

@@ -125,6 +125,7 @@ export class ROS2CommandCentreClient {
 	private _socket: WebSocket | null = null;
 	private _isConnected: boolean = false;
 	private _roverId: string;
+	private _latestPathId: number | null = null;
 	private _heartbeatInterval: NodeJS.Timeout | null = null;
 	private _lastHeartbeat: number = 0;
 	private _heartbeatErrors: number = 0;
@@ -191,6 +192,12 @@ export class ROS2CommandCentreClient {
 	// Getters
 	get isConnected(): boolean {
 		return this._isConnected;
+	}
+	get roverId(): string {
+		return this._roverId;
+	}
+	get latestPathId(): number | null {
+		return this._latestPathId;
 	}
 	get timestamp(): number {
 		return this._timestamp;
@@ -1912,6 +1919,14 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
+	 * Set the latest path ID for this rover
+	 */
+	setLatestPathId(pathId: number | null): void {
+		this._latestPathId = pathId;
+		console.log(`Updated latest path ID for rover ${this._roverId}: ${pathId}`);
+	}
+
+	/**
 	 * Notify state change callback
 	 */
 	private notifyStateChange(): void {
@@ -1957,6 +1972,46 @@ class CommandCenterManager {
 			statuses[roverId] = client.status;
 		}
 		return statuses;
+	}
+
+	/**
+	 * Set the latest path ID for a rover
+	 */
+	setLatestPathId(roverId: string, pathId: number | null): void {
+		const client = this.getClient(roverId);
+		client.setLatestPathId(pathId);
+	}
+
+	/**
+	 * Get the latest path ID for a rover
+	 */
+	getLatestPathId(roverId: string): number | null {
+		if (!this.clients.has(roverId)) {
+			return null;
+		}
+		return this.clients.get(roverId)!.latestPathId;
+	}
+
+	/**
+	 * Fetch and cache the latest path ID from the database for a rover
+	 */
+	async fetchAndCacheLatestPathId(roverId: string): Promise<number | null> {
+		try {
+			const pathsRes = await fetch(`/api/paths`);
+			if (pathsRes.ok) {
+				const paths = await pathsRes.json();
+				const roverPaths = paths.filter((p: any) => p.rover_id === parseInt(roverId));
+				if (roverPaths.length > 0) {
+					// Sort by ID descending to get the most recent
+					const latestPath = roverPaths.sort((a: any, b: any) => b.id - a.id)[0];
+					this.setLatestPathId(roverId, latestPath.id);
+					return latestPath.id;
+				}
+			}
+		} catch (error) {
+			console.error(`Failed to fetch latest path for rover ${roverId}:`, error);
+		}
+		return null;
 	}
 }
 

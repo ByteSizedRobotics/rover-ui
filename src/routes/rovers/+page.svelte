@@ -1,8 +1,19 @@
 <script lang="ts">
 	import type { PageServerData } from './$types';
 	import { getRoverStatus, minutesFromNow } from '$lib/utils';
+	import { commandCenterManager } from '$lib/ros2CommandCentre';
+	import { onMount } from 'svelte';
 
 	let { data }: { data: PageServerData } = $props();
+
+	// Cache the latest path IDs in the command center manager
+	onMount(() => {
+		data.roversData.forEach((rover) => {
+			if (rover.latestPathId) {
+				commandCenterManager.setLatestPathId(rover.id.toString(), rover.latestPathId);
+			}
+		});
+	});
 
 	// State management
 	let filter = $state('all');

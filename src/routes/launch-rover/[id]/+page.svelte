@@ -63,7 +63,7 @@
 		   2. Set FORCE_SUCCESS to false, or remove the if(FORCE_SUCCESS) block entirely
 		   3. The code will then use the real ROS2 connection logic that follows
 		   ============================================================================ */
-		const FORCE_SUCCESS = false; // TODO NATHAN: Set to false to restore normal ROS2 behavior
+		const FORCE_SUCCESS = true; // TODO NATHAN: Set to false to restore normal ROS2 behavior
 
 		if (FORCE_SUCCESS) {
 			addLog('[TEMP] Bypassing ROS2 - forcing successful launch', 'info');
@@ -98,11 +98,14 @@
 					throw new Error(`Failed to create path entry: ${pathRes.status} - ${errorText}`);
 				}
 
-				const pathData = await pathRes.json();
-				const pathId = pathData.id;
-				addLog(`Path created with ID: ${pathId}`, 'success');
+			const pathData = await pathRes.json();
+			const pathId = pathData.id;
+			addLog(`Path created with ID: ${pathId}`, 'success');
 
-				// Store success notification for the rover page
+			// Cache the latest path ID in command center manager
+			commandCenterManager.setLatestPathId(roverId, pathId);
+
+			// Store success notification for the rover page
 				sessionStorage.setItem(
 					`rover_launch_success_${roverId}`,
 					JSON.stringify({
@@ -215,11 +218,14 @@
 							throw new Error(`Failed to create path entry: ${pathRes.status} - ${errorText}`);
 						}
 
-						const pathData = await pathRes.json();
-						const pathId = pathData.id;
-						addLog(`Path created with ID: ${pathId}`, 'success');
+					const pathData = await pathRes.json();
+					const pathId = pathData.id;
+					addLog(`Path created with ID: ${pathId}`, 'success');
 
-						// Store success notification for the rover page
+					// Cache the latest path ID in command center manager
+					commandCenterManager.setLatestPathId(roverId, pathId);
+
+					// Store success notification for the rover page
 						sessionStorage.setItem(
 							`rover_launch_success_${roverId}`,
 							JSON.stringify({
