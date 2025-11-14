@@ -507,6 +507,17 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
+	 * Public method to reconnect a specific camera
+	 */
+	reconnectCamera(cameraType: 'csi' | 'usb' | 'csi2'): void {
+		console.log(`Reconnecting ${cameraType.toUpperCase()} camera for rover ${this._roverId}`);
+		this.disconnectWebRTC(cameraType);
+		setTimeout(() => {
+			this.connectWebRTC(cameraType);
+		}, 1000);
+	}
+
+	/**
 	 * Disconnect WebRTC for specific camera or all cameras
 	 */
 	private disconnectWebRTC(cameraType?: 'csi' | 'usb' | 'csi2'): void {

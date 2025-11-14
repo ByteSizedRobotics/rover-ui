@@ -15,6 +15,7 @@
 	// Create controller with update callback
 	const params = get(page).params;
 	const roverId: string = params.id ?? '';
+	let latestPathId = $state<number | null>(null);
 
 	let controller = $state<RoverController | undefined>(undefined);
 	let component: any;
@@ -70,6 +71,23 @@
 
 	// Initialize the controller when component mounts
 	onMount(() => {
+		// Fetch the latest path ID for this rover
+		(async () => {
+			try {
+				const pathsRes = await fetch(`/api/paths`);
+				if (pathsRes.ok) {
+					const paths = await pathsRes.json();
+					const roverPaths = paths.filter((p: any) => p.rover_id === parseInt(roverId));
+					if (roverPaths.length > 0) {
+						// Sort by ID descending to get the most recent
+						latestPathId = roverPaths.sort((a: any, b: any) => b.id - a.id)[0].id;
+					}
+				}
+			} catch (error) {
+				console.error('Failed to fetch latest path:', error);
+			}
+		})();
+
 		// Create controller with callback and custom ROS config if needed
 		controller = new RoverController(() => {
 			// This callback forces Svelte to update when controller state changes
@@ -557,7 +575,7 @@
 
 	<!-- Fixed back button bottom-left -->
 	<div class="bottom-left">
-		<button onclick={() => goto(`/rovers/${roverId}`)} class="back-button">
+		<button onclick={() => goto(latestPathId ? `/rovers/${roverId}/${latestPathId}` : `/rovers/${roverId}`)} class="back-button">
 			← Back to Rover
 		</button>
 	</div>

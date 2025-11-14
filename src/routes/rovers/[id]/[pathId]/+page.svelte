@@ -71,6 +71,8 @@
 	let usbStatusMessage = $state('Connecting to Front camera...');
 	let csi2StatusMessage = $state('Connecting to Side camera 2...');
 	let cleanupWebRTCListener: (() => void) | null = null;
+	let streamMonitorInterval: ReturnType<typeof setInterval> | null = null;
+	let lastFrameCheck = $state({ csi: 0, usb: 0, csi2: 0 });
 
 	function updateWebRTCStatus(status: CameraStreamStatus) {
 		// Update CSI camera (Camera 1) status
@@ -96,6 +98,42 @@
 				? 'CSI camera 2 connected'
 				: 'Connecting to CSI camera 2...'
 			: 'CSI camera 2 disconnected';
+	}
+
+	function monitorVideoStreams() {
+		// Check if video elements are actually playing
+		const video1 = document.getElementById('roverVideo1') as HTMLVideoElement;
+		const video2 = document.getElementById('roverVideo2') as HTMLVideoElement;
+		const video3 = document.getElementById('roverVideo3') as HTMLVideoElement;
+
+		const checkVideo = (video: HTMLVideoElement | null, cameraType: 'csi' | 'usb' | 'csi2', cameraName: string) => {
+			if (!video) return;
+			
+			const currentTime = video.currentTime;
+			const lastTime = lastFrameCheck[cameraType];
+			
+			// If video is supposedly ready but currentTime hasn't changed in 5 seconds, it's frozen
+			if (currentTime === lastTime && currentTime > 0) {
+				const isReady = cameraType === 'csi' ? isCSICameraReady : 
+				                cameraType === 'usb' ? isUSBCameraReady : isCSI2CameraReady;
+				
+				if (isReady) {
+					console.warn(`${cameraName} stream appears frozen. Attempting restart...`);
+					
+					// Try to restart the stream by reconnecting WebRTC for this camera
+					if (commandCenterClient) {
+						commandCenterClient.reconnectCamera(cameraType);
+						console.log(`Reconnecting ${cameraName}...`);
+					}
+				}
+			}
+			
+			lastFrameCheck[cameraType] = currentTime;
+		};
+
+		checkVideo(video1, 'csi', 'CSI Camera 1');
+		checkVideo(video2, 'usb', 'USB Camera');
+		checkVideo(video3, 'csi2', 'CSI Camera 2');
 	}
 
 	function switchCamera(cameraNum: number) {
@@ -268,6 +306,9 @@
 			}, 80);
 		}
 
+		// Start monitoring video streams for freezes
+		streamMonitorInterval = setInterval(monitorVideoStreams, 5000); // Check every 5 seconds
+
 		await loadDetections();
 		detectionPoller = setInterval(loadDetections, DETECTION_POLL_INTERVAL_MS);
 	});
@@ -301,6 +342,10 @@
 		if (detectionPoller) {
 			clearInterval(detectionPoller);
 			detectionPoller = null;
+		}
+		if (streamMonitorInterval) {
+			clearInterval(streamMonitorInterval);
+			streamMonitorInterval = null;
 		}
 	});
 
@@ -498,48 +543,46 @@
 						<div
 							class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200 bg-black"
 						>
-							<!-- Video elements for all three cameras -->
-							<video
-								id="roverVideo1"
-								autoplay
-								playsinline
-								muted
-								width="820"
-								height="616"
-								class="absolute inset-0 h-full w-full object-contain {currentCamera === 1
-									? 'block'
-									: 'hidden'}"
-							>
-								Your browser does not support the video tag.
-							</video>
-							<video
-								id="roverVideo2"
-								autoplay
-								playsinline
-								muted
-								width="1280"
-								height="720"
-								class="absolute inset-0 h-full w-full object-contain {currentCamera === 2
-									? 'block'
-									: 'hidden'}"
-							>
-								Your browser does not support the video tag.
-							</video>
-							<video
-								id="roverVideo3"
-								autoplay
-								playsinline
-								muted
-								width="820"
-								height="616"
-								class="absolute inset-0 h-full w-full object-contain {currentCamera === 3
-									? 'block'
-									: 'hidden'}"
-							>
-								Your browser does not support the video tag.
-							</video>
-
-							<!-- Fallback when no stream is available for current camera -->
+						<!-- Video elements for all three cameras -->
+						<video
+							id="roverVideo1"
+							autoplay
+							playsinline
+							muted
+							width="1280"
+							height="720"
+							class="absolute inset-0 h-full w-full object-contain {currentCamera === 1
+								? 'block'
+								: 'hidden'}"
+						>
+							Your browser does not support the video tag.
+						</video>
+						<video
+							id="roverVideo2"
+							autoplay
+							playsinline
+							muted
+							width="1280"
+							height="720"
+							class="absolute inset-0 h-full w-full object-contain {currentCamera === 2
+								? 'block'
+								: 'hidden'}"
+						>
+							Your browser does not support the video tag.
+						</video>
+						<video
+							id="roverVideo3"
+							autoplay
+							playsinline
+							muted
+							width="1280"
+							height="720"
+							class="absolute inset-0 h-full w-full object-contain {currentCamera === 3
+								? 'block'
+								: 'hidden'}"
+						>
+							Your browser does not support the video tag.
+						</video>							<!-- Fallback when no stream is available for current camera -->
 							{#if (currentCamera === 1 && !isCSICameraReady) || (currentCamera === 2 && !isUSBCameraReady) || (currentCamera === 3 && !isCSI2CameraReady)}
 								<div
 									class="absolute inset-0 flex items-center justify-center bg-blue-50 text-center text-blue-600"
