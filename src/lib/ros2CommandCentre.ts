@@ -1991,28 +1991,6 @@ class CommandCenterManager {
 		}
 		return this.clients.get(roverId)!.latestPathId;
 	}
-
-	/**
-	 * Fetch and cache the latest path ID from the database for a rover
-	 */
-	async fetchAndCacheLatestPathId(roverId: string): Promise<number | null> {
-		try {
-			const pathsRes = await fetch(`/api/paths`);
-			if (pathsRes.ok) {
-				const paths = await pathsRes.json();
-				const roverPaths = paths.filter((p: any) => p.rover_id === parseInt(roverId));
-				if (roverPaths.length > 0) {
-					// Sort by ID descending to get the most recent
-					const latestPath = roverPaths.sort((a: any, b: any) => b.id - a.id)[0];
-					this.setLatestPathId(roverId, latestPath.id);
-					return latestPath.id;
-				}
-			}
-		} catch (error) {
-			console.error(`Failed to fetch latest path for rover ${roverId}:`, error);
-		}
-		return null;
-	}
 }
 
 // Export singleton instance
