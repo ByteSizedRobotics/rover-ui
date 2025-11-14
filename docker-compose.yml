@@ -24,8 +24,8 @@ services:
     ports:
       - '5432:5432'
 
-  # #Default ai app without GPU support
-  ai-pothole-app:
+  # Default ai app without GPU support for CSI cam 1
+  ai-pothole-app-csi1:
     image: bytesizedrobotics/ai-pothole-app:latest
     platform: linux/amd64
     environment:
@@ -41,8 +41,25 @@ services:
       - web-app
       - postgres
 
-  #Default ai app with GPU support: can run this with docker compose --profile gpu up
-  ai-pothole-app-gpu:
+  # Default ai app without GPU support for CSI cam 2
+  ai-pothole-app-csi2:
+    image: bytesizedrobotics/ai-pothole-app:latest
+    platform: linux/amd64
+    environment:
+      - RASPI_IP=100.85.202.20
+      - WEBRTC_PORT=8767
+      - API_IP=app
+      - API_PORT=3000
+    # volumes:
+    #   - ./models:/models
+    profiles:
+      - default
+    depends_on:
+      - web-app
+      - postgres
+
+  # CSI CAM 1: Default ai app with GPU support: can run this with docker compose --profile gpu up
+  ai-pothole-app-csi1-gpu:
     image: bytesizedrobotics/ai-pothole-app:latest
     platform: linux/amd64
     # Enable GPU support
@@ -65,13 +82,52 @@ services:
       - app
       - postgres
 
-    # #Default ai app without GPU support
-  ai-pothole-app-local:
+  # CSI CAM 2: Default ai app with GPU support: can run this with docker compose --profile gpu up
+  ai-pothole-app-csi2-gpu:
+    image: bytesizedrobotics/ai-pothole-app:latest
+    platform: linux/amd64
+    # Enable GPU support
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - RASPI_IP=100.85.202.20
+      - WEBRTC_PORT=8767
+      - API_IP=app
+      - API_PORT=3000
+    # volumes:
+    #   - ./models:/models
+    profiles: ['gpu']
+    depends_on:
+      - app
+      - postgres
+
+  # Default ai app without GPU support with local host docker internal connection
+  ai-pothole-app-csi1-local:
     image: bytesizedrobotics/ai-pothole-app:latest
     platform: linux/amd64
     environment:
       - RASPI_IP=100.85.202.20
       - WEBRTC_PORT=8765
+      - API_IP=host.docker.internal
+      - API_PORT=5173
+    # volumes:
+    #   - ./models:/models
+    profiles:
+      - local
+    depends_on:
+      - postgres
+  
+  ai-pothole-app-csi2-local:
+    image: bytesizedrobotics/ai-pothole-app:latest
+    platform: linux/amd64
+    environment:
+      - RASPI_IP=100.85.202.20
+      - WEBRTC_PORT=8767
       - API_IP=host.docker.internal
       - API_PORT=5173
     # volumes:

@@ -15,6 +15,7 @@
 	// Create controller with update callback
 	const params = get(page).params;
 	const roverId: string = params.id ?? '';
+	let latestPathId = $state<number | null>(null);
 
 	let controller = $state<RoverController | undefined>(undefined);
 	let component: any;
@@ -23,28 +24,38 @@
 	// Lidar visualization
 	let lidarController: LidarMiniController | null = null;
 	let commandCenterClient: ROS2CommandCentreClient | null = null;
-	let isWebRTCReady = $state(false);
-	let webRTCStatusMessage = $state('Connecting to rover...');
+	let isCSICameraReady = $state(false);
+	let isUSBCameraReady = $state(false);
+	let isCSI2CameraReady = $state(false);
+	let csiStatusMessage = $state('Connecting to CSI camera 1...');
+	let usbStatusMessage = $state('Connecting to USB camera...');
+	let csi2StatusMessage = $state('Connecting to CSI camera 2...');
 	let cleanupWebRTCListener: (() => void) | null = null;
 
 	function updateWebRTCStatus(status: CameraStreamStatus) {
-		const activeCamera =
-			status.csi.videoElementId === 'roverVideo'
-				? status.csi
-				: status.usb.videoElementId === 'roverVideo'
-					? status.usb
-					: status.csi;
+		// Update CSI camera (Camera 1) status
+		isCSICameraReady = status.csi.isConnected && status.csi.hasRemoteStream;
+		csiStatusMessage = status.csi.isConnected
+			? status.csi.hasRemoteStream
+				? 'CSI camera 1 connected'
+				: 'Connecting to CSI camera 1...'
+			: 'CSI camera 1 disconnected';
 
-		const boundToVideo = activeCamera.videoElementId === 'roverVideo';
-		const hasStream = activeCamera.hasRemoteStream && boundToVideo;
-		isWebRTCReady = hasStream;
-		webRTCStatusMessage = activeCamera.isConnected
-			? activeCamera.hasRemoteStream
-				? hasStream
-					? 'Camera feed connected'
-					: 'Switching camera...'
-				: 'Connecting to camera...'
-			: 'Connecting to rover...';
+		// Update USB camera (Camera 2) status
+		isUSBCameraReady = status.usb.isConnected && status.usb.hasRemoteStream;
+		usbStatusMessage = status.usb.isConnected
+			? status.usb.hasRemoteStream
+				? 'USB camera connected'
+				: 'Connecting to USB camera...'
+			: 'USB camera disconnected';
+
+		// Update CSI2 camera (Camera 3) status
+		isCSI2CameraReady = status.csi2.isConnected && status.csi2.hasRemoteStream;
+		csi2StatusMessage = status.csi2.isConnected
+			? status.csi2.hasRemoteStream
+				? 'CSI camera 2 connected'
+				: 'Connecting to CSI camera 2...'
+			: 'CSI camera 2 disconnected';
 	}
 
 	// Obstacle detection state
@@ -60,6 +71,23 @@
 
 	// Initialize the controller when component mounts
 	onMount(() => {
+		// Fetch the latest path ID for this rover
+		(async () => {
+			try {
+				const pathsRes = await fetch(`/api/paths`);
+				if (pathsRes.ok) {
+					const paths = await pathsRes.json();
+					const roverPaths = paths.filter((p: any) => p.rover_id === parseInt(roverId));
+					if (roverPaths.length > 0) {
+						// Sort by ID descending to get the most recent
+						latestPathId = roverPaths.sort((a: any, b: any) => b.id - a.id)[0].id;
+					}
+				}
+			} catch (error) {
+				console.error('Failed to fetch latest path:', error);
+			}
+		})();
+
 		// Create controller with callback and custom ROS config if needed
 		controller = new RoverController(() => {
 			// This callback forces Svelte to update when controller state changes
@@ -96,14 +124,17 @@
 
 					try {
 						if (!commandCenterClient.isConnected) {
-							await commandCenterClient.connect();
+							await commandCenterClient.connect({ enableCSICamera: true, enableUSBCamera: true, enableCSI2Camera: true });
 							if (!commandCenterClient) {
 								return;
 							}
 							console.log('Connected to ROS2 Command Center for sensor data and video');
 						}
 
-						commandCenterClient.setVideoElement('roverVideo');
+						// Set up all three camera video elements
+						commandCenterClient.setVideoElement('roverVideoCSI', 'csi');
+						commandCenterClient.setVideoElement('roverVideoUSB', 'usb');
+						commandCenterClient.setVideoElement('roverVideoCSI2', 'csi2');
 
 						// Enable manual control mode by sending command to ROS2 topic
 						try {
@@ -150,7 +181,9 @@
 
 			// Clean up command center client
 			if (commandCenterClient) {
-				commandCenterClient.setVideoElement(null);
+				commandCenterClient.setVideoElement(null, 'csi');
+				commandCenterClient.setVideoElement(null, 'usb');
+				commandCenterClient.setVideoElement(null, 'csi2');
 				commandCenterClient.onLidarData(null);
 				commandCenterClient = null;
 			}
@@ -164,8 +197,12 @@
 				cleanupWebRTCListener();
 				cleanupWebRTCListener = null;
 			}
-			isWebRTCReady = false;
-			webRTCStatusMessage = 'Connecting to rover...';
+			isCSICameraReady = false;
+			isUSBCameraReady = false;
+			isCSI2CameraReady = false;
+			csiStatusMessage = 'Connecting to CSI camera 1...';
+			usbStatusMessage = 'Connecting to USB camera...';
+			csi2StatusMessage = 'Connecting to CSI camera 2...';
 
 			lidarController = null;
 		};
@@ -254,7 +291,7 @@
 	bind:this={component}
 >
 	<div
-		class="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-lg"
+		class="mx-auto max-w-7xl overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-lg"
 	>
 		<div class="p-6">
 			<h1 class="mb-6 text-center text-2xl font-bold text-blue-900">Manual Control</h1>
@@ -269,7 +306,7 @@
 				</div>
 				{#if !isConnected}
 					<button
-						on:click={connectToRover}
+						onclick={connectToRover}
 						disabled={connecting}
 						class="rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600 disabled:bg-blue-300"
 					>
@@ -278,164 +315,258 @@
 				{/if}
 			</div>
 
-			<!-- Main content with control pad, video stream, and lidar visualization -->
-			<div class="flex flex-col space-y-6">
-				<!-- Control Pad and Video Section -->
-				<div class="flex space-x-6">
-					<!-- Control Pad Section (Left side) -->
-					<div class="flex w-1/3 flex-col items-center">
-						<div class="mb-8">
-							<div class="mb-4 flex justify-center">
-								<button
-									on:mousedown={() => handleDirectionPress('forward')}
-									on:mouseup={handleDirectionRelease}
-									on:mouseleave={handleDirectionRelease}
-									on:touchstart={() => handleDirectionPress('forward')}
-									on:touchend={handleDirectionRelease}
-									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg border border-blue-300 bg-blue-100 text-2xl text-blue-600 hover:bg-blue-200 active:bg-blue-300 disabled:opacity-50"
-								>
-									↑
-								</button>
-							</div>
+			<!-- Three Camera Views Section -->
+			<div class="mb-6">
+				<div class="grid grid-cols-3 gap-4">
+					<!-- CSI Camera 1 (Left) -->
+					<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+						<div class="border-b border-blue-200 bg-blue-100 p-2 text-center">
+							<h3 class="text-xl font-semibold text-blue-900">CSI Camera 1</h3>
+							<!-- <p class="text-xs text-blue-600">{csiStatusMessage}</p> -->
+						</div>
+						<div class="relative flex items-center justify-center bg-black" style="height: 300px;">
+							<video
+								id="roverVideoCSI"
+								autoplay
+								playsinline
+								muted
+								width="820"
+								height="616"
+								class="h-full w-full object-contain"
+							>
+								Your browser does not support the video tag.
+							</video>
 
-							<div class="flex items-center justify-center gap-4">
-								<button
-									on:mousedown={() => handleDirectionPress('left')}
-									on:mouseup={handleDirectionRelease}
-									on:mouseleave={handleDirectionRelease}
-									on:touchstart={() => handleDirectionPress('left')}
-									on:touchend={handleDirectionRelease}
-									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg border border-blue-300 bg-blue-100 text-2xl text-blue-600 hover:bg-blue-200 active:bg-blue-300 disabled:opacity-50"
+							<!-- Fallback when no stream is available -->
+							{#if !isCSICameraReady}
+								<div
+									class="absolute inset-0 flex items-center justify-center bg-blue-50 text-center text-blue-600"
 								>
-									←
-								</button>
-
-								<button
-									on:mousedown={() => handleDirectionPress('stop')}
-									on:touchstart={() => handleDirectionPress('stop')}
-									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg border border-red-300 bg-red-200 text-sm font-bold text-red-700 hover:bg-red-300 active:bg-red-400 disabled:opacity-50"
-								>
-									STOP
-								</button>
-
-								<button
-									on:mousedown={() => handleDirectionPress('right')}
-									on:mouseup={handleDirectionRelease}
-									on:mouseleave={handleDirectionRelease}
-									on:touchstart={() => handleDirectionPress('right')}
-									on:touchend={handleDirectionRelease}
-									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg border border-blue-300 bg-blue-100 text-2xl text-blue-600 hover:bg-blue-200 active:bg-blue-300 disabled:opacity-50"
-								>
-									→
-								</button>
-							</div>
-
-							<div class="mt-4 flex justify-center">
-								<button
-									on:mousedown={() => handleDirectionPress('backward')}
-									on:mouseup={handleDirectionRelease}
-									on:mouseleave={handleDirectionRelease}
-									on:touchstart={() => handleDirectionPress('backward')}
-									on:touchend={handleDirectionRelease}
-									disabled={!isConnected}
-									class="flex h-16 w-16 items-center justify-center rounded-lg border border-blue-300 bg-blue-100 text-2xl text-blue-600 hover:bg-blue-200 active:bg-blue-300 disabled:opacity-50"
-								>
-									↓
-								</button>
-							</div>
+									<div>
+										<img
+											src="/video_cam.png"
+											alt="Camera connection placeholder"
+											class="mx-auto mb-2 h-12 w-12 object-contain"
+											loading="lazy"
+										/>
+										<p class="text-xs">{csiStatusMessage}</p>
+									</div>
+								</div>
+							{/if}
 						</div>
 					</div>
 
-					<!-- Video Stream Section (Right side) -->
-					<div class="relative w-2/3 overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
-						<video
-							id="roverVideo"
-							autoplay
-							playsinline
-							muted
-							class="h-full w-full object-cover"
-							style="max-height: 720px;"
-						>
-							Your browser does not support the video tag.
-						</video>
-
-						<!-- Fallback when no stream is available -->
-						{#if !isWebRTCReady}
-							<div
-								class="absolute inset-0 flex items-center justify-center bg-blue-50 text-center text-blue-600"
+					<!-- USB Camera (Middle/Front) -->
+					<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+						<div class="border-b border-blue-200 bg-blue-100 p-2 text-center">
+							<h3 class="text-xl font-semibold text-blue-900">USB Camera (Front)</h3>
+							<!-- <p class="text-xs text-blue-600">{usbStatusMessage}</p> -->
+						</div>
+						<div class="relative flex items-center justify-center bg-black" style="height: 300px;">
+							<video
+								id="roverVideoUSB"
+								autoplay
+								playsinline
+								muted
+								width="1280"
+								height="720"
+								class="h-full w-full object-contain"
 							>
-								<div>
-									<img
-										src="/video_cam.png"
-										alt="Camera connection placeholder"
-										class="mx-auto mb-2 h-16 w-16 object-contain"
-										loading="lazy"
-									/>
-									<p class="font-medium">Rover Camera Feed</p>
-									<p class="text-sm text-blue-500">{webRTCStatusMessage}</p>
+								Your browser does not support the video tag.
+							</video>
+
+							<!-- Fallback when no stream is available -->
+							{#if !isUSBCameraReady}
+								<div
+									class="absolute inset-0 flex items-center justify-center bg-blue-50 text-center text-blue-600"
+								>
+									<div>
+										<img
+											src="/video_cam.png"
+											alt="Camera connection placeholder"
+											class="mx-auto mb-2 h-12 w-12 object-contain"
+											loading="lazy"
+										/>
+										<p class="text-xs">{usbStatusMessage}</p>
+									</div>
 								</div>
-							</div>
-						{/if}
+							{/if}
+						</div>
+					</div>
+
+					<!-- CSI Camera 2 (Right) -->
+					<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+						<div class="border-b border-blue-200 bg-blue-100 p-2 text-center">
+							<h3 class="text-xl font-semibold text-blue-900">CSI Camera 2</h3>
+							<!-- <p class="text-xs text-blue-600">{csi2StatusMessage}</p> -->
+						</div>
+						<div class="relative flex items-center justify-center bg-black" style="height: 300px;">
+							<video
+								id="roverVideoCSI2"
+								autoplay
+								playsinline
+								muted
+								width="820"
+								height="616"
+								class="h-full w-full object-contain"
+							>
+								Your browser does not support the video tag.
+							</video>
+
+							<!-- Fallback when no stream is available -->
+							{#if !isCSI2CameraReady}
+								<div
+									class="absolute inset-0 flex items-center justify-center bg-blue-50 text-center text-blue-600"
+								>
+									<div>
+										<img
+											src="/video_cam.png"
+											alt="Camera connection placeholder"
+											class="mx-auto mb-2 h-12 w-12 object-contain"
+											loading="lazy"
+										/>
+										<p class="text-xs">{csi2StatusMessage}</p>
+									</div>
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
-				<!-- Lidar Visualization and Obstacle Detection Information -->
-				<div class="flex space-x-6">
-					<!-- Obstacle Detection Information (Left side) -->
-					<div class="w-1/3 rounded-lg border border-blue-200 bg-blue-50 p-4">
-						<h2 class="mb-4 text-xl font-semibold text-blue-900">Obstacles Forward Corridor</h2>
-						<div class="flex flex-col space-y-4">
-							<div class="flex items-center">
-								<span class="mr-2 font-medium text-blue-700">Status:</span>
-								<span
-									class={obstacleDetected ? 'font-bold text-red-500' : 'font-bold text-blue-600'}
-								>
-									{obstacleDetected ? 'Obstacle Detected!' : 'Clear Path'}
-								</span>
-							</div>
-							<div class="flex items-center">
-								<span class="mr-2 font-medium text-blue-700">Distance:</span>
-								{#if obstacleDetected}
-									<span class="font-bold text-red-500">
-										{obstacleDistance.toFixed(2)} meters
-									</span>
-								{:else}
-									<span class="italic text-blue-500"> No obstacles detected </span>
-								{/if}
-							</div>
+			</div>
+
+			<!-- Control Section -->
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+				<!-- Control Pad -->
+				<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+					<div class="border-b border-blue-200 bg-blue-100 p-3 text-center">
+						<h3 class="text-xl font-semibold text-blue-900">Controls</h3>
+					</div>
+					<div class="flex flex-col items-center justify-center p-6">
+					<div class="mb-8">
+						<div class="mb-4 flex justify-center">
+							<button
+								onmousedown={() => handleDirectionPress('forward')}
+								onmouseup={handleDirectionRelease}
+								onmouseleave={handleDirectionRelease}
+								ontouchstart={() => handleDirectionPress('forward')}
+								ontouchend={handleDirectionRelease}
+								disabled={!isConnected}
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-800 bg-blue-600 text-3xl text-white shadow-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								↑
+							</button>
 						</div>
 
-						<!-- Command Log -->
-						<div class="mt-6">
-							<h3 class="mb-2 font-bold text-blue-900">Command Log:</h3>
-							<div class="h-40 overflow-y-auto rounded border border-blue-300 bg-white p-2">
-								{#if logs.length === 0}
-									<p class="italic text-blue-500">No commands sent yet.</p>
-								{:else}
-									{#each logs as log}
-										<div class="mb-1 text-sm">
-											<span class="text-blue-400">[{log.time}]</span>
-											<span class="text-blue-700">{log.message}</span>
-										</div>
-									{/each}
-								{/if}
-							</div>
+						<div class="flex items-center justify-center gap-4">
+							<button
+								onmousedown={() => handleDirectionPress('left')}
+								onmouseup={handleDirectionRelease}
+								onmouseleave={handleDirectionRelease}
+								ontouchstart={() => handleDirectionPress('left')}
+								ontouchend={handleDirectionRelease}
+								disabled={!isConnected}
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-800 bg-blue-600 text-3xl text-white shadow-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								←
+							</button>
+
+							<button
+								onmousedown={() => handleDirectionPress('stop')}
+								ontouchstart={() => handleDirectionPress('stop')}
+								disabled={!isConnected}
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-red-800 bg-red-600 text-lg font-bold text-white shadow-xl hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								STOP
+							</button>
+
+							<button
+								onmousedown={() => handleDirectionPress('right')}
+								onmouseup={handleDirectionRelease}
+								onmouseleave={handleDirectionRelease}
+								ontouchstart={() => handleDirectionPress('right')}
+								ontouchend={handleDirectionRelease}
+								disabled={!isConnected}
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-800 bg-blue-600 text-3xl text-white shadow-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								→
+							</button>
+						</div>
+
+						<div class="mt-4 flex justify-center">
+							<button
+								onmousedown={() => handleDirectionPress('backward')}
+								onmouseup={handleDirectionRelease}
+								onmouseleave={handleDirectionRelease}
+								ontouchstart={() => handleDirectionPress('backward')}
+								ontouchend={handleDirectionRelease}
+								disabled={!isConnected}
+								class="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-blue-800 bg-blue-600 text-3xl text-white shadow-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								↓
+							</button>
 						</div>
 					</div>
 
-					<!-- Lidar Visualization (Right side) -->
-					<div class="w-2/3 overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
-						<div class="border-b border-blue-200 bg-blue-100 p-2">
-							<h2 class="text-xl font-semibold text-blue-900">Lidar Point Cloud</h2>
+					<!-- Keyboard shortcuts hint -->
+					<div class="mt-4 rounded-lg border border-blue-300 bg-white p-3 text-center">
+						<p class="text-xs text-blue-700">Use Arrow Keys or WASD to control</p>
+					</div>
+					</div>
+				</div>
+
+				<!-- Obstacle Detection Information -->
+				<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+					<div class="border-b border-blue-200 bg-blue-100 p-3 text-center">
+						<h2 class="text-xl font-semibold text-blue-900">Obstacles Forward Corridor</h2>
+					</div>
+					<div class="flex flex-col space-y-4 p-6">
+						<div class="flex items-center">
+							<span class="mr-2 font-medium text-blue-700">Status:</span>
+							<span
+								class={obstacleDetected ? 'font-bold text-red-500' : 'font-bold text-blue-600'}
+							>
+								{obstacleDetected ? 'Obstacle Detected!' : 'Clear Path'}
+							</span>
 						</div>
-						<div class="relative h-64 w-full">
-							<canvas id="lidarCanvas" class="h-full w-full">
-								Your browser does not support the canvas element.
-							</canvas>
+						<div class="flex items-center">
+							<span class="mr-2 font-medium text-blue-700">Distance:</span>
+							{#if obstacleDetected}
+								<span class="font-bold text-red-500">
+									{obstacleDistance.toFixed(2)} meters
+								</span>
+							{:else}
+								<span class="italic text-blue-500"> No obstacles detected </span>
+							{/if}
 						</div>
+					</div>
+
+					<!-- Command Log -->
+					<div class="p-6 pt-0">
+						<h3 class="mb-2 font-bold text-blue-900">Command Log:</h3>
+						<div class="h-40 overflow-y-auto rounded border border-blue-300 bg-white p-2">
+							{#if logs.length === 0}
+								<p class="italic text-blue-500">No commands sent yet.</p>
+							{:else}
+								{#each logs as log}
+									<div class="mb-1 text-sm">
+										<span class="text-blue-400">[{log.time}]</span>
+										<span class="text-blue-700">{log.message}</span>
+									</div>
+								{/each}
+							{/if}
+						</div>
+					</div>
+				</div>
+
+				<!-- Lidar Visualization -->
+				<div class="overflow-hidden rounded-lg border border-blue-200 bg-blue-50">
+					<div class="border-b border-blue-200 bg-blue-100 p-3 text-center">
+						<h2 class="text-xl font-semibold text-blue-900">Lidar Point Cloud</h2>
+					</div>
+					<div class="relative" style="height: 400px;">
+						<canvas id="lidarCanvas" class="h-full w-full">
+							Your browser does not support the canvas element.
+						</canvas>
 					</div>
 				</div>
 			</div>
@@ -444,7 +575,7 @@
 
 	<!-- Fixed back button bottom-left -->
 	<div class="bottom-left">
-		<button on:click={() => goto(`/rovers/${roverId}`)} class="back-button">
+		<button onclick={() => goto(latestPathId ? `/rovers/${roverId}/${latestPathId}` : `/rovers/${roverId}`)} class="back-button">
 			← Back to Rover
 		</button>
 	</div>

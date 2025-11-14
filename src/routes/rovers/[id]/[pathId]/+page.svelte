@@ -66,9 +66,13 @@
 	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null);
 	let isCSICameraReady = $state(false);
 	let isUSBCameraReady = $state(false);
-	let csiStatusMessage = $state('Connecting to CSI camera...');
-	let usbStatusMessage = $state('Connecting to USB camera...');
+	let isCSI2CameraReady = $state(false);
+	let csiStatusMessage = $state('Connecting to Side camera 1...');
+	let usbStatusMessage = $state('Connecting to Front camera...');
+	let csi2StatusMessage = $state('Connecting to Side camera 2...');
 	let cleanupWebRTCListener: (() => void) | null = null;
+	let streamMonitorInterval: ReturnType<typeof setInterval> | null = null;
+	let lastFrameCheck = $state({ csi: 0, usb: 0, csi2: 0 });
 
 	function updateWebRTCStatus(status: CameraStreamStatus) {
 		// Update CSI camera (Camera 1) status
@@ -86,6 +90,50 @@
 				? 'USB camera connected'
 				: 'Connecting to USB camera...'
 			: 'USB camera disconnected';
+
+		// Update CSI2 camera (Camera 3) status
+		isCSI2CameraReady = status.csi2.isConnected && status.csi2.hasRemoteStream;
+		csi2StatusMessage = status.csi2.isConnected
+			? status.csi2.hasRemoteStream
+				? 'CSI camera 2 connected'
+				: 'Connecting to CSI camera 2...'
+			: 'CSI camera 2 disconnected';
+	}
+
+	function monitorVideoStreams() {
+		// Check if video elements are actually playing
+		const video1 = document.getElementById('roverVideo1') as HTMLVideoElement;
+		const video2 = document.getElementById('roverVideo2') as HTMLVideoElement;
+		const video3 = document.getElementById('roverVideo3') as HTMLVideoElement;
+
+		const checkVideo = (video: HTMLVideoElement | null, cameraType: 'csi' | 'usb' | 'csi2', cameraName: string) => {
+			if (!video) return;
+			
+			const currentTime = video.currentTime;
+			const lastTime = lastFrameCheck[cameraType];
+			
+			// If video is supposedly ready but currentTime hasn't changed in 5 seconds, it's frozen
+			if (currentTime === lastTime && currentTime > 0) {
+				const isReady = cameraType === 'csi' ? isCSICameraReady : 
+				                cameraType === 'usb' ? isUSBCameraReady : isCSI2CameraReady;
+				
+				if (isReady) {
+					console.warn(`${cameraName} stream appears frozen. Attempting restart...`);
+					
+					// Try to restart the stream by reconnecting WebRTC for this camera
+					if (commandCenterClient) {
+						commandCenterClient.reconnectCamera(cameraType);
+						console.log(`Reconnecting ${cameraName}...`);
+					}
+				}
+			}
+			
+			lastFrameCheck[cameraType] = currentTime;
+		};
+
+		checkVideo(video1, 'csi', 'CSI Camera 1');
+		checkVideo(video2, 'usb', 'USB Camera');
+		checkVideo(video3, 'csi2', 'CSI Camera 2');
 	}
 
 	function switchCamera(cameraNum: number) {
@@ -200,9 +248,10 @@
 				const setupCommandCenterClient = () => {
 					if (!commandCenterClient) return;
 
-					// Set up both camera video elements
+					// Set up all three camera video elements
 					commandCenterClient.setVideoElement('roverVideo1', 'csi');
 					commandCenterClient.setVideoElement('roverVideo2', 'usb');
+					commandCenterClient.setVideoElement('roverVideo3', 'csi2');
 
 					commandCenterClient.onLidarData((lidarData) => {
 						if (lidarController) {
@@ -244,7 +293,7 @@
 
 				const ensureConnection = commandCenterClient.isConnected
 					? Promise.resolve()
-					: commandCenterClient.connect({ enableCSICamera: true, enableUSBCamera: true });
+					: commandCenterClient.connect({ enableCSICamera: true, enableUSBCamera: true, enableCSI2Camera: true });
 
 				ensureConnection
 					.then(() => {
@@ -256,6 +305,9 @@
 					});
 			}, 80);
 		}
+
+		// Start monitoring video streams for freezes
+		streamMonitorInterval = setInterval(monitorVideoStreams, 5000); // Check every 5 seconds
 
 		await loadDetections();
 		detectionPoller = setInterval(loadDetections, DETECTION_POLL_INTERVAL_MS);
@@ -273,13 +325,16 @@
 		}
 		isCSICameraReady = false;
 		isUSBCameraReady = false;
+		isCSI2CameraReady = false;
 		csiStatusMessage = 'Connecting to CSI camera...';
 		usbStatusMessage = 'Connecting to USB camera...';
+		csi2StatusMessage = 'Connecting to CSI camera 2...';
 
 		if (commandCenterClient) {
-			// Clear both camera video elements
+			// Clear all three camera video elements
 			commandCenterClient.setVideoElement(null, 'csi');
 			commandCenterClient.setVideoElement(null, 'usb');
+			commandCenterClient.setVideoElement(null, 'csi2');
 			commandCenterClient.onLidarData(null);
 			commandCenterClient.onStateChange(null);
 			commandCenterClient = null;
@@ -287,6 +342,10 @@
 		if (detectionPoller) {
 			clearInterval(detectionPoller);
 			detectionPoller = null;
+		}
+		if (streamMonitorInterval) {
+			clearInterval(streamMonitorInterval);
+			streamMonitorInterval = null;
 		}
 	});
 
@@ -428,12 +487,6 @@
 						Path started: {new Date(data.pathTimestamp).toLocaleString()}
 					</p>
 				</div>
-				<a
-					href="/rovers/{roverId}"
-					class="rounded-lg border border-blue-300 px-4 py-2 text-blue-600 transition-colors hover:bg-blue-50"
-				>
-					View All Paths
-				</a>
 			</div>
 		</div>
 	{/if}
@@ -490,36 +543,47 @@
 						<div
 							class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200 bg-black"
 						>
-							<!-- Video elements for both cameras -->
-							<video
-								id="roverVideo1"
-								autoplay
-								playsinline
-								muted
-								width="820"
-								height="616"
-								class="absolute inset-0 h-full w-full object-contain {currentCamera === 1
-									? 'block'
-									: 'hidden'}"
-							>
-								Your browser does not support the video tag.
-							</video>
-							<video
-								id="roverVideo2"
-								autoplay
-								playsinline
-								muted
-								width="1280"
-								height="720"
-								class="absolute inset-0 h-full w-full object-contain {currentCamera === 2
-									? 'block'
-									: 'hidden'}"
-							>
-								Your browser does not support the video tag.
-							</video>
-
-							<!-- Fallback when no stream is available for current camera -->
-							{#if (currentCamera === 1 && !isCSICameraReady) || (currentCamera === 2 && !isUSBCameraReady)}
+						<!-- Video elements for all three cameras -->
+						<video
+							id="roverVideo1"
+							autoplay
+							playsinline
+							muted
+							width="1280"
+							height="720"
+							class="absolute inset-0 h-full w-full object-contain {currentCamera === 1
+								? 'block'
+								: 'hidden'}"
+						>
+							Your browser does not support the video tag.
+						</video>
+						<video
+							id="roverVideo2"
+							autoplay
+							playsinline
+							muted
+							width="1280"
+							height="720"
+							class="absolute inset-0 h-full w-full object-contain {currentCamera === 2
+								? 'block'
+								: 'hidden'}"
+						>
+							Your browser does not support the video tag.
+						</video>
+						<video
+							id="roverVideo3"
+							autoplay
+							playsinline
+							muted
+							width="1280"
+							height="720"
+							class="absolute inset-0 h-full w-full object-contain {currentCamera === 3
+								? 'block'
+								: 'hidden'}"
+						>
+							Your browser does not support the video tag.
+						</video>							<!-- Fallback when no stream is available for current camera -->
+							{#if (currentCamera === 1 && !isCSICameraReady) || (currentCamera === 2 && !isUSBCameraReady) || (currentCamera === 3 && !isCSI2CameraReady)}
 								<div
 									class="absolute inset-0 flex items-center justify-center bg-blue-50 text-center text-blue-600"
 								>
@@ -531,10 +595,10 @@
 											loading="lazy"
 										/>
 										<p class="font-medium">
-											{currentCamera === 1 ? 'CSI Camera' : 'USB Camera'} Feed
+											{currentCamera === 1 ? 'CSI Camera 1' : currentCamera === 2 ? 'USB Camera' : 'CSI Camera 2'} Feed
 										</p>
 										<p class="text-sm text-blue-500">
-											{currentCamera === 1 ? csiStatusMessage : usbStatusMessage}
+											{currentCamera === 1 ? csiStatusMessage : currentCamera === 2 ? usbStatusMessage : csi2StatusMessage}
 										</p>
 									</div>
 								</div>
@@ -551,7 +615,7 @@
 								: 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
 							onclick={() => switchCamera(1)}
 						>
-							CSI Camera
+							CSI Camera 1
 							{#if isCSICameraReady}
 								<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-green-400"></span>
 							{/if}
@@ -565,6 +629,18 @@
 						>
 							USB Camera
 							{#if isUSBCameraReady}
+								<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-green-400"></span>
+							{/if}
+						</button>
+						<button
+							class="relative rounded-lg px-4 py-2 font-medium transition-colors {currentCamera ===
+							3
+								? 'bg-blue-500 text-white'
+								: 'border border-blue-300 text-blue-600 hover:bg-blue-50'}"
+							onclick={() => switchCamera(3)}
+						>
+							CSI Camera 2
+							{#if isCSI2CameraReady}
 								<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-green-400"></span>
 							{/if}
 						</button>
