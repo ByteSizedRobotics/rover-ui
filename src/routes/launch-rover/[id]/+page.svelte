@@ -67,7 +67,7 @@
 
 		if (FORCE_SUCCESS) {
 			addLog('[TEMP] Bypassing ROS2 - forcing successful launch', 'info');
-			await new Promise((resolve) => setTimeout(resolve, 20000));
+			await new Promise((resolve) => setTimeout(resolve, 5000));
 			
 			addLog('Launch command and waypoints successfully sent to rover', 'success');
 			status = 'Navigation started - Rover is heading to destination';

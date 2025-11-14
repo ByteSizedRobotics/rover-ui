@@ -122,13 +122,36 @@
 						return;
 					}
 
+					// Set up lidar callback BEFORE checking connection
+					commandCenterClient.onLidarData((lidarData) => {
+						if (lidarController) {
+							lidarController.updateData(lidarData);
+						}
+					});
+
+					// Set up obstacle detection polling
+					if (obstacleInterval) {
+						clearInterval(obstacleInterval);
+					}
+					obstacleInterval = setInterval(() => {
+						const obstacleData = commandCenterClient?.obstacleData;
+						if (obstacleData) {
+							obstacleDetected = obstacleData.detected;
+							obstacleDistance = obstacleData.distance ?? 0;
+						}
+					}, 100);
+
 					try {
-						if (!commandCenterClient.isConnected) {
+						// Connect if not already connected
+						const wasAlreadyConnected = commandCenterClient.isConnected;
+						if (!wasAlreadyConnected) {
 							await commandCenterClient.connect({ enableCSICamera: true, enableUSBCamera: true, enableCSI2Camera: true });
 							if (!commandCenterClient) {
 								return;
 							}
 							console.log('Connected to ROS2 Command Center for sensor data and video');
+						} else {
+							console.log('Already connected to ROS2 Command Center');
 						}
 
 						// Set up all three camera video elements
@@ -143,23 +166,6 @@
 						} catch (error) {
 							console.error('Failed to enable manual control mode:', error);
 						}
-
-						commandCenterClient.onLidarData((lidarData) => {
-							if (lidarController) {
-								lidarController.updateData(lidarData);
-							}
-						});
-
-						if (obstacleInterval) {
-							clearInterval(obstacleInterval);
-						}
-						obstacleInterval = setInterval(() => {
-							const obstacleData = commandCenterClient?.obstacleData;
-							if (obstacleData) {
-								obstacleDetected = obstacleData.detected;
-								obstacleDistance = obstacleData.distance ?? 0;
-							}
-						}, 100);
 					} catch (err) {
 						console.error('Failed to connect to ROS2 Command Center:', err);
 					}
@@ -563,8 +569,13 @@
 					<div class="border-b border-blue-200 bg-blue-100 p-3 text-center">
 						<h2 class="text-xl font-semibold text-blue-900">Lidar Point Cloud</h2>
 					</div>
-					<div class="relative" style="height: 400px;">
-						<canvas id="lidarCanvas" class="h-full w-full">
+					<div class="flex items-center justify-center p-6">
+						<canvas 
+							id="lidarCanvas" 
+							width="300" 
+							height="300"
+							class="rounded-lg border border-blue-200"
+						>
 							Your browser does not support the canvas element.
 						</canvas>
 					</div>

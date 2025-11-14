@@ -911,7 +911,7 @@ export class ROS2CommandCentreClient {
 
 		// Wait for required nodes to be running (based on Python autonomous_nodes)
 		//const requiredNodes = ['gps', 'csi_camera_1', 'csi_camera_2', 'obstacle_detection', 'rover', 'usb_camera'];
-		const requiredNodes = ['csi_camera_1', 'csi_camera_2', 'usb_camera']; // 'usb_camera' TODO: NATHAN add this back'imu' , 'motor_control'
+		const requiredNodes = ['obstacle_detection']; // 'usb_camera' TODO: NATHAN add this back'imu' , 'motor_control'
 		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
 
 		if (!nodesStarted) {
