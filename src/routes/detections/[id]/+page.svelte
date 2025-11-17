@@ -175,27 +175,31 @@
 				<div class="space-y-4">
 					<div class="relative overflow-hidden rounded-xl border-2 border-purple-200 bg-purple-50">
 						<img
+							bind:this={imgElement}
+							on:load={handleImageLoad}
 							src="/{data.image.imageUrl}"
 							alt="Detection {data.detection.id}"
 							class="h-auto w-full object-contain"
 						/>
 						<!-- Bounding Box Overlay -->
-						<svg
-							class="pointer-events-none absolute left-0 top-0 h-full w-full"
-							viewBox="0 0 100 100"
-							preserveAspectRatio="none"
-						>
-							<rect
-								x={data.detection.bbox[0]}
-								y={data.detection.bbox[1]}
-								width={data.detection.bbox[2] - data.detection.bbox[0]}
-								height={data.detection.bbox[3] - data.detection.bbox[1]}
-								fill="none"
-								stroke="rgb(74, 222, 128)"
-								stroke-width="4"
-								vector-effect="non-scaling-stroke"
-							/>
-						</svg>
+						{#if imageWidth > 0 && imageHeight > 0}
+							<svg
+								class="pointer-events-none absolute left-0 top-0 h-full w-full"
+								viewBox="0 0 {imageWidth} {imageHeight}"
+								preserveAspectRatio="none"
+							>
+								<rect
+									x={data.detection.bbox[0]}
+									y={data.detection.bbox[1]}
+									width={data.detection.bbox[2] - data.detection.bbox[0]}
+									height={data.detection.bbox[3] - data.detection.bbox[1]}
+									fill="none"
+									stroke="rgb(74, 222, 128)"
+									stroke-width="4"
+									vector-effect="non-scaling-stroke"
+								/>
+							</svg>
+						{/if}
 					</div>
 					<div class="rounded-lg border border-purple-200 bg-purple-50 p-4">
 						<h3 class="mb-2 font-semibold text-purple-900">Image Information</h3>
