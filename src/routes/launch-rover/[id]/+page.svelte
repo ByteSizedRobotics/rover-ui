@@ -63,7 +63,7 @@
 		   2. Set FORCE_SUCCESS to false, or remove the if(FORCE_SUCCESS) block entirely
 		   3. The code will then use the real ROS2 connection logic that follows
 		   ============================================================================ */
-		const FORCE_SUCCESS = true; // TODO NATHAN: Set to false to restore normal ROS2 behavior
+		const FORCE_SUCCESS = false; // TODO NATHAN: Set to false to restore normal ROS2 behavior
 
 		if (FORCE_SUCCESS) {
 			addLog('[TEMP] Bypassing ROS2 - forcing successful launch', 'info');
