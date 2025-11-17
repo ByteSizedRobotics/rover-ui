@@ -33,12 +33,24 @@
 	// Get the query parameters from the URL (where we came from)
 	$: roverId = $page.url.searchParams.get('roverId');
 	$: imageId = $page.url.searchParams.get('imageId');
+	$: pathId = $page.url.searchParams.get('pathId');
 
 	// Leaflet map variables
 	let mapContainer: HTMLElement;
 	let map: any;
 	let L: any;
 	let detectionMarker: any = null;
+
+	// Image dimensions for bounding box
+	let imgElement: HTMLImageElement;
+	let imageWidth = 0;
+	let imageHeight = 0;
+
+	function handleImageLoad(event: Event) {
+		const img = event.target as HTMLImageElement;
+		imageWidth = img.naturalWidth;
+		imageHeight = img.naturalHeight;
+	}
 
 	function formatDate(date: Date | string): string {
 		const d = typeof date === 'string' ? new Date(date) : date;
@@ -63,6 +75,10 @@
 		// If we came from a pothole page (imageId present), go back to that pothole page
 		if (imageId) {
 			goto(`/potholes/${imageId}`);
+		} else if (pathId) {
+			// If we came from a specific path page (pathId present), go back to that rover/path page
+			const targetRoverId = roverId || data.rover.id;
+			goto(`/rovers/${targetRoverId}/${pathId}`);
 		} else {
 			// Otherwise, go to the rover page (from the data table on rover live metrics)
 			const targetRoverId = roverId || data.rover.id;

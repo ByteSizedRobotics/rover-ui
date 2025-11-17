@@ -31,8 +31,9 @@ services:
     environment:
       - RASPI_IP=100.85.202.20
       - WEBRTC_PORT=8765
-      - API_IP=app
+      - API_IP=web-app
       - API_PORT=3000
+      - ROVER_ID=1
     # volumes:
     #   - ./models:/models
     profiles:
@@ -48,8 +49,9 @@ services:
     environment:
       - RASPI_IP=100.85.202.20
       - WEBRTC_PORT=8767
-      - API_IP=app
+      - API_IP=web-app
       - API_PORT=3000
+      - ROVER_ID=1
     # volumes:
     #   - ./models:/models
     profiles:
@@ -73,8 +75,9 @@ services:
     environment:
       - RASPI_IP=100.85.202.20
       - WEBRTC_PORT=8765
-      - API_IP=app
+      - API_IP=web-app
       - API_PORT=3000
+      - ROVER_ID=1
     # volumes:
     #   - ./models:/models
     profiles: ['gpu']
@@ -97,8 +100,9 @@ services:
     environment:
       - RASPI_IP=100.85.202.20
       - WEBRTC_PORT=8767
-      - API_IP=app
+      - API_IP=web-app
       - API_PORT=3000
+      - ROVER_ID=1
     # volumes:
     #   - ./models:/models
     profiles: ['gpu']
@@ -115,6 +119,7 @@ services:
       - WEBRTC_PORT=8765
       - API_IP=host.docker.internal
       - API_PORT=5173
+      - ROVER_ID=1
     # volumes:
     #   - ./models:/models
     profiles:
@@ -130,6 +135,7 @@ services:
       - WEBRTC_PORT=8767
       - API_IP=host.docker.internal
       - API_PORT=5173
+      - ROVER_ID=1
     # volumes:
     #   - ./models:/models
     profiles:

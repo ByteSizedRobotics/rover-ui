@@ -23,6 +23,7 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+static/uploads/*path_*.jpg
 static/uploads/*frame_*.jpg
 
 .vscode

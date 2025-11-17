@@ -749,7 +749,7 @@
 								{#each tableData as row}
 									<tr
 										class="cursor-pointer border-b border-blue-100 hover:bg-blue-50"
-										onclick={() => goto(`/detections/${row.id}?roverId=${roverId}`)}
+										onclick={() => goto(`/detections/${row.id}?roverId=${roverId}&pathId=${pathId}`)}
 									>
 										<td class="py-2 text-blue-900">{row.id}</td>
 										<td class="py-2 text-blue-900"
