@@ -70,16 +70,14 @@
 	let logs = $state<LogEntry[]>([]);
 
 	// Initialize the controller when component mounts
-	onMount(() => {
-		// Get the latest path ID from cache or fetch it
+	onMount(async () => {
+		// Get the latest path ID from cache or fetch it BEFORE connecting
 		const cachedPathId = commandCenterManager.getLatestPathId(roverId);
 		if (cachedPathId !== null) {
 			latestPathId = cachedPathId;
 		} else {
 			// Fetch and cache if not available
-			commandCenterManager.fetchAndCacheLatestPathId(roverId).then(pathId => {
-				latestPathId = pathId;
-			});
+			latestPathId = await commandCenterManager.fetchAndCacheLatestPathId(roverId);
 		}
 
 		// Create controller with callback and custom ROS config if needed

@@ -126,6 +126,7 @@ export class ROS2CommandCentreClient {
 	private _isConnected: boolean = false;
 	private _roverId: string;
 	private _latestPathId: number | null = null;
+	private _hasWarnedMissingPathId: boolean = false;
 	private _heartbeatInterval: NodeJS.Timeout | null = null;
 	private _lastHeartbeat: number = 0;
 	private _heartbeatErrors: number = 0;
@@ -1494,7 +1495,10 @@ export class ROS2CommandCentreClient {
 			return;
 		}
 		if (!this._latestPathId) {
-			console.warn(`[Log] Missing pathId, not sending log for rover ${this._roverId}`);
+			if (!this._hasWarnedMissingPathId) {
+				console.warn(`[Log] Missing pathId, not sending log for rover ${this._roverId} (will retry when available)`);
+				this._hasWarnedMissingPathId = true;
+			}
 			return;
 		}
 		try {
@@ -1957,6 +1961,7 @@ export class ROS2CommandCentreClient {
 	 */
 	setLatestPathId(pathId: number | null): void {
 		this._latestPathId = pathId;
+		this._hasWarnedMissingPathId = false; // Reset warning flag when path ID is set
 		console.log(`Updated latest path ID for rover ${this._roverId}: ${pathId}`);
 	}
 
@@ -2024,6 +2029,28 @@ class CommandCenterManager {
 			return null;
 		}
 		return this.clients.get(roverId)!.latestPathId;
+	}
+
+	/**
+	 * Fetch the latest path ID for a rover from the API and cache it
+	 */
+	async fetchAndCacheLatestPathId(roverId: string): Promise<number | null> {
+		try {
+			const response = await fetch(`/api/rovers/${roverId}/latest-path`);
+			if (!response.ok) {
+				console.warn(`Failed to fetch latest path ID for rover ${roverId}: ${response.statusText}`);
+				return null;
+			}
+			const data = await response.json();
+			const pathId = data.path_id || null; // API returns 'path_id' not 'latestPathId'
+			if (pathId !== null) {
+				this.setLatestPathId(roverId, pathId);
+			}
+			return pathId;
+		} catch (error) {
+			console.error(`Error fetching latest path ID for rover ${roverId}:`, error);
+			return null;
+		}
 	}
 }
 

@@ -235,6 +235,12 @@
 			// A short delay can help ensure the container is rendered and sized
 			setTimeout(initializeMap, 50);
 		}
+		
+		// Set the path ID in command center manager BEFORE connecting
+		if (pathId) {
+			commandCenterManager.setLatestPathId(roverId, Number(pathId));
+		}
+		
 		// Create lidar controller and connect to ROS2 Command Center for data
 		if (browser) {
 			setTimeout(() => {

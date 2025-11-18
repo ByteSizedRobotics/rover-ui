@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ params }) => {
 			.where(eq(paths.roverId, roverId))
 			.orderBy(desc(paths.timestamp))
 			.limit(1);
-
+			
 		if (latestPath.length === 0) {
 			return new Response(JSON.stringify({ path_id: null, message: 'No paths found for this rover' }), {
 				status: 200,

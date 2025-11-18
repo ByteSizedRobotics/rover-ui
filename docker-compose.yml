@@ -120,6 +120,7 @@ services:
       - API_IP=host.docker.internal
       - API_PORT=5173
       - ROVER_ID=1
+      - VERBOSE=true
     # volumes:
     #   - ./models:/models
     profiles:
@@ -136,6 +137,7 @@ services:
       - API_IP=host.docker.internal
       - API_PORT=5173
       - ROVER_ID=1
+      - VERBOSE=true
     # volumes:
     #   - ./models:/models
     profiles:

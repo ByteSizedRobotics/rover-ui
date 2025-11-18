@@ -7,12 +7,13 @@
 	let { data }: { data: PageServerData } = $props();
 
 	// Cache the latest path IDs in the command center manager
-	onMount(() => {
-		data.roversData.forEach((rover) => {
+	onMount(async () => {
+		// Set all path IDs before any connections might be established
+		for (const rover of data.roversData) {
 			if (rover.latestPathId) {
 				commandCenterManager.setLatestPathId(rover.id.toString(), rover.latestPathId);
 			}
-		});
+		}
 	});
 
 	// State management
