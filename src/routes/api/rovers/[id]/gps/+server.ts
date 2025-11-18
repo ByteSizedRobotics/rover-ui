@@ -1,5 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
-import { commandCenterManager } from '$lib/ros2CommandCentre';
+import { db } from '$lib/server/db';
+import { logs } from '$lib/server/db/schema';
+import { eq, desc, sql } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const roverId = params.id;
@@ -9,11 +11,22 @@ export const GET: RequestHandler = async ({ params }) => {
 	}
 
 	try {
-		// Get the command center client for this rover
-		const client = commandCenterManager.getClient(roverId);
-		const gpsData = client.gpsData;
+		// Fetch the latest log entry for this rover to get GPS coordinates
+		// Use PostGIS functions to extract lat/lng from the geometry point
+		const latestLog = await db
+			.select({
+				latitude: sql<number>`ST_Y(${logs.location})`,
+				longitude: sql<number>`ST_X(${logs.location})`,
+				altitude: logs.altitude,
+				timestamp: logs.timestamp
+			})
+			.from(logs)
+			.where(eq(logs.roverId, Number(roverId)))
+			.orderBy(desc(logs.timestamp))
+			.limit(1);
 
-		if (!gpsData) {
+		if (!latestLog || latestLog.length === 0) {
+			// console.log(`[GPS API] Rover ${roverId} - No GPS data available in database`);
 			return new Response(
 				JSON.stringify({ 
 					error: 'No GPS data available',
@@ -28,11 +41,14 @@ export const GET: RequestHandler = async ({ params }) => {
 			);
 		}
 
+		const gpsData = latestLog[0];
+		// console.log(`[GPS API] Rover ${roverId} - Latest GPS from DB:`, gpsData);
+
 		return new Response(
 			JSON.stringify({
 				latitude: gpsData.latitude,
 				longitude: gpsData.longitude,
-				altitude: gpsData.altitude
+				altitude: gpsData.altitude,
 			}),
 			{
 				status: 200,

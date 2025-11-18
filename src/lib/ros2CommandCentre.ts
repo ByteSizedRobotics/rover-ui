@@ -2015,10 +2015,15 @@ class CommandCenterManager {
 	 * Get or create a command center client for a rover
 	 */
 	getClient(roverId: string): ROS2CommandCentreClient {
-		if (!this.clients.has(roverId)) {
+		const exists = this.clients.has(roverId);
+		// console.log(`[CommandCenterManager] getClient(${roverId}) - Client exists: ${exists}, Total clients: ${this.clients.size}`);
+		if (!exists) {
+			// console.log(`[CommandCenterManager] Creating new client for rover ${roverId}`);
 			this.clients.set(roverId, new ROS2CommandCentreClient(roverId));
 		}
-		return this.clients.get(roverId)!;
+		const client = this.clients.get(roverId)!;
+		// console.log(`[CommandCenterManager] Returning client for rover ${roverId} - Connected: ${client.isConnected}, Has GPS: ${!!client.gpsData}`);
+		return client;
 	}
 
 	/**
