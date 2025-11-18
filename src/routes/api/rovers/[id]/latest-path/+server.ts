@@ -11,7 +11,10 @@ export const GET: RequestHandler = async ({ params }) => {
 	const roverId = Number(params.id);
 	
 	if (!roverId || isNaN(roverId)) {
-		return new Response(JSON.stringify({ error: 'Invalid rover ID' }), { status: 400 });
+		return new Response(JSON.stringify({ error: 'Invalid rover ID' }), { 
+			status: 400,
+			headers: { 'Content-Type': 'application/json' }
+		});
 	}
 
 	try {
@@ -39,6 +42,9 @@ export const GET: RequestHandler = async ({ params }) => {
 		});
 	} catch (err) {
 		console.error('Error fetching latest path:', err);
-		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
+		return new Response(JSON.stringify({ error: 'Internal Server Error' }), { 
+			status: 500,
+			headers: { 'Content-Type': 'application/json' }
+		});
 	}
 };
