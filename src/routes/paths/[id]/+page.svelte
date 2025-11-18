@@ -17,7 +17,7 @@
 	// Parse coordinates when data is available
 	$: if (data.path.route && data.path.route.coordinates && Array.isArray(data.path.route.coordinates)) {
 		coords = data.path.route.coordinates.map((c: any) => ({ lat: c[1], lng: c[0] }));
-		console.log('Parsed coords:', coords);
+		// console.log('Parsed coords:', coords);
 	}
 
 	// Initialize map when container is ready and we have coordinates

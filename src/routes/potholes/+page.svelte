@@ -115,7 +115,7 @@
 								<div class="mb-2">
 									<span class="font-semibold text-purple-600">Location:</span>
 									<span class="ml-1 font-mono text-sm text-purple-900"
-										>[{pothole.location[0]}, {pothole.location[1]}]</span
+										>[{pothole.location[0].toFixed(2)}, {pothole.location[1].toFixed(2)}]</span
 									>
 								</div>
 								<div>
