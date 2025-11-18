@@ -47,7 +47,7 @@
 	let tableData = $state<DetectionRow[]>([]); // Will be filled with pothole data
 	let roverPosition = $state({ x: 50, y: 40 }); // Percentage position on map
 	let roverGpsPosition = $state({ lat: 45.41951, lng: -75.678772 }); // GPS coordinates (Ottawa default)
-	let connectionStatus = $state('Disconnected');
+	let connectionStatus = $state('Connecting...');
 	const DETECTION_POLL_INTERVAL_MS = 5000;
 	let detectionPoller: ReturnType<typeof setInterval> | null = null;
 

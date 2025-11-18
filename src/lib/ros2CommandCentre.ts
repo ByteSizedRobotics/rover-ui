@@ -213,6 +213,14 @@ export class ROS2CommandCentreClient {
 		console.log(`[Rover ${this._roverId}] Marked as emergency stopped - reconnection disabled`);
 	}
 
+	/**
+	 * Clear emergency stop flag (allows reconnection on new path)
+	 */
+	public clearEmergencyStop(): void {
+		this._isEmergencyStopped = false;
+		console.log(`[Rover ${this._roverId}] Emergency stop cleared - reconnection enabled`);
+	}
+
 	get isNavigating(): boolean {
 		return this._isNavigating;
 	}
@@ -372,26 +380,29 @@ export class ROS2CommandCentreClient {
 					// Start periodic logging
 					this.startPeriodicLogging();
 
-					// Initialize WebRTC connection for camera streams if enabled
-					if (this._autoStartWebRTC.get('csi')) {
-						this.connectWebRTC('csi');
-					} else {
-						this.setWebRTCConnected('csi', false);
-					}
-
-					if (this._autoStartWebRTC.get('usb')) {
-						this.connectWebRTC('usb');
-					} else {
-						this.setWebRTCConnected('usb', false);
-					}
-
-					if (this._autoStartWebRTC.get('csi2')) {
-						this.connectWebRTC('csi2');
-					} else {
-						this.setWebRTCConnected('csi2', false);
-					}
-
 					this.notifyStateChange();
+					
+					// Initialize WebRTC connections after a short delay to ensure main connection is stable
+					setTimeout(() => {
+						if (this._autoStartWebRTC.get('csi')) {
+							this.connectWebRTC('csi');
+						} else {
+							this.setWebRTCConnected('csi', false);
+						}
+
+						if (this._autoStartWebRTC.get('usb')) {
+							this.connectWebRTC('usb');
+						} else {
+							this.setWebRTCConnected('usb', false);
+						}
+
+						if (this._autoStartWebRTC.get('csi2')) {
+							this.connectWebRTC('csi2');
+						} else {
+							this.setWebRTCConnected('csi2', false);
+						}
+					}, 500);
+					
 					resolve();
 				};
 				this._socket.onerror = (error) => {
@@ -502,29 +513,34 @@ export class ROS2CommandCentreClient {
 			const socket = new WebSocket(webrtcUrl);
 			this._webrtcSockets.set(cameraType, socket);
 
-			socket.onopen = () => {
-				console.log(
-					`${cameraType.toUpperCase()} camera WebRTC connection established for rover ${this._roverId}`
-				);
-				this.startWebRTC(cameraType);
-			};
+		socket.onopen = () => {
+			console.log(
+				`${cameraType.toUpperCase()} camera WebRTC connection established for rover ${this._roverId}`
+			);
+			this.startWebRTC(cameraType);
+		};
 
-			socket.onerror = (error: Event) => {
-				console.error(
-					`${cameraType.toUpperCase()} camera WebRTC connection error for rover ${this._roverId}:`,
-					error
-				);
-				this.setWebRTCConnected(cameraType, false);
-			};
-
-			socket.onclose = () => {
-				console.log(
-					`${cameraType.toUpperCase()} camera WebRTC connection closed for rover ${this._roverId}`
-				);
-				this.setWebRTCConnected(cameraType, false);
-			};
-
-			socket.onmessage = (event: MessageEvent) => {
+		socket.onerror = (error: Event) => {
+			console.warn(
+				`${cameraType.toUpperCase()} camera WebRTC connection error for rover ${this._roverId}:`,
+				error
+			);
+			// Don't set connected to false yet - wait for onclose or timeout
+			// This prevents premature status updates during connection attempts
+		};
+		
+		socket.onclose = () => {
+			console.log(
+				`${cameraType.toUpperCase()} camera WebRTC connection closed for rover ${this._roverId}`
+			);
+			// Clean up the peer connection
+			const pc = this._peerConnections.get(cameraType);
+			if (pc) {
+				pc.close();
+				this._peerConnections.delete(cameraType);
+			}
+			this.setWebRTCConnected(cameraType, false);
+		};			socket.onmessage = (event: MessageEvent) => {
 				this.handleWebRTCMessage(cameraType, event);
 			};
 		} catch (error) {
@@ -1960,9 +1976,19 @@ export class ROS2CommandCentreClient {
 	 * Set the latest path ID for this rover
 	 */
 	setLatestPathId(pathId: number | null): void {
+		const pathChanged = this._latestPathId !== null && this._latestPathId !== pathId;
 		this._latestPathId = pathId;
 		this._hasWarnedMissingPathId = false; // Reset warning flag when path ID is set
 		console.log(`Updated latest path ID for rover ${this._roverId}: ${pathId}`);
+		
+		// Clear emergency stop flag when setting any valid path ID
+		// This allows reconnection when navigating to a path
+		if (pathId !== null) {
+			if (this._isEmergencyStopped) {
+				console.log(`[Rover ${this._roverId}] Clearing emergency stop for path ${pathId}`);
+			}
+			this.clearEmergencyStop();
+		}
 	}
 
 	/**
