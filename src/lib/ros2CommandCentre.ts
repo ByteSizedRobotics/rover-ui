@@ -1518,6 +1518,9 @@ export class ROS2CommandCentreClient {
 			return;
 		}
 		try {
+			// Convert temperature from Fahrenheit to Celsius
+			const temperatureCelsius = (this._imuRawData.temperature - 32) * 5 / 9;
+			
 			const payload = {
 				pathId: this._latestPathId,
 				latitude: this._gpsData.latitude,
@@ -1526,7 +1529,7 @@ export class ROS2CommandCentreClient {
 				roll: this._imuRawData.roll,
 				pitch: this._imuRawData.pitch,
 				yaw: this._imuRawData.yaw,
-				temperature: this._imuRawData.temperature,
+				temperature: temperatureCelsius,
 				voltage: this._imuRawData.voltage
 			};
 			const res = await fetch(`/api/rovers/${this._roverId}/logs`, {

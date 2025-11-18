@@ -284,27 +284,47 @@
 					}
 				}, 1000);
 
-				// Poll GPS data and update map
-				if (gpsUpdateInterval) {
-					clearInterval(gpsUpdateInterval);
-				}
-				gpsUpdateInterval = setInterval(() => {
-					const gps = commandCenterClient?.gpsData;
-					// console.log(`[Page] Checking GPS for rover ${roverId}, client roverId:`, commandCenterClient?.roverId, 'GPS:', gps);
-					if (gps) {
-						// console.log('GPS data available:', gps.latitude, gps.longitude);
-						if (roverMarker && map && L) {
-							roverGpsPosition = { lat: gps.latitude, lng: gps.longitude };
-							roverMarker.setLatLng([gps.latitude, gps.longitude]);
-							map.setView([gps.latitude, gps.longitude], map.getZoom());
-							// console.log('✓ Updated rover position on map:', gps.latitude, gps.longitude);
-						} else {
-							console.warn('Map or marker not ready:', { roverMarker: !!roverMarker, map: !!map, L: !!L });
+			// Poll GPS data and update map every 3 seconds
+			if (gpsUpdateInterval) {
+				clearInterval(gpsUpdateInterval);
+			}
+			gpsUpdateInterval = setInterval(() => {
+				const gps = commandCenterClient?.gpsData;
+				
+				// Validate GPS data before updating
+				if (gps && gps.latitude && gps.longitude && 
+				    !isNaN(gps.latitude) && !isNaN(gps.longitude) &&
+				    Math.abs(gps.latitude) <= 90 && Math.abs(gps.longitude) <= 180) {
+					
+					// Only update if map and marker are ready
+					if (roverMarker && map && L) {
+						// Update stored position
+						roverGpsPosition = { lat: gps.latitude, lng: gps.longitude };
+						
+						// Smoothly update marker position
+						roverMarker.setLatLng([gps.latitude, gps.longitude]);
+						
+						// Only pan the map if the rover has moved significantly (> 0.0001 degrees ~11m)
+						const center = map.getCenter();
+						const distance = Math.sqrt(
+							Math.pow(center.lat - gps.latitude, 2) + 
+							Math.pow(center.lng - gps.longitude, 2)
+						);
+						
+						if (distance > 0.0001) {
+							// Use panTo for smooth movement instead of setView
+							map.panTo([gps.latitude, gps.longitude], {
+								animate: true,
+								duration: 0.5,
+								noMoveStart: true
+							});
 						}
+					} else {
+						console.warn('Map or marker not ready:', { roverMarker: !!roverMarker, map: !!map, L: !!L });
 					}
-				}, 1000);
-
-					const status = commandCenterClient.status;
+				}
+				// If GPS data is invalid or missing, keep using previous position (no update)
+			}, 3000);					const status = commandCenterClient.status;
 					connectionStatus = status.isConnected ? 'Connected' : 'Disconnected';
 					sensorData.isConnected = status.isConnected;
 
