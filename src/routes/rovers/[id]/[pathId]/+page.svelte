@@ -417,8 +417,8 @@
 			const roverIcon = L.divIcon({
 				html: `<div class="current-location-marker"><div class="pulse"></div><div class="dot"></div></div>`,
 				className: '',
-				iconSize: [30, 30],
-				iconAnchor: [15, 15]
+				iconSize: [40, 40],
+				iconAnchor: [20, 20]
 			});
 
 			roverMarker = L.marker([roverGpsPosition.lat, roverGpsPosition.lng], { icon: roverIcon })

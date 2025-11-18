@@ -9,6 +9,10 @@
 	let map: L.Map;
 	let mapContainer: HTMLElement;
 	let mapInitialized = false;
+	
+	let logsMap: L.Map;
+	let logsMapContainer: HTMLElement;
+	let logsMapInitialized = false;
 
 	// Parse coordinates when data is available
 	$: if (data.path.route && data.path.route.coordinates && Array.isArray(data.path.route.coordinates)) {
@@ -67,9 +71,9 @@
 
 			// Add start marker (green)
 			const startIcon = L.divIcon({
-				html: '<div style="background-color: #22c55e; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+				html: '<div style="background-color: #22c55e; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
 				className: '',
-				iconSize: [12, 12]
+				iconSize: [16, 16]
 			});
 			L.marker([coords[0].lat, coords[0].lng], { icon: startIcon })
 				.addTo(map)
@@ -77,9 +81,9 @@
 
 			// Add end marker (red)
 			const endIcon = L.divIcon({
-				html: '<div style="background-color: #ef4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+				html: '<div style="background-color: #ef4444; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
 				className: '',
-				iconSize: [12, 12]
+				iconSize: [16, 16]
 			});
 			L.marker([coords[coords.length - 1].lat, coords[coords.length - 1].lng], { icon: endIcon })
 				.addTo(map)
@@ -109,6 +113,117 @@
 			console.log('=== Map Initialization Complete ===');
 		} catch (error) {
 			console.error('Error initializing map:', error);
+		}
+	}
+
+	// Initialize logs map
+	$: if (logsMapContainer && data.path.logs && data.path.logs.length > 0 && !logsMapInitialized) {
+		initializeLogsMap();
+	}
+
+	async function initializeLogsMap() {
+		console.log('=== Logs Map Initialization Start ===');
+		
+		try {
+			await tick();
+			const L = (await import('leaflet')).default;
+
+			// Filter logs with valid locations
+			const validLogs = data.path.logs.filter((log: any) => 
+				log.location?.coordinates && 
+				Array.isArray(log.location.coordinates) &&
+				log.location.coordinates.length === 2
+			);
+
+			if (validLogs.length === 0) {
+				console.log('No valid log locations found');
+				return;
+			}
+
+			// Filter out similar locations (within ~10 meters)
+			const threshold = 0.0001; // approximately 10-11 meters
+			const uniqueLogs: any[] = [];
+			
+			for (const log of validLogs) {
+				const [lng, lat] = log.location.coordinates;
+				const isDuplicate = uniqueLogs.some((uniqueLog: any) => {
+					const [uLng, uLat] = uniqueLog.location.coordinates;
+					const latDiff = Math.abs(lat - uLat);
+					const lngDiff = Math.abs(lng - uLng);
+					return latDiff < threshold && lngDiff < threshold;
+				});
+				
+				if (!isDuplicate) {
+					uniqueLogs.push(log);
+				}
+			}
+
+			console.log(`Filtered from ${validLogs.length} to ${uniqueLogs.length} unique locations`);
+
+			const firstLog = uniqueLogs[0];
+			const [firstLng, firstLat] = firstLog.location.coordinates;
+
+			// Initialize logs map
+			logsMap = L.map(logsMapContainer).setView([firstLat, firstLng], 15);
+			
+			// Add tile layer
+			L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+				attribution:
+					'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+				subdomains: 'abcd',
+				maxZoom: 20
+			}).addTo(logsMap);
+
+			// Create markers for each unique log
+			const markerIcon = L.divIcon({
+				html: '<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+				className: '',
+				iconSize: [16, 16]
+			});
+
+			const allLatLngs: [number, number][] = [];
+
+			uniqueLogs.forEach((log: any) => {
+				const [lng, lat] = log.location.coordinates;
+				allLatLngs.push([lat, lng]);
+
+				const popupContent = `
+					<div style="font-size: 12px;">
+						<strong>Log #${log.id}</strong><br/>
+						<strong>Time:</strong> ${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}<br/>
+						<strong>Temperature:</strong> ${log.temperature != null ? log.temperature.toFixed(2) + '°C' : 'N/A'}<br/>
+						<strong>Voltage:</strong> ${log.voltage != null ? log.voltage.toFixed(2) + 'V' : 'N/A'}
+					</div>
+				`;
+
+				L.marker([lat, lng], { icon: markerIcon })
+					.addTo(logsMap)
+					.bindPopup(popupContent);
+			});
+
+			// Draw polyline connecting the logs
+			if (allLatLngs.length > 1) {
+				L.polyline(allLatLngs, {
+					color: '#3b82f6',
+					weight: 2,
+					opacity: 0.5
+				}).addTo(logsMap);
+			}
+
+			// Fit map bounds to show all markers
+			const bounds = L.latLngBounds(allLatLngs);
+			logsMap.fitBounds(bounds, { padding: [30, 30] });
+
+			// Invalidate size to fix rendering issues
+			setTimeout(() => {
+				logsMap.invalidateSize();
+				console.log('Logs map size invalidated');
+			}, 100);
+
+			logsMapInitialized = true;
+			console.log('=== Logs Map Initialization Complete ===');
+		} catch (error) {
+			console.error('Error initializing logs map:', error);
 		}
 	}
 
@@ -173,7 +288,7 @@
 
 		<!-- Logs section -->
 		{#if data.path.logs && data.path.logs.length > 0}
-			<div class="rounded-2xl border border-green-100 bg-white p-6 shadow-lg">
+			<div class="rounded-2xl border border-green-100 bg-white p-6 shadow-lg mb-6">
 				<h2 class="mb-4 text-xl font-bold text-green-900">Associated Logs ({data.path.logs.length})</h2>
 				
 				<div class="overflow-x-auto">
@@ -216,6 +331,15 @@
 						</tbody>
 					</table>
 				</div>
+			</div>
+
+			<!-- Explored Path Map -->
+			<div class="rounded-2xl border border-green-100 bg-white p-6 shadow-lg">
+				<h2 class="mb-4 text-xl font-bold text-green-900">Explored Path by the Rover</h2>
+				<div class="rounded-lg overflow-hidden border border-green-200 shadow-sm">
+					<div bind:this={logsMapContainer} id="logs-map" class="w-full h-96"></div>
+				</div>
+				<p class="mt-2 text-sm text-green-600">Hover over markers to see temperature and voltage data. Similar locations are filtered to prevent overlap.</p>
 			</div>
 		{:else}
 			<div class="rounded-2xl border border-green-100 bg-white p-6 shadow-lg">
