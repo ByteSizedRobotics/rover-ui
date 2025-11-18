@@ -184,6 +184,7 @@ export class ROS2CommandCentreClient {
 	private _nodeStatus: NodeStatus | null = null;
 	private _requiredNodes: string[] = [];
 	private _nodeHealthCheckInterval: NodeJS.Timeout | null = null;
+	private _isEmergencyStopped: boolean = false;
 
 	constructor(roverId: string) {
 		this._roverId = roverId;
@@ -202,6 +203,15 @@ export class ROS2CommandCentreClient {
 	get timestamp(): number {
 		return this._timestamp;
 	}
+
+	/**
+	 * Mark this rover as emergency stopped (prevents reconnection)
+	 */
+	public markEmergencyStopped(): void {
+		this._isEmergencyStopped = true;
+		console.log(`[Rover ${this._roverId}] Marked as emergency stopped - reconnection disabled`);
+	}
+
 	get isNavigating(): boolean {
 		return this._isNavigating;
 	}
@@ -274,6 +284,14 @@ export class ROS2CommandCentreClient {
 	async connect(
 		options: { enableCSICamera?: boolean; enableUSBCamera?: boolean; enableCSI2Camera?: boolean } = {}
 	): Promise<void> {
+		// Prevent reconnection if emergency stopped
+		if (this._isEmergencyStopped) {
+			console.warn(
+				`[Rover ${this._roverId}] Connection blocked - rover was emergency stopped. Navigate to a new path to reconnect.`
+			);
+			throw new Error('Rover was emergency stopped. Cannot reconnect on same path.');
+		}
+
 		const { enableCSICamera = true, enableUSBCamera = true, enableCSI2Camera = true } = options;
 		this._autoStartWebRTC.set('csi', enableCSICamera);
 		this._autoStartWebRTC.set('usb', enableUSBCamera);
@@ -424,6 +442,10 @@ export class ROS2CommandCentreClient {
 
 		// Set disconnected state FIRST
 		this._isConnected = false;
+
+		// Mark as emergency stopped to prevent reconnection
+		this._isEmergencyStopped = true;
+		console.log(`[Rover ${this._roverId}] Disconnected - reconnection disabled for this path`);
 
 		this.stopHeartbeat();
 		this.stopNodeHealthCheck();
@@ -1141,7 +1163,7 @@ export class ROS2CommandCentreClient {
 		const subscribeMsg = {
 			op: 'subscribe',
 			topic: ROS2_CONFIG.TOPICS.GPS,
-			type: 'std_msgs/String'
+			type: 'sensor_msgs/NavSatFix'
 		};
 
 		this._socket.send(JSON.stringify(subscribeMsg));
@@ -1465,11 +1487,19 @@ export class ROS2CommandCentreClient {
 	 */
 	private async sendLogToApi(): Promise<void> {
 		if (!this._gpsData || !this._imuRawData) {
-			console.warn(`[Log] Missing GPS or IMU data, not sending log for rover ${this._roverId}`);
+			console.warn(
+				`[Log] Missing GPS or IMU data, not sending log for rover ${this._roverId}`,
+				{ hasGPS: !!this._gpsData, hasIMU: !!this._imuRawData }
+			);
+			return;
+		}
+		if (!this._latestPathId) {
+			console.warn(`[Log] Missing pathId, not sending log for rover ${this._roverId}`);
 			return;
 		}
 		try {
 			const payload = {
+				pathId: this._latestPathId,
 				latitude: this._gpsData.latitude,
 				longitude: this._gpsData.longitude,
 				altitude: this._gpsData.altitude,
@@ -1769,16 +1799,20 @@ export class ROS2CommandCentreClient {
 	 * Handle GPS message
 	 */
 	private handleGPSMessage(data: any): void {
+		// NavSatFix message structure from rosbridge
+		const msg = data.msg;
+		
 		const gpsData: GPSData = {
-			latitude: data.msg.latitude || 0,
-			longitude: data.msg.longitude || 0,
-			altitude: data.msg.altitude || 0,
-			accuracy: data.msg.position_covariance
-				? Math.sqrt(data.msg.position_covariance[0])
+			latitude: msg.latitude || 0,
+			longitude: msg.longitude || 0,
+			altitude: msg.altitude || 0,
+			accuracy: msg.position_covariance && msg.position_covariance.length > 0
+				? Math.sqrt(msg.position_covariance[0])
 				: undefined,
 			timestamp: Date.now()
 		};
 
+		// console.log(`[Rover ${this._roverId}] GPS Data received:`, gpsData);
 		this._gpsData = gpsData;
 		this.writeGPSDataToDatabase(gpsData);
 	}

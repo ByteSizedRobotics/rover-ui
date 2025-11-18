@@ -61,6 +61,7 @@
 	let lidarController: LidarMiniController | null = null;
 	let lidarCanvasEl: HTMLCanvasElement | null = null;
 	let imuUpdateInterval: ReturnType<typeof setInterval> | null = null;
+	let gpsUpdateInterval: ReturnType<typeof setInterval> | null = null;
 
 	// ROS2 Command Center client for sensor data and video
 	let commandCenterClient = $state<ROS2CommandCentreClient | null>(null);
@@ -263,19 +264,39 @@
 						sensorData.isConnected = status.isConnected;
 					});
 
-					if (imuUpdateInterval) {
-						clearInterval(imuUpdateInterval);
+				if (imuUpdateInterval) {
+					clearInterval(imuUpdateInterval);
+				}
+				imuUpdateInterval = setInterval(() => {
+					const imuRaw = commandCenterClient?.imuRawData;
+					if (imuRaw) {
+						sensorData.roll = imuRaw.roll;
+						sensorData.pitch = imuRaw.pitch;
+						sensorData.yaw = imuRaw.yaw;
+						sensorData.temperature = imuRaw.temperature;
+						sensorData.batteryVoltage = imuRaw.voltage;
 					}
-					imuUpdateInterval = setInterval(() => {
-						const imuRaw = commandCenterClient?.imuRawData;
-						if (imuRaw) {
-							sensorData.roll = imuRaw.roll;
-							sensorData.pitch = imuRaw.pitch;
-							sensorData.yaw = imuRaw.yaw;
-							sensorData.temperature = imuRaw.temperature;
-							sensorData.batteryVoltage = imuRaw.voltage;
+				}, 1000);
+
+				// Poll GPS data and update map
+				if (gpsUpdateInterval) {
+					clearInterval(gpsUpdateInterval);
+				}
+				gpsUpdateInterval = setInterval(() => {
+					const gps = commandCenterClient?.gpsData;
+					// console.log(`[Page] Checking GPS for rover ${roverId}, client roverId:`, commandCenterClient?.roverId, 'GPS:', gps);
+					if (gps) {
+						// console.log('GPS data available:', gps.latitude, gps.longitude);
+						if (roverMarker && map && L) {
+							roverGpsPosition = { lat: gps.latitude, lng: gps.longitude };
+							roverMarker.setLatLng([gps.latitude, gps.longitude]);
+							map.setView([gps.latitude, gps.longitude], map.getZoom());
+							// console.log('✓ Updated rover position on map:', gps.latitude, gps.longitude);
+						} else {
+							console.warn('Map or marker not ready:', { roverMarker: !!roverMarker, map: !!map, L: !!L });
 						}
-					}, 1000);
+					}
+				}, 1000);
 
 					const status = commandCenterClient.status;
 					connectionStatus = status.isConnected ? 'Connected' : 'Disconnected';
@@ -322,6 +343,10 @@
 		if (imuUpdateInterval) {
 			clearInterval(imuUpdateInterval);
 			imuUpdateInterval = null;
+		}
+		if (gpsUpdateInterval) {
+			clearInterval(gpsUpdateInterval);
+			gpsUpdateInterval = null;
 		}
 		isCSICameraReady = false;
 		isUSBCameraReady = false;
@@ -425,8 +450,15 @@
 					if (allOffline) {
 						clearInterval(checkInterval);
 
+						// Mark as emergency stopped to prevent reconnection
+						commandCenterClient?.markEmergencyStopped();
+
 						// Disconnect from ROS2
 						commandCenterClient?.disconnect();
+
+						// Update connection status
+						connectionStatus = 'Disconnected';
+						sensorData.isConnected = false;
 
 						// Show success notification
 						notification = {
@@ -450,8 +482,15 @@
 				if (checkCount >= maxChecks) {
 					clearInterval(checkInterval);
 
+					// Mark as emergency stopped to prevent reconnection
+					commandCenterClient?.markEmergencyStopped();
+
 					// Force disconnect even if nodes didn't report offline
 					commandCenterClient?.disconnect();
+
+					// Update connection status
+					connectionStatus = 'Disconnected';
+					sensorData.isConnected = false;
 
 					notification = {
 						message: 'Emergency stop completed (timeout)',

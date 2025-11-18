@@ -33,6 +33,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const file = formData.get('image') as File;
 		const pathIdStr = formData.get('pathId') as string;
+		const latitudeStr = formData.get('latitude') as string;
+		const longitudeStr = formData.get('longitude') as string;
 
 		if (!file) {
 			return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
@@ -52,13 +54,22 @@ export const POST: RequestHandler = async ({ request }) => {
 			return new Response(JSON.stringify({ error: 'pathId is required' }), { status: 400 });
 		}
 
+		// Parse GPS coordinates from form data, default to 0 if not provided
+		let latitude = 0;
+		let longitude = 0;
+		if (latitudeStr && longitudeStr) {
+			latitude = parseFloat(latitudeStr);
+			longitude = parseFloat(longitudeStr);
+			if (isNaN(latitude) || isNaN(longitude)) {
+				console.warn('Invalid GPS coordinates provided, using default (0, 0)');
+				latitude = 0;
+				longitude = 0;
+			}
+		}
+
 		// Ensure uploads directory exists
 		const uploadDir = path.join(process.cwd(), 'static/uploads');
 		if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-		// TODO: retrieve fields like latitude, longitude from rover
-		var latitude = 0;
-		var longitude = 0;
 		
 		// Insert into database first to get the image_id
 		const result = await db
