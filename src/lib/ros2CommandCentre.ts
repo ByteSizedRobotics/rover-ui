@@ -919,15 +919,18 @@ export class ROS2CommandCentreClient {
 			throw new Error('Not connected to ROS2 Command Center');
 		}
 
+		// Convert waypoints to Float64MultiArray format [lat1, lng1, lat2, lng2, ...]
+		const flatData: number[] = [];
+		data.data.waypoints.forEach((wp: any) => {
+			flatData.push(wp.latitude);
+			flatData.push(wp.longitude);
+		});
+
 		const message = {
 			op: 'publish',
 			topic: ROS2_CONFIG.TOPICS.ROVER_SWDATA,
 			msg: {
-				data: JSON.stringify({
-					...data,
-					timestamp: Date.now(),
-					rover_id: this._roverId
-				})
+				data: flatData
 			}
 		};
 

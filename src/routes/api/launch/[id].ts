@@ -18,22 +18,22 @@ class ROS2Bridge {
 				const socket = new WebSocket(wsUrl);
 
 				socket.onopen = () => {
-					// Send waypoints to ROS2 navigation topic
+					// Convert waypoints to flat array format [lat1, lon1, lat2, lon2, ...]
+					const flatData: number[] = [];
+					waypoints.forEach(wp => {
+						flatData.push(wp.lat);
+						flatData.push(wp.lng);
+					});
+
+					// Send waypoints to ROS2 navigation topic in Float64MultiArray format
 					const message = {
 						op: 'publish',
-						topic: ROS2_CONFIG.TOPICS.ROVER_SWDATA,
+						topic: ROS2_CONFIG.TOPICS.ROVER_SWDATA,  // This should be '/gps_waypoints'
 						msg: {
-							rover_id: roverId,
-							waypoints: waypoints.map((wp, index) => ({
-								id: index,
-								latitude: wp.lat,
-								longitude: wp.lng,
-								altitude: 0.0
-							})),
-							timestamp: Date.now()
+							data: flatData
 						}
 					};
-					//console.log('Sending waypoints to ROS2:', message);
+					console.log('Sending waypoints to ROS2:', message);
 
 					socket.send(JSON.stringify(message));
 
