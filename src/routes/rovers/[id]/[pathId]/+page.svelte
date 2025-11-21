@@ -606,17 +606,17 @@
 					<!-- Camera Feed Display -->
 					<div class="mx-auto mb-4 w-full max-w-2xl" style="aspect-ratio: 820/616;">
 						<div
-							class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200 bg-black"
+							class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200 bg-white flex items-center justify-center"
 						>
 						<!-- Video elements for all three cameras -->
+						<!-- CSI Camera 1 -->
 						<video
 							id="roverVideo1"
 							autoplay
 							playsinline
 							muted
-							width="1280"
-							height="720"
-							class="absolute inset-0 h-full w-full object-contain {currentCamera === 1
+							style="aspect-ratio: 1/1; object-fit: fill;"
+							class="h-full w-auto {currentCamera === 1
 								? 'block'
 								: 'hidden'}"
 						>
@@ -627,22 +627,20 @@
 							autoplay
 							playsinline
 							muted
-							width="1280"
-							height="720"
-							class="absolute inset-0 h-full w-full object-contain {currentCamera === 2
+							class="w-full h-full object-contain {currentCamera === 2
 								? 'block'
 								: 'hidden'}"
 						>
 							Your browser does not support the video tag.
 						</video>
+						<!-- CSI Camera 2 -->
 						<video
 							id="roverVideo3"
 							autoplay
 							playsinline
 							muted
-							width="1280"
-							height="720"
-							class="absolute inset-0 h-full w-full object-contain {currentCamera === 3
+							style="aspect-ratio: 1/1; object-fit: fill;"
+							class="h-full w-auto {currentCamera === 3
 								? 'block'
 								: 'hidden'}"
 						>
