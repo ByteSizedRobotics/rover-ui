@@ -9,7 +9,7 @@
 		<a href="/dashboard" class="btn btn-ghost text-xl">Control Centre</a>
 	</div>
 	<div class="navbar-center hidden lg:flex">
-		{#if $page.url.pathname !== '/' && $page.url.pathname !== '/login'}
+		{#if $page.url.pathname !== '/' && $page.url.pathname !== '/login' && !$page.url.pathname.startsWith('/manual-ctrl')}
 			<ul class="menu menu-horizontal flex gap-4 px-1">
 				<li>
 					<a

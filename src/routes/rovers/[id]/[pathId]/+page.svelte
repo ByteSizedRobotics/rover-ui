@@ -196,6 +196,13 @@
 			await import('leaflet/dist/leaflet.css');
 		}
 
+		// Check if returning from manual control
+		const returningFromManualControl = browser && sessionStorage.getItem(`returning_from_manual_${roverId}`) === 'true';
+		if (returningFromManualControl) {
+			console.log('Detected return from manual control for rover:', roverId);
+			sessionStorage.removeItem(`returning_from_manual_${roverId}`);
+		}
+
 		// Check for launch success notification
 		if (typeof window !== 'undefined' && roverId) {
 			const notificationKey = `rover_launch_success_${roverId}`;
@@ -270,72 +277,61 @@
 						sensorData.isConnected = status.isConnected;
 					});
 
-				if (imuUpdateInterval) {
-					clearInterval(imuUpdateInterval);
-				}
-				imuUpdateInterval = setInterval(() => {
-					const imuRaw = commandCenterClient?.imuRawData;
-					if (imuRaw) {
-						sensorData.roll = imuRaw.roll;
-						sensorData.pitch = imuRaw.pitch;
-						sensorData.yaw = imuRaw.yaw;
-						sensorData.temperature = imuRaw.temperature;
-						sensorData.batteryVoltage = imuRaw.voltage;
+					if (imuUpdateInterval) {
+						clearInterval(imuUpdateInterval);
 					}
-				}, 1000);
-
-			// Poll GPS data and update map every 3 seconds
-			if (gpsUpdateInterval) {
-				clearInterval(gpsUpdateInterval);
-			}
-			gpsUpdateInterval = setInterval(() => {
-				const gps = commandCenterClient?.gpsData;
-				
-				// Validate GPS data before updating
-				if (gps && gps.latitude && gps.longitude && 
-				    !isNaN(gps.latitude) && !isNaN(gps.longitude) &&
-				    Math.abs(gps.latitude) <= 90 && Math.abs(gps.longitude) <= 180) {
-					
-					// Only update if map and marker are ready
-					if (roverMarker && map && L) {
-						// Update stored position
-						roverGpsPosition = { lat: gps.latitude, lng: gps.longitude };
-						
-						// Smoothly update marker position
-						roverMarker.setLatLng([gps.latitude, gps.longitude]);
-						
-						// Only pan the map if the rover has moved significantly (> 0.0001 degrees ~11m)
-						const center = map.getCenter();
-						const distance = Math.sqrt(
-							Math.pow(center.lat - gps.latitude, 2) + 
-							Math.pow(center.lng - gps.longitude, 2)
-						);
-						
-						if (distance > 0.0001) {
-							// Use panTo for smooth movement instead of setView
-							map.panTo([gps.latitude, gps.longitude], {
-								animate: true,
-								duration: 0.5,
-								noMoveStart: true
-							});
+					imuUpdateInterval = setInterval(() => {
+						const imuRaw = commandCenterClient?.imuRawData;
+						if (imuRaw) {
+							sensorData.roll = imuRaw.roll;
+							sensorData.pitch = imuRaw.pitch;
+							sensorData.yaw = imuRaw.yaw;
+							sensorData.temperature = imuRaw.temperature;
+							sensorData.batteryVoltage = imuRaw.voltage;
 						}
-					} else {
-						console.warn('Map or marker not ready:', { roverMarker: !!roverMarker, map: !!map, L: !!L });
-					}
-				}
-				// If GPS data is invalid or missing, keep using previous position (no update)
-			}, 3000);					const status = commandCenterClient.status;
-					connectionStatus = status.isConnected ? 'Connected' : 'Disconnected';
-					sensorData.isConnected = status.isConnected;
+					}, 1000);
 
-					const imuRaw = commandCenterClient.imuRawData;
-					if (imuRaw) {
-						sensorData.roll = imuRaw.roll;
-						sensorData.pitch = imuRaw.pitch;
-						sensorData.yaw = imuRaw.yaw;
-						sensorData.temperature = imuRaw.temperature;
-						sensorData.batteryVoltage = imuRaw.voltage;
+					// Poll GPS data and update map every 3 seconds
+					if (gpsUpdateInterval) {
+						clearInterval(gpsUpdateInterval);
 					}
+					gpsUpdateInterval = setInterval(() => {
+						const gps = commandCenterClient?.gpsData;
+						
+						// Validate GPS data before updating
+						if (gps && gps.latitude && gps.longitude && 
+							!isNaN(gps.latitude) && !isNaN(gps.longitude) &&
+							Math.abs(gps.latitude) <= 90 && Math.abs(gps.longitude) <= 180) {
+							
+							// Only update if map and marker are ready
+							if (roverMarker && map && L) {
+								// Update stored position
+								roverGpsPosition = { lat: gps.latitude, lng: gps.longitude };
+								
+								// Smoothly update marker position
+								roverMarker.setLatLng([gps.latitude, gps.longitude]);
+								
+								// Only pan the map if the rover has moved significantly (> 0.0001 degrees ~11m)
+								const center = map.getCenter();
+								const distance = Math.sqrt(
+									Math.pow(center.lat - gps.latitude, 2) + 
+									Math.pow(center.lng - gps.longitude, 2)
+								);
+								
+								if (distance > 0.0001) {
+									// Use panTo for smooth movement instead of setView
+									map.panTo([gps.latitude, gps.longitude], {
+										animate: true,
+										duration: 0.5,
+										noMoveStart: true
+									});
+								}
+							} else {
+								console.warn('Map or marker not ready:', { roverMarker: !!roverMarker, map: !!map, L: !!L });
+							}
+						}
+						// If GPS data is invalid or missing, keep using previous position (no update)
+					}, 3000);
 				};
 
 				const ensureConnection = commandCenterClient.isConnected
@@ -346,14 +342,16 @@
 					.then(async () => {
 						setupCommandCenterClient();
 						
-						// Restart autonomous navigation when returning from manual control
-						// This ensures the auto_nav node is restarted
-						if (commandCenterClient) {
-							try {
-								await commandCenterClient.restartAutonomousNavigation();
-								console.log('Autonomous navigation restarted successfully');
-							} catch (error) {
-								console.error('Failed to restart autonomous navigation:', error);
+						// Check if returning from manual control and restart autonav
+						if (returningFromManualControl) {
+							console.log('Returning from manual control, restarting autonomous navigation...');
+							if (commandCenterClient) {
+								try {
+									await commandCenterClient.restartAutonomousNavigation();
+									console.log('Autonomous navigation restarted successfully');
+								} catch (error) {
+									console.error('Failed to restart autonomous navigation:', error);
+								}
 							}
 						}
 					})

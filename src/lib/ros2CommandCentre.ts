@@ -941,7 +941,7 @@ export class ROS2CommandCentreClient {
 	/**
 	 * Launch the rover with waypoints
 	 */
-	async launchRover(waypoints: Array<{ lat: number; lng: number }>): Promise<void> {
+	async launchRover(waypoints: Array<{ lat: number; lng: number }> = []): Promise<void> {
 		// Set navigation state
 		this._totalWaypoints = waypoints.length;
 		this._isNavigating = true;
@@ -975,18 +975,20 @@ export class ROS2CommandCentreClient {
 		this._requiredNodes = requiredNodes;
 		this.startNodeHealthCheck();
 
-		// Then send the waypoints data
-		await this.sendSoftwareData({
-			type: 'waypoints',
-			data: {
-				waypoints: waypoints.map((wp, index) => ({
-					id: index,
-					latitude: wp.lat,
-					longitude: wp.lng,
-					altitude: 0.0
-				}))
-			}
-		});
+		// Then send the waypoints data if provided
+		if (waypoints.length > 0) {
+			await this.sendSoftwareData({
+				type: 'waypoints',
+				data: {
+					waypoints: waypoints.map((wp, index) => ({
+						id: index,
+						latitude: wp.lat,
+						longitude: wp.lng,
+						altitude: 0.0
+					}))
+				}
+			});
+		}
 
 		console.log('Rover launch completed successfully');
 	}

@@ -95,6 +95,20 @@
 		window.addEventListener('keydown', handleKeyDown);
 		window.addEventListener('keyup', handleKeyUp);
 
+		// Handle browser back button to restart autonomous navigation
+		const handlePopState = async (event: PopStateEvent) => {
+			console.log('Browser back button detected, restarting autonomous navigation...');
+			if (commandCenterClient) {
+				try {
+					await commandCenterClient.restartAutonomousNavigation();
+					console.log('Autonomous navigation restarted successfully from browser back');
+				} catch (error) {
+					console.error('Failed to restart autonomous navigation from browser back:', error);
+				}
+			}
+		};
+		window.addEventListener('popstate', handlePopState);
+
 		// Auto-connect to ROS node
 		connectToRover();
 
@@ -169,8 +183,16 @@
 
 		return () => {
 			// CLEANUP AFTER MOVING AWAY FROM THIS PAGE
+			
+			// Set flag to indicate we're navigating away from manual control
+			if (typeof sessionStorage !== 'undefined') {
+				sessionStorage.setItem(`returning_from_manual_${roverId}`, 'true');
+				console.log('Set flag for returning from manual control for rover:', roverId);
+			}
+			
 			window.removeEventListener('keydown', handleKeyDown);
 			window.removeEventListener('keyup', handleKeyUp);
+			window.removeEventListener('popstate', handlePopState);
 
 			// Disconnect when component is destroyed
 			if (controller?.isConnected) {
@@ -281,6 +303,22 @@
 		} catch (error) {
 			console.error('Failed to disconnect from ROS:', error);
 		}
+	};
+
+	const handleBackClick = async () => {
+		// Restart autonomous navigation before navigating back
+		if (commandCenterClient) {
+			try {
+				console.log('Restarting autonomous navigation from manual control...');
+				await commandCenterClient.restartAutonomousNavigation();
+				console.log('Autonomous navigation restarted successfully');
+			} catch (error) {
+				console.error('Failed to restart autonomous navigation:', error);
+			}
+		}
+		
+		// Navigate back to rover page
+		goto(latestPathId ? `/rovers/${roverId}/${latestPathId}` : `/rovers/${roverId}`);
 	};
 </script>
 
@@ -574,7 +612,7 @@
 
 	<!-- Fixed back button bottom-left -->
 	<div class="bottom-left">
-		<button onclick={() => goto(latestPathId ? `/rovers/${roverId}/${latestPathId}` : `/rovers/${roverId}`)} class="back-button">
+		<button onclick={handleBackClick} class="back-button">
 			← Back to Rover
 		</button>
 	</div>
