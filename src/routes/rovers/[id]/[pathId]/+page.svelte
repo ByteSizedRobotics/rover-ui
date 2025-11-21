@@ -604,19 +604,19 @@
 					<h2 class="mb-4 text-xl font-bold text-blue-900">Live Camera</h2>
 
 					<!-- Camera Feed Display -->
-					<div class="mx-auto mb-4 w-full max-w-2xl">
+					<div class="mx-auto mb-4 w-full max-w-2xl" style="aspect-ratio: 820/616;">
 						<div
-							class="relative w-full min-h-[350px] overflow-hidden rounded-lg border border-blue-200 bg-black"
+							class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200 bg-black flex items-center justify-center"
 						>
 						<!-- Video elements for all three cameras -->
-						<!-- CSI Camera 1 - Adjust aspect-ratio here to fix stretching (e.g. 1/1, 4/3, 3/4) -->
+						<!-- CSI Camera 1 -->
 						<video
 							id="roverVideo1"
 							autoplay
 							playsinline
 							muted
 							style="aspect-ratio: 1/1; object-fit: fill;"
-							class="w-full h-auto {currentCamera === 1
+							class="h-full w-auto {currentCamera === 1
 								? 'block'
 								: 'hidden'}"
 						>
@@ -627,20 +627,20 @@
 							autoplay
 							playsinline
 							muted
-							class="w-full h-auto {currentCamera === 2
+							class="w-full h-full object-contain {currentCamera === 2
 								? 'block'
 								: 'hidden'}"
 						>
 							Your browser does not support the video tag.
 						</video>
-						<!-- CSI Camera 2 - Adjust aspect-ratio here to fix stretching -->
+						<!-- CSI Camera 2 -->
 						<video
 							id="roverVideo3"
 							autoplay
 							playsinline
 							muted
 							style="aspect-ratio: 1/1; object-fit: fill;"
-							class="w-full h-auto {currentCamera === 3
+							class="h-full w-auto {currentCamera === 3
 								? 'block'
 								: 'hidden'}"
 						>
