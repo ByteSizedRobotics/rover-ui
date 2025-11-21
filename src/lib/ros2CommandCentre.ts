@@ -959,7 +959,7 @@ export class ROS2CommandCentreClient {
 		console.log('Waiting for required nodes to start up...');
 
 		// Wait for required nodes to be running (based on Python autonomous_nodes)
-		const requiredNodes = ['gps', 'obstacle_detection', 'rover', 'usb_camera', 'csi_camera_1', 'csi_camera_2']
+		const requiredNodes = ['gps', 'obstacle_detection', 'auto_nav', 'serial_motor_imu', 'usb_camera', 'csi_camera_1', 'csi_camera_2']
 		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
 
 		if (!nodesStarted) {
@@ -1005,13 +1005,7 @@ export class ROS2CommandCentreClient {
 		console.log('Waiting for manual control nodes to start up...');
 
 		// Wait for required nodes to be running (based on Python manual_control_nodes)
-		const requiredNodes = [
-			'manual_control',
-			'motor_control',
-			'gps',
-			'obstacle_detection',
-			'csi_camera_1'
-		];
+		const requiredNodes = ['gps', 'obstacle_detection', 'serial_motor_imu', 'usb_camera', 'csi_camera_1', 'csi_camera_2']
 		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
 
 		if (!nodesStarted) {
