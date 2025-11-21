@@ -604,9 +604,9 @@
 					<h2 class="mb-4 text-xl font-bold text-blue-900">Live Camera</h2>
 
 					<!-- Camera Feed Display -->
-					<div class="mx-auto mb-4 w-full max-w-2xl" style="aspect-ratio: 820/616;">
+					<div class="mx-auto mb-4 w-full max-w-2xl">
 						<div
-							class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200 bg-black"
+							class="relative w-full min-h-[350px] overflow-hidden rounded-lg border border-blue-200 bg-black"
 						>
 						<!-- Video elements for all three cameras -->
 						<video
@@ -614,9 +614,7 @@
 							autoplay
 							playsinline
 							muted
-							width="1280"
-							height="720"
-							class="absolute inset-0 h-full w-full object-contain {currentCamera === 1
+							class="w-full h-auto {currentCamera === 1
 								? 'block'
 								: 'hidden'}"
 						>
@@ -627,9 +625,7 @@
 							autoplay
 							playsinline
 							muted
-							width="1280"
-							height="720"
-							class="absolute inset-0 h-full w-full object-contain {currentCamera === 2
+							class="w-full h-auto {currentCamera === 2
 								? 'block'
 								: 'hidden'}"
 						>
@@ -640,9 +636,7 @@
 							autoplay
 							playsinline
 							muted
-							width="1280"
-							height="720"
-							class="absolute inset-0 h-full w-full object-contain {currentCamera === 3
+							class="w-full h-auto {currentCamera === 3
 								? 'block'
 								: 'hidden'}"
 						>
