@@ -343,8 +343,19 @@
 					: commandCenterClient.connect({ enableCSICamera: true, enableUSBCamera: true, enableCSI2Camera: true });
 
 				ensureConnection
-					.then(() => {
+					.then(async () => {
 						setupCommandCenterClient();
+						
+						// Restart autonomous navigation when returning from manual control
+						// This ensures the auto_nav node is restarted
+						if (commandCenterClient) {
+							try {
+								await commandCenterClient.restartAutonomousNavigation();
+								console.log('Autonomous navigation restarted successfully');
+							} catch (error) {
+								console.error('Failed to restart autonomous navigation:', error);
+							}
+						}
 					})
 					.catch((err) => {
 						console.error('Failed to connect to ROS2 Command Center:', err);

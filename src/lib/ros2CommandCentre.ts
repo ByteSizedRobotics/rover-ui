@@ -992,6 +992,44 @@ export class ROS2CommandCentreClient {
 	}
 
 	/**
+	 * Restart autonomous navigation without waypoints
+	 * Used when returning to autonomous mode after manual control
+	 */
+	async restartAutonomousNavigation(): Promise<void> {
+		// Set navigation state
+		this._isNavigating = true;
+		this.notifyStateChange();
+
+		// Send the LaunchRover command without waypoints
+		await this.sendCommand({
+			type: 'LaunchRover',
+			params: {
+				waypoint_count: 0,
+				launch_mode: 'autonomous'
+			}
+		});
+
+		console.log('Waiting for autonomous navigation nodes to restart...');
+
+		// Wait for required nodes to be running (based on Python autonomous_nodes)
+		const requiredNodes = ['gps', 'obstacle_detection', 'auto_nav', 'serial_motor_imu', 'usb_camera', 'csi_camera_1', 'csi_camera_2']
+		const nodesStarted = await this.waitForNodesRunning(requiredNodes, 45000); // 45 second timeout
+
+		if (!nodesStarted) {
+			console.error('Failed to restart all required nodes for autonomous navigation');
+			this._isNavigating = false;
+			this.notifyStateChange();
+			throw new Error('Required nodes failed to restart for autonomous navigation');
+		}
+
+		console.log('Autonomous navigation restarted successfully');
+
+		// Store required nodes and start health monitoring
+		this._requiredNodes = requiredNodes;
+		this.startNodeHealthCheck();
+	}
+
+	/**
 	 * Switch to manual control mode
 	 */
 	async enableManualControl(): Promise<void> {
