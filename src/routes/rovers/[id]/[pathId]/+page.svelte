@@ -606,7 +606,7 @@
 					<!-- Camera Feed Display -->
 					<div class="mx-auto mb-4 w-full max-w-2xl" style="aspect-ratio: 820/616;">
 						<div
-							class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200 bg-black flex items-center justify-center"
+							class="relative h-full w-full overflow-hidden rounded-lg border border-blue-200 bg-white flex items-center justify-center"
 						>
 						<!-- Video elements for all three cameras -->
 						<!-- CSI Camera 1 -->
