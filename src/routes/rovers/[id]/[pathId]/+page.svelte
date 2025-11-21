@@ -609,13 +609,13 @@
 							class="relative w-full min-h-[350px] overflow-hidden rounded-lg border border-blue-200 bg-black"
 						>
 						<!-- Video elements for all three cameras -->
-						<!-- CSI Camera 1 - Adjust aspect-ratio here to fix stretching (e.g. 4/3, 16/9, 1/1) -->
+						<!-- CSI Camera 1 - Adjust aspect-ratio here to fix stretching (e.g. 1/1, 4/3, 3/4) -->
 						<video
 							id="roverVideo1"
 							autoplay
 							playsinline
 							muted
-							style="aspect-ratio: 4/3; object-fit: fill;"
+							style="aspect-ratio: 1/1; object-fit: fill;"
 							class="w-full h-auto {currentCamera === 1
 								? 'block'
 								: 'hidden'}"
@@ -639,7 +639,7 @@
 							autoplay
 							playsinline
 							muted
-							style="aspect-ratio: 4/3; object-fit: fill;"
+							style="aspect-ratio: 1/1; object-fit: fill;"
 							class="w-full h-auto {currentCamera === 3
 								? 'block'
 								: 'hidden'}"
