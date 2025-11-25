@@ -18,12 +18,9 @@
 
 	function formatTimestamp(timestamp: Date | string | null | undefined) {
 		if (!timestamp) return 'N/A';
-		if (timestamp instanceof Date) {
-			if (Number.isNaN(timestamp.getTime())) return 'N/A';
-			return timestamp.toISOString().replace('T', ' ').slice(0, 19);
-		}
-		const normalized = timestamp.replace('T', ' ');
-		return normalized.length >= 19 ? normalized.slice(0, 19) : normalized;
+		const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+		if (Number.isNaN(date.getTime())) return 'N/A';
+		return date.toLocaleString();
 	}
 </script>
 
