@@ -637,6 +637,8 @@ export class ROS2CommandCentreClient {
 					`${cameraType.toUpperCase()} camera WebRTC video stream received for rover ${this._roverId}`
 				);
 				this._remoteStreams.set(cameraType, event.streams[0]);
+				// Set connected to true only when we actually receive the stream
+				this.setWebRTCConnected(cameraType, true);
 				this.emitWebRTCStatus();
 				// If a video element has already been registered, apply immediately
 				const videoElementId = this._currentVideoElementIds.get(cameraType);
@@ -675,7 +677,7 @@ export class ROS2CommandCentreClient {
 				);
 			}
 
-			this.setWebRTCConnected(cameraType, true);
+			// Don't set connected to true here - wait for ontrack event with actual stream
 		} catch (error) {
 			console.error(
 				`Error starting ${cameraType.toUpperCase()} camera WebRTC for rover ${this._roverId}:`,
